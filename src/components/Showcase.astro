@@ -1,9 +1,10 @@
 ---
 // perfectui-live: tabs Button · Card · Modal · Switch · Table, each with the live Perfect UI component on one
 // side and its markup on the other. Both come from the same string (src/lib/showcase.ts), so the code shown is
-// the component's own. Without JavaScript the first tab shows.
+// the component's own. Without JavaScript the selected tab shows. `panel`: the home page's form (Claude Design),
+// a pui-card whose header holds the tabs as chips, with the markup beside the live component.
 import { readNpmCount, readWorkbenchCount, type Lang } from "../data/index.ts";
-import { showcase } from "../lib/showcase.ts";
+import { showcase, type ShowcaseId } from "../lib/showcase.ts";
 import { siteUrl } from "../lib/site.ts";
 import { resolveStats } from "../lib/stats.ts";
 
@@ -14,10 +15,49 @@ interface Props {
   prefix?: string;
   /** Code under the live component instead of beside it (narrow slots such as the opened lab cell). */
   stacked?: boolean;
+  /** The tabs to show, in this order (default: all of them). */
+  ids?: ShowcaseId[];
+  /** The tab shown first (default: the first one). */
+  selected?: ShowcaseId;
+  panel?: boolean;
 }
-const { lang, labelledby, prefix = "pui", stacked = false } = Astro.props;
-const items = showcase(lang, siteUrl(Astro.site), resolveStats(lang, { npm: readNpmCount(), workbench: readWorkbenchCount() }));
+const { lang, labelledby, prefix = "pui", stacked = false, ids, selected, panel = false } = Astro.props;
+const all = showcase(lang, siteUrl(Astro.site), resolveStats(lang, { npm: readNpmCount(), workbench: readWorkbenchCount() }));
+const items = ids ? ids.flatMap((id) => all.filter((c) => c.id === id)) : all;
+const first = Math.max(0, items.findIndex((c) => c.id === selected));
+const ON = "pui-soft pui-muted";
+const OFF = "pui-outline pui-surface";
 ---
+
+{panel ? (
+  <div class="pui-card showcase-panel" data-tabs data-on={ON} data-off={OFF}>
+    <div class="pui-card-header">
+      <div class="panel-tabs" role="tablist" aria-labelledby={labelledby}>
+        {items.map((c, i) => (
+          <button
+            type="button"
+            role="tab"
+            id={`${prefix}-tab-${c.id}`}
+            aria-controls={`${prefix}-panel-${c.id}`}
+            aria-selected={i === first ? "true" : "false"}
+            tabindex={i === first ? 0 : -1}
+            class:list={["pui-chip", i === first ? ON : OFF]}
+          >
+            {c.name}
+          </button>
+        ))}
+      </div>
+    </div>
+    {items.map((c, i) => (
+      <div class="panel-grid" role="tabpanel" id={`${prefix}-panel-${c.id}`} aria-labelledby={`${prefix}-tab-${c.id}`} hidden={i !== first}>
+        <pre class="code panel-code" tabindex="0"><code set:text={c.html} /></pre>
+        <div class="panel-live">
+          <div class={`live live-${c.id}`} set:html={c.html} />
+        </div>
+      </div>
+    ))}
+  </div>
+) : (
 
 <div class:list={["showcase", { stacked }]} data-tabs>
   <div class="pui-group-row" role="tablist" aria-labelledby={labelledby}>
@@ -48,8 +88,60 @@ const items = showcase(lang, siteUrl(Astro.site), resolveStats(lang, { npm: read
     </div>
   ))}
 </div>
+)}
 
 <style>
+  .showcase-panel .pui-card-header {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--pui-border);
+  }
+  .panel-tabs {
+    display: flex;
+    gap: 6px;
+  }
+  .panel-tabs .pui-chip {
+    --pui-font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .panel-tabs .pui-outline {
+    color: var(--pui-text);
+  }
+  .panel-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-height: 200px;
+  }
+  .panel-code {
+    padding: 20px;
+    font-size: 11px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border-right: 1px solid var(--pui-border);
+  }
+  .panel-live {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .panel-live .live {
+    font-size: 13px;
+  }
+  .panel-live .live :global(.pui-card) {
+    width: 100%;
+  }
+  .panel-grid[hidden] {
+    display: none;
+  }
+  @media (max-width: 767px) {
+    .panel-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .panel-code {
+      border-right: none;
+      border-bottom: 1px solid var(--pui-border);
+    }
+  }
   .showcase {
     display: flex;
     flex-direction: column;

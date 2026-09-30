@@ -1,10 +1,9 @@
 ---
-// Home (SCREEN-1), design direction A "Estrutura à mostra" (personal-brand site-home.md, chosen 2026-09-30):
-// every region is a cell with corner markers and the mono tag of the Perfect UI component that builds it. The
-// signature is the real pui-switch "view as agent" inside the label: on, every region shows its llms.txt reading
-// (src/lib/llms.ts), with CSS only. All texts come from the data module; numbers are read at build.
-import { Image } from "astro:assets";
-import AgentSwitch from "../components/AgentSwitch.astro";
+// Home (SCREEN-1), design direction A "Estrutura à mostra" as refined in Claude Design (personal-brand
+// docs/design/results/site-home/claude-design/home-full.webp, approved 2026-09-30): every section is a bordered
+// cell with a mono caption naming the Perfect UI classes that build it and a numbered index. The "view as agent"
+// switch sits in the header: on, every region shows its llms.txt reading (src/lib/llms.ts), with CSS only. All
+// texts come from the data module; numbers are read at build.
 import AgentText from "../components/AgentText.astro";
 import Cell from "../components/Cell.astro";
 import LabCard from "../components/LabCard.astro";
@@ -13,13 +12,14 @@ import Portrait from "../components/Portrait.astro";
 import PostCard from "../components/PostCard.astro";
 import ProjectCard from "../components/ProjectCard.astro";
 import Showcase from "../components/Showcase.astro";
-import WorkbenchBars from "../components/WorkbenchBars.astro";
 import Base from "../layouts/Base.astro";
 import { lab, posts, products, profile, projects, readNpmCount, readWorkbenchCount, t, trajectory, type Lang } from "../data/index.ts";
-import { formatNumber, formatPeriod, localePath } from "../lib/format.ts";
-import { image } from "../lib/images.ts";
+import { PROJECT_STATUSES, PROJECT_TYPES } from "../data/schema.ts";
+import { EMPTY, rowChips, stackValues } from "../lib/filters.ts";
+import { formatNumber, formatPeriod, splitFigure, splitProducts, statusLabel } from "../lib/format.ts";
 import { jsonLd } from "../lib/jsonld.ts";
 import { llmsParts } from "../lib/llms.ts";
+import { findClips } from "../lib/portrait/clips.ts";
 import { siteUrl } from "../lib/site.ts";
 import { resolveStats } from "../lib/stats.ts";
 
@@ -30,15 +30,17 @@ const { lang } = Astro.props;
 const site = siteUrl(Astro.site);
 const npm = readNpmCount();
 const workbench = readWorkbenchCount();
-const shownStats = resolveStats(lang, { npm, workbench });
+// The numbers strip in the design's order: size, downloads, hours, skills.
+const ORDER = ["perfectui-size", "npm-downloads", "live-coding", "workbench-skills"];
+const shownStats = resolveStats(lang, { npm, workbench }).sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
+const skillsLabel = shownStats.find((s) => s.id === "workbench-skills")?.label;
 const agent = llmsParts(lang, { site, npm, workbench });
 const productLine = (name: string) => agent.products.split("\n").find((l) => l.startsWith(`- [${name}]`)) ?? "";
 const [perfectui, aiWorkbench] = products;
-const perfectuiProject = projects.find((p) => p.id === "perfectui");
-const ready = projects.filter((p) => p.status === "ready");
-const inProgress = projects.filter((p) => p.status === "in-progress");
 const latest = posts.slice(0, 4);
 const label = profile.label[lang];
+const pieces = splitProducts(label[2], products.map((p) => p.name));
+const productBy = (name: string) => products.find((p) => p.name === name);
 const npmPackage = perfectui?.npm ?? "@chrissgon/perfectui";
 const installs = [
   { id: "npm", cmd: `npm i ${npmPackage}` },
@@ -46,25 +48,33 @@ const installs = [
   { id: "yarn", cmd: `yarn add ${npmPackage}` },
   { id: "bun", cmd: `bun add ${npmPackage}` },
 ];
-const prefixCount = Object.keys(workbench?.prefixes ?? {}).length;
-const n = (v: number) => formatNumber(v, lang);
+// The portrait's caption says "placeholder" until the encoded clips exist (scripts/encode-portrait.sh).
+const portraitCaption = findClips().loop.length ? "portrait.mp4 · dots" : "portrait.mp4 · dots · placeholder";
+const allowed = { type: [...PROJECT_TYPES], status: [...PROJECT_STATUSES], stack: stackValues(projects) };
+const chips = rowChips(projects, EMPTY, PROJECT_STATUSES);
+const index = (n: number, text: string) => `${String(n).padStart(2, "0")} · ${text}`;
+const TAB_ON = "pui-soft pui-muted";
+const TAB_OFF = "pui-outline pui-surface";
 ---
 
 <Base lang={lang} path="/" title={profile.name} description={label.join(" · ")} jsonld={jsonLd(site)} agentScope>
-  <Cell class="hero" aria-labelledby="name">
+  <Cell class="hero" tag="h1 · a.pui-btn.pui-solid.pui-theme" aria-labelledby="name">
     <div class="hero-text">
-      <span class="tag" aria-hidden="true">h1 + .pui-switch</span>
-      <div class="hero-title">
-        <h1 id="name">{profile.name}</h1>
-        <p class="hero-label">{label[0]} · {label[1]} <span class="nowrap"><AgentSwitch lang={lang} id="view-as-agent" /> ·</span> {label[2]}</p>
-      </div>
-      <div class="human hero-actions">
-        <div class="hero-buttons">
-          {products.map((p) => (
-            <a class:list={["pui-btn", p.id === "perfectui" ? "pui-solid pui-theme" : "pui-outline pui-surface"]} href={p.url}>{p.name}</a>
-          ))}
-        </div>
-        <div class="install" data-tabs data-copy-root>
+      <span class="index">{index(1, t(lang, "sectionIndex"))}</span>
+      <h1 id="name">{profile.name}</h1>
+      <div class="human hero-body">
+        <p class="hero-label">
+          {label[0]} · {label[1]} ·{" "}
+          {pieces.map((p) => {
+            if ("text" in p) return p.text;
+            const product = productBy(p.product);
+            return product ? (
+              <a class:list={["pui-btn", product.id === "perfectui" ? "pui-solid pui-theme" : "pui-outline pui-surface"]} href={product.url}>{product.name}</a>
+            ) : p.product;
+          })}
+        </p>
+        <p class="hero-about">{profile.about[lang][0]}</p>
+        <div class="install" data-tabs data-on={TAB_ON} data-off={TAB_OFF} data-copy-root>
           <div class="pui-group-row" role="tablist" aria-label={npmPackage}>
             {installs.map((x, i) => (
               <button
@@ -74,13 +84,13 @@ const n = (v: number) => formatNumber(v, lang);
                 aria-controls={`install-${x.id}`}
                 aria-selected={i === 0 ? "true" : "false"}
                 tabindex={i === 0 ? 0 : -1}
-                class:list={["pui-btn mono", i === 0 ? "pui-solid pui-inverse" : "pui-outline pui-surface"]}
+                class:list={["pui-btn mono", i === 0 ? TAB_ON : TAB_OFF]}
               >
                 {x.id}
               </button>
             ))}
           </div>
-          <div class="field">
+          <div class="field install-field">
             {installs.map((x, i) => (
               <code role="tabpanel" id={`install-${x.id}`} aria-labelledby={`install-tab-${x.id}`} hidden={i > 0}>{x.cmd}</code>
             ))}
@@ -89,128 +99,99 @@ const n = (v: number) => formatNumber(v, lang);
           <span class="status" role="status" data-copy-status></span>
         </div>
       </div>
-      <AgentText text={agent.head} />
+      <AgentText text={`${agent.head}\n${agent.about}`} />
     </div>
     <div class="hero-portrait">
-      <span class="tag" aria-hidden="true">canvas#portrait</span>
       <Portrait alt={t(lang, "portraitAlt")} />
+      <span class="caption portrait-caption" aria-hidden="true">{portraitCaption}</span>
     </div>
   </Cell>
 
-  <Cell class="pad numbers-cell" tag=".pui-group-row > .pui-card × 4" aria-label={t(lang, "numbers")} reveal>
-    <div class="human pui-group-row numbers">
-      {shownStats.map((s) => (
-        <div class="pui-card">
-          <div class="pui-card-content">
-            <span class="num" data-count={s.value}>{s.value}</span>
-            <span class="lbl">{s.label}</span>
+  <Cell class="numbers-cell" aria-label={t(lang, "numbers")} reveal>
+    <div class="human numbers">
+      {shownStats.map((s) => {
+        const [num, unit] = splitFigure(s.value);
+        return (
+          <div class="stat">
+            <span class="stat-value"><span class="num" data-count={num}>{num}</span>{unit && <span class="unit">{unit}</span>}</span>
+            <span class="stat-label">{s.label}</span>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
     <AgentText text={agent.numbers} />
   </Cell>
 
-  <Cell class="split" aria-labelledby="about" reveal>
-    <div class="pad about-head">
-      <span class="tag" aria-hidden="true">section#about</span>
-      <h2 id="about" class="h2">{t(lang, "about")}</h2>
-    </div>
-    <div class="pad about-text side">
-      <div class="human stack-16">
-        {profile.about[lang].map((p) => <p class="lead">{p}</p>)}
-      </div>
-      <AgentText text={agent.about} />
-    </div>
-  </Cell>
-
-  {perfectui && (
-    <Cell class="pad stack" tag=".pui-group-row[role=tablist] + pre" aria-labelledby="perfectui" reveal>
-      <div class="product-head">
-        <div class="product-intro">
+  {perfectui && aiWorkbench && (
+    <Cell class="products" tag=".pui-card · .pui-card-header · .pui-chip" aria-label={t(lang, "products")} reveal>
+      <div class="sec-head"><span class="index">{index(2, t(lang, "products"))}</span></div>
+      <div class="products-grid">
+        <div class="product">
           <h2 id="perfectui" class="h2">{perfectui.name}</h2>
-          <p class="lead human">{perfectui.summary[lang]}</p>
+          <p class="sec-lead human">{perfectui.summary[lang]}</p>
+          <div class="human"><Showcase lang={lang} labelledby="perfectui" ids={["button", "switch", "card"]} selected="card" panel /></div>
+          <AgentText text={`## ${t(lang, "products")}\n\n${productLine(perfectui.name)}`} />
         </div>
-        {perfectuiProject?.image.kind === "file" && (
-          <Image src={image(perfectuiProject.image.src)} alt="" widths={[360, 720]} sizes="360px" class="product-img human" loading="lazy" decoding="async" />
-        )}
-      </div>
-      <div class="human"><Showcase lang={lang} labelledby="perfectui" /></div>
-      <AgentText text={`## ${t(lang, "products")}\n\n${productLine(perfectui.name)}`} />
-    </Cell>
-  )}
-
-  {aiWorkbench && (
-    <Cell class="split" aria-labelledby="ai-workbench" reveal>
-      <div class="pad stack-20 workbench-list">
-        <span class="tag" aria-hidden="true">.pui-list + .pui-badge</span>
-        <h2 id="ai-workbench" class="h2">{aiWorkbench.name}</h2>
-        <p class="lead human">{aiWorkbench.summary[lang]}</p>
-        {workbench && (
-          <div class="human stack-20">
-            <span class="lbl">{n(workbench.skills)} {t(lang, "cardSkills")} {t(lang, "cardPrefixes").replace("{n}", n(prefixCount))}</span>
-            <ul class="pui-list prefixes">
-              {Object.entries(workbench.prefixes ?? {}).map(([prefix, count]) => (
-                <li class="pui-list-item pui-outline pui-surface mono">{prefix} <span class="pui-badge pui-soft pui-muted pui-rounded-full">{n(count)}</span></li>
-              ))}
-            </ul>
-            <div class="workbench-more">
-              <div class="stack-8">
-                <span class="lbl">{n(workbench.agents)} {t(lang, "cardAgents")}</span>
-                <div class="chips">
-                  {(workbench.agentNames ?? []).map((a) => <span class="pui-chip pui-outline pui-surface mono">{a}</span>)}
-                </div>
-              </div>
-              <div class="stack-8">
-                <span class="lbl">{n(workbench.adapters)} {t(lang, "cardAdapters")}</span>
-                <span class="big-mono">{n(workbench.adapters)}</span>
-              </div>
+        <div class="product side">
+          <h2 id="ai-workbench" class="h2">{aiWorkbench.name}</h2>
+          <p class="sec-lead human">{aiWorkbench.summary[lang]}</p>
+          {workbench && skillsLabel && (
+            <div class="wb-stat human">
+              <span class="num">{formatNumber(workbench.skills, lang)}</span>
+              <span class="stat-label">{skillsLabel}</span>
             </div>
-          </div>
-        )}
-        <AgentText text={productLine(aiWorkbench.name)} />
-      </div>
-      {workbench && (
-        <div class="pad side workbench-chart human">
-          <span class="tag" aria-hidden="true">generated · counts</span>
-          <WorkbenchBars count={workbench} height={240} names />
+          )}
+          <div class="human"><a class="pui-btn pui-outline pui-surface" href={aiWorkbench.url}>{aiWorkbench.name}</a></div>
+          <AgentText text={productLine(aiWorkbench.name)} />
         </div>
-      )}
+      </div>
     </Cell>
   )}
 
-  <Cell class="pad stack" id="projects" tag={`.pui-card × ${projects.length}`} aria-labelledby="projects-title" reveal>
-    <div class="head-row">
-      <h2 id="projects-title" class="h2">{t(lang, "navProjects")}</h2>
-      <a href={localePath(lang, "/projects")}>{t(lang, "allProjects")}</a>
-    </div>
-    <div class="human stack">
-      <div class="grid3">
-        {ready.map((p) => <ProjectCard project={p} lang={lang} />)}
+  <Cell class="pad" id="projects" tag=".pui-chip · .pui-card · .pui-badge" aria-labelledby="projects-title" reveal data-filters data-allowed={JSON.stringify(allowed)}>
+    <span class="index">{index(3, t(lang, "navProjects"))}</span>
+    <div class="sec-row">
+      <h2 id="projects-title" class="h2">{t(lang, "projectsTitle")}</h2>
+      <div class="chip-row js-only human" role="group" aria-labelledby="projects-title">
+        <button type="button" class="pui-chip pui-solid pui-inverse" aria-pressed="true" data-all>{t(lang, "filterAll")} <span class="chip-n">{projects.length}</span></button>
+        {chips.map((c) => (
+          <button type="button" class="pui-chip pui-outline pui-surface" aria-pressed="false" data-group={c.group} data-value={c.value}>
+            {c.group === "status" ? statusLabel(c.value as (typeof PROJECT_STATUSES)[number], lang) : c.value} <span class="chip-n" data-chip-count>{c.count}</span>
+          </button>
+        ))}
       </div>
-      <span class="lbl">{t(lang, "statusInProgress")} · {inProgress.length}</span>
-      <div class="grid4">
-        {inProgress.map((p) => <ProjectCard project={p} lang={lang} compact />)}
+    </div>
+    <div class="human">
+      <div class="pui-card empty" data-empty hidden>
+        <div class="pui-card-content">
+          <span class="empty-text">{t(lang, "noProjectMatch")}</span>
+          <div><button type="button" class="pui-chip pui-outline pui-surface" aria-pressed="false" data-all>{t(lang, "filterAll")} <span class="chip-n">{projects.length}</span></button></div>
+        </div>
+      </div>
+      <div class="grid3">
+        {projects.map((p) => (
+          <div class="card-slot" data-types={p.types.join(" ")} data-status={p.status} data-stack={JSON.stringify(p.stack)} style={`view-transition-name: project-${p.id}`}>
+            <ProjectCard project={p} lang={lang} />
+          </div>
+        ))}
       </div>
     </div>
     <AgentText text={agent.projects} />
   </Cell>
 
-  <Cell class="pad stack" tag={`a.pui-card × ${latest.length}`} aria-labelledby="writing-title" reveal>
-    <div class="head-row">
-      <h2 id="writing-title" class="h2">{t(lang, "navWriting")}</h2>
-      <a href={localePath(lang, "/writing")}>{t(lang, "allWriting")}</a>
-    </div>
-    <div class="human grid4">
-      {latest.map((p) => <PostCard post={p} lang={lang} />)}
+  <Cell class="pad" tag="a.pui-card · .pui-badge.pui-outline" aria-labelledby="writing-title" reveal>
+    <span class="index">{index(4, t(lang, "navWriting"))}</span>
+    <h2 id="writing-title" class="h2 sec-title">{t(lang, "writingTitle")}</h2>
+    <div class="human grid4 posts">
+      {latest.map((p) => <PostCard post={p} lang={lang} date={false} compact />)}
     </div>
     <AgentText text={agent.writing} />
   </Cell>
 
-  <Cell class="split" id={lang === "en" ? "trajectory" : "trajetoria"} aria-labelledby="trajectory-title" reveal>
-    <div class="pad stack traj">
+  <Cell class="split traj-cell" id={lang === "en" ? "trajectory" : "trajetoria"} aria-labelledby="trajectory-title" reveal>
+    <div class="pad traj">
       <span class="tag" aria-hidden="true">.pui-timeline</span>
-      <h2 id="trajectory-title" class="h2">{t(lang, "trajectory")}</h2>
+      <h2 id="trajectory-title" class="h2 sec-title">{t(lang, "trajectory")}</h2>
       <ol class="human pui-timeline timeline">
         {trajectory.entries.map((e, i) => (
           <li class="pui-checkpoint" style={`--i: ${i}`}>
@@ -222,215 +203,253 @@ const n = (v: number) => formatNumber(v, lang);
           </li>
         ))}
       </ol>
-      {trajectory.education && (
-        <div class="human education stack-4">
-          <span class="lbl">{t(lang, "education")}</span>
-          <span>{trajectory.education[lang]}</span>
-        </div>
-      )}
       <AgentText text={agent.trajectory} />
     </div>
-    <div class="pad side proofs human stack-16">
+    <div class="pad side proofs human">
       <span class="tag" aria-hidden="true">ul.pui-list</span>
+      {trajectory.education && (
+        <div class="education">
+          <h3 class="lbl">{t(lang, "education")}</h3>
+          <p>{trajectory.education[lang]}</p>
+        </div>
+      )}
       <h3 class="lbl">{t(lang, "proofs")}</h3>
-      <ul class="pui-list stack-8">
+      <ul class="pui-list">
         {trajectory.proofs.map((p) => <li class="pui-list-item pui-outline pui-surface mono">{p[lang]}</li>)}
       </ul>
     </div>
   </Cell>
 
-  <Cell class="pad stack" id="lab" tag={`.pui-card × ${lab.length}`} aria-labelledby="lab-title" reveal>
-    <div class="head-row">
-      <h2 id="lab-title" class="h2">{t(lang, "navLab")}</h2>
-      <a href={localePath(lang, "/lab")}>{t(lang, "navLab")}</a>
-    </div>
-    <div class="human grid5">
-      {lab.map((x) => <LabCard item={x} lang={lang} />)}
+  <Cell class="lab-cell" id="lab" tag="a.pui-btn.pui-outline.pui-surface" aria-labelledby="lab-title" reveal>
+    <div class="sec-head"><h2 id="lab-title" class="index">{index(5, t(lang, "navLab"))}</h2></div>
+    <div class="human lab-row">
+      {lab.map((x) => <div class="lab-col"><LabCard item={x} lang={lang} /></div>)}
     </div>
     <AgentText text={agent.lab} />
   </Cell>
 
-  <Cell class="pad" id="for-agents" tag=".pui-card" aria-labelledby="agents-title" reveal>
-    <div class="pui-card human">
-      <h2 id="agents-title" class="pui-card-header agents-title">{t(lang, "navAgents")}</h2>
-      <McpDemo lang={lang} variant="card" />
+  <Cell class="agents-cell" id="for-agents" tag=".pui-group-row · input.pui-input · .pui-btn.pui-link" aria-labelledby="agents-title" reveal>
+    <div class="agents-head">
+      <span class="index">{index(6, t(lang, "navAgents"))}</span>
+      <h2 id="agents-title" class="h2">{t(lang, "connectAgent")}</h2>
     </div>
+    <div class="human agents-demo"><McpDemo lang={lang} variant="row" /></div>
     <AgentText text={agent.agents} />
   </Cell>
 </Base>
 
+<script>
+  import "../scripts/filters.ts";
+</script>
+
 <style>
   .hero {
     display: grid;
-    grid-template-columns: 600px minmax(0, 1fr);
-    min-height: 716px;
+    grid-template-columns: minmax(0, 1fr) 504px;
+    min-height: 676px;
   }
   .hero-text {
     position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 40px;
-    padding: 48px var(--gutter) 40px;
+    padding: 80px var(--gutter) 56px;
     border-right: 1px solid var(--pui-border);
   }
-  .hero-title {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+  .hero-text .index {
+    margin-bottom: 36px;
   }
   .hero h1 {
-    font-size: 36px;
-    line-height: 1.1;
+    max-width: 560px;
+    font-size: 60px;
+    line-height: 1.04;
   }
-  .hero-label {
-    font-size: 40px;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.12;
-    text-wrap: balance;
-  }
-  .hero-actions {
+  .hero-body {
     display: flex;
     flex-direction: column;
-    gap: 20px;
   }
-  .hero-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
+  .hero-label {
+    margin-top: 36px;
+    font-size: 17px;
+    line-height: 1.75;
+    color: var(--pui-text-muted);
+  }
+  .hero-label .pui-btn {
+    --pui-font-size: 0.8125rem;
+    padding: 5px 12px;
+    margin-inline: 2px;
+    vertical-align: 1px;
+  }
+  .hero-about {
+    max-width: 620px;
+    margin-top: 28px;
+    font-size: 17px;
+    line-height: 1.65;
   }
   .install {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    max-width: 560px;
+    margin-top: 36px;
+  }
+  .install [role="tablist"] {
+    align-self: flex-start;
+  }
+  .install [role="tab"] {
+    --pui-font-size: 0.75rem;
+    padding: 6px 14px;
+  }
+  .install [role="tab"].pui-outline {
+    color: var(--pui-text);
+  }
+  .install-field {
+    padding: 12px 12px 12px 18px;
+    background: var(--pui-bg-muted);
+  }
+  .install-field code {
+    font-size: 13px;
+  }
+  .install .status:empty {
+    display: none;
   }
   .hero-portrait {
     position: relative;
     overflow: clip;
     min-width: 0;
     display: flex;
-    align-items: flex-start;
-  }
-  .nowrap {
-    white-space: nowrap;
+    align-items: center;
+    justify-content: center;
   }
   .hero-portrait > :global(.portrait-band) {
     width: 100%;
   }
+  .portrait-caption {
+    position: absolute;
+    left: 16px;
+    bottom: 12px;
+    z-index: 3;
+    padding: 2px 6px;
+    background: var(--pui-bg);
+  }
+
   .numbers {
-    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-  .numbers > .pui-card {
-    flex: 1;
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
     min-width: 0;
+    padding: 36px 32px 34px;
   }
-  .numbers .pui-card-content {
+  .stat + .stat {
+    border-left: 1px solid var(--pui-border);
+  }
+  .stat-value {
+    display: flex;
+    align-items: baseline;
     gap: 8px;
   }
   .num {
-    font-size: 48px;
+    font-size: 52px;
     font-weight: 800;
     letter-spacing: -0.03em;
-    line-height: 1.1;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
   }
-  .about-head {
-    position: relative;
-    width: 360px;
-    flex: none;
+  .unit {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--pui-text-muted);
   }
-  .about-text {
-    flex: 1;
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--pui-text-muted);
   }
-  .about-text > .human {
-    max-width: 760px;
+
+  .sec-head {
+    padding: 44px var(--gutter) 0;
   }
-  .stack-4,
-  .stack-8,
-  .stack-16,
-  .stack-20 {
+  .sec-title {
+    margin-bottom: 28px;
+  }
+  .sec-lead {
+    max-width: 560px;
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--pui-text-muted);
+  }
+  .products-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+  .product {
     display: flex;
     flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+    padding: 4px var(--gutter) 56px;
   }
-  .stack-4 {
-    gap: 4px;
+  .product.side {
+    position: relative;
+    padding-inline: 48px var(--gutter);
+    border-left: 1px solid var(--pui-border);
   }
-  .stack-8 {
-    gap: 8px;
+  .product > .human:has(.showcase-panel) {
+    margin-top: 8px;
+    max-width: 660px;
   }
-  .stack-16 {
+  .wb-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 20px 0;
+    border-block: 1px solid var(--pui-border);
+  }
+
+  .sec-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px 28px;
+    margin-bottom: 28px;
+  }
+  .card-slot {
+    display: flex;
+  }
+  .card-slot > :global(.pui-card) {
+    flex: 1;
+  }
+  .card-slot[hidden] {
+    display: none;
+  }
+  .empty {
+    max-width: 560px;
+    margin-bottom: 24px;
+  }
+  .empty[hidden] {
+    display: none;
+  }
+  .empty-text {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  :global(::view-transition-group(*)) {
+    animation-duration: 0.25s;
+  }
+  .posts {
     gap: 16px;
   }
-  .stack-20 {
-    gap: 20px;
-  }
-  .product-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 40px;
-  }
-  .product-intro {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-width: 620px;
-  }
-  .product-img {
-    width: 360px;
-    height: 189px;
-    object-fit: cover;
-    border: 1px solid var(--pui-border);
-    border-radius: calc(var(--pui-radius) * 1.5);
-  }
-  .workbench-list {
-    position: relative;
-    flex: 1;
-  }
-  .workbench-list .lead {
-    max-width: 520px;
-  }
-  .prefixes {
-    list-style: none;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .prefixes li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .workbench-more {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 40px;
-  }
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .big-mono {
-    font-family: var(--font-mono);
-    font-size: 28px;
-    font-weight: 600;
-    line-height: 1.2;
-  }
-  .workbench-chart {
-    width: 480px;
-    flex: none;
-    display: flex;
-    align-items: flex-end;
-  }
-  .workbench-chart :global(.bars) {
-    border-bottom: 1px solid var(--pui-border);
-    padding-bottom: 0;
-  }
+
   .traj {
     position: relative;
     flex: 1;
+  }
+  .traj .h2 {
+    margin-top: 8px;
   }
   .timeline {
     margin: 0;
@@ -446,32 +465,86 @@ const n = (v: number) => formatNumber(v, lang);
   .timeline p {
     line-height: 1.5;
   }
-  .education {
-    border-top: 1px solid var(--pui-border);
-    padding-top: 20px;
-    font-size: 16px;
+  .stack-4 {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
   .proofs {
-    width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 600px;
     flex: none;
+    padding-inline: 48px var(--gutter);
   }
-  .proofs h3 {
+  .proofs .lbl {
     margin-top: 8px;
+    font-size: 11px;
     font-weight: 400;
+    letter-spacing: 0.08em;
+  }
+  .education {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 24px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--pui-border);
+    font-size: 16px;
   }
   .proofs ul {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     list-style: none;
   }
   .proofs li {
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1.5;
   }
-  .agents-title {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 400;
-    letter-spacing: 0;
+
+  .lab-cell .sec-head {
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--pui-border);
   }
+  .lab-cell .index {
+    margin: 0;
+  }
+  .lab-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .lab-col {
+    min-width: 0;
+    padding: 24px 24px 20px;
+  }
+  .lab-col + .lab-col {
+    border-left: 1px solid var(--pui-border);
+  }
+
+  .agents-cell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 560px;
+    align-items: start;
+    gap: 16px 48px;
+    padding: 56px var(--gutter);
+  }
+  .agents-head .index {
+    margin-bottom: 12px;
+  }
+  .agents-cell > :global(.agent-text) {
+    grid-column: 1 / -1;
+  }
+  .numbers-cell > :global(.agent-text),
+  .lab-cell > :global(.agent-text),
+  .product > :global(.agent-text) {
+    padding: 32px var(--gutter);
+  }
+  .product > :global(.agent-text) {
+    padding: 0;
+  }
+
   /* The timeline's dots light up in sequence when the section enters (400 ms in all). */
   :global(html.js) .reveal .timeline .pui-checkpoint-icon {
     transition: background-color 0.15s, border-color 0.15s;
@@ -482,19 +555,50 @@ const n = (v: number) => formatNumber(v, lang);
     background-color: var(--pui-bg);
   }
 
+  @media (max-width: 1279px) {
+    .lab-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .lab-col {
+      border-bottom: 1px solid var(--pui-border);
+    }
+    .lab-col:nth-child(3n + 1) {
+      border-left: none;
+    }
+    .proofs {
+      width: 480px;
+    }
+  }
   @media (max-width: 1023px) {
     .hero {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
-    .about-head {
-      width: 240px;
+    .hero h1 {
+      font-size: 48px;
     }
-    .workbench-chart,
+    .numbers {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .stat:nth-child(3) {
+      border-left: none;
+    }
+    .stat:nth-child(n + 3) {
+      border-top: 1px solid var(--pui-border);
+    }
+    .products-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .product.side {
+      padding-inline: var(--gutter);
+      padding-top: 40px;
+      border-left: none;
+      border-top: 1px solid var(--pui-border);
+    }
     .proofs {
       width: 360px;
     }
-    .product-img {
-      display: none;
+    .agents-cell {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
   @media (max-width: 767px) {
@@ -503,61 +607,74 @@ const n = (v: number) => formatNumber(v, lang);
       min-height: 0;
     }
     .hero-text {
-      gap: 16px;
-      padding: 32px var(--gutter) 24px;
+      padding: 44px var(--gutter) 32px;
       border-right: none;
       border-bottom: 1px solid var(--pui-border);
+    }
+    .hero-text .index {
+      margin-bottom: 20px;
     }
     .hero h1 {
       font-size: 40px;
       line-height: 1.05;
     }
     .hero-label {
-      font-size: 22px;
-      line-height: 1.2;
-      letter-spacing: -0.02em;
+      margin-top: 20px;
+      font-size: 15px;
     }
-    .hero-actions {
-      gap: 16px;
+    .hero-about {
+      margin-top: 20px;
+      font-size: 16px;
     }
-    .hero-buttons {
-      gap: 8px;
+    .install {
+      margin-top: 24px;
     }
     .hero-portrait {
       height: 460px;
     }
-    .numbers {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-    .numbers > .pui-card {
-      margin: 0;
-      border-radius: calc(var(--pui-radius) * 1.5);
+    .stat {
+      padding: 24px var(--gutter);
+      gap: 10px;
     }
     .num {
-      font-size: 28px;
+      font-size: 34px;
     }
-    .numbers .lbl {
-      font-size: 11px;
+    .unit {
+      font-size: 14px;
     }
-    .about-head {
-      width: auto;
-      padding-bottom: 0;
+    .sec-head {
+      padding-top: 40px;
     }
-    .about-text {
-      border-top: none;
-      padding-top: 16px;
+    .product,
+    .product.side {
+      padding: 4px var(--gutter) 40px;
     }
-    .product-head {
-      flex-direction: column;
+    .product.side {
+      padding-top: 32px;
     }
-    .prefixes {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    .sec-row {
+      margin-bottom: 20px;
     }
-    .workbench-chart,
+    .sec-row .chip-row {
+      flex-wrap: nowrap;
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
     .proofs {
       width: auto;
+      padding-inline: var(--gutter);
+    }
+    .lab-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .lab-col,
+    .lab-col + .lab-col {
+      padding: 20px var(--gutter);
+      border-left: none;
+    }
+    .agents-cell {
+      padding: 40px var(--gutter);
     }
   }
 </style>

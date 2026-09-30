@@ -48,3 +48,31 @@ export function formatDate(iso: string, lang: Lang): string {
 export function countLabel(n: number, lang: Lang, one: "comment" | "reaction", many: "comments" | "reactions"): string {
   return `${formatNumber(n, lang)} ${t(lang, n === 1 ? one : many)}`;
 }
+
+/** A piece of a label: plain text, or the name of a product the page shows as its button. */
+export type LabelPiece = { text: string } | { product: string };
+
+/**
+ * Split a label around the product names it contains, in order of appearance ("Creator of Perfect UI &
+ * ai-workbench" -> text, Perfect UI, text, ai-workbench), so the hero can show each name as its button inline.
+ */
+export function splitProducts(label: string, names: readonly string[]): LabelPiece[] {
+  const pieces: LabelPiece[] = [];
+  let rest = label;
+  for (;;) {
+    const hits = names.map((n) => ({ n, i: rest.indexOf(n) })).filter((h) => h.i >= 0).sort((a, b) => a.i - b.i);
+    const hit = hits[0];
+    if (!hit) break;
+    if (hit.i > 0) pieces.push({ text: rest.slice(0, hit.i) });
+    pieces.push({ product: hit.n });
+    rest = rest.slice(hit.i + hit.n.length);
+  }
+  if (rest) pieces.push({ text: rest });
+  return pieces;
+}
+
+/** A figure split into its number and its unit: "3.7 kB" -> ["3.7", "kB"], "1,014" -> ["1,014", ""]. */
+export function splitFigure(value: string): [string, string] {
+  const m = /^([\d.,]+\+?)\s*(.*)$/.exec(value);
+  return m ? [m[1]!, m[2]!] : [value, ""];
+}

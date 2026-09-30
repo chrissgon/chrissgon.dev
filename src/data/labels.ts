@@ -88,6 +88,12 @@ export const provisional = {
   cardPrefixes: { en: "in {n} prefixes", pt: "em {n} prefixos" },
   // The close button of an opened lab experiment ("Esc or × closes it", site-lab.md); its accessible name.
   close: { en: "Close", pt: "Fechar" },
+  // The Claude Design home (personal-brand docs/design/results/site-home/claude-design/home-full.webp): the EN
+  // texts are approved by the owner (state.md, 2026-09-30, "Ajuste o site atual com base nesse design"); the PT
+  // texts are proposals that follow the approved PT labels, awaiting the owner.
+  sectionIndex: { en: "Index", pt: "Índice" },
+  projectsTitle: { en: "Shipped and in progress", pt: "Entregues e em construção" },
+  writingTitle: { en: "Posts on LinkedIn", pt: "Posts no LinkedIn" },
 };
 
 export default { ...approved, ...provisional };

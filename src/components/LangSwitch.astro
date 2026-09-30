@@ -1,7 +1,7 @@
 ---
-// "EN / PT" (approved label): the current language is marked, the other one links to the same page in that
-// language. The projects page keeps its filters across the switch (FLOW-3): its script adds the query to the
-// [data-lang-link] links.
+// "EN / PT" (approved label) as a segmented control (the Claude Design header): the current language is the
+// filled segment, the other one links to the same page in that language. The projects filters keep their query
+// across the switch (FLOW-3): the filter script adds it to the [data-lang-link] links.
 import { t, type Lang } from "../data/index.ts";
 import { LOCALE, localePath } from "../lib/format.ts";
 
@@ -14,15 +14,12 @@ const codes = t(lang, "langSwitch").split(" / ") as [string, string];
 const langs: Lang[] = ["en", "pt"];
 ---
 
-<span class="lang">
-  {langs.map((l, i) => (
-    <>
-      {i > 0 && " / "}
-      {l === lang ? (
-        <span aria-current="true">{codes[i]}</span>
-      ) : (
-        <a href={localePath(l, path)} hreflang={LOCALE[l]} lang={LOCALE[l]} data-lang-link>{codes[i]}</a>
-      )}
-    </>
-  ))}
+<span class="pui-group-row lang">
+  {langs.map((l, i) =>
+    l === lang ? (
+      <span class="pui-btn pui-soft pui-muted" aria-current="true">{codes[i]}</span>
+    ) : (
+      <a class="pui-btn pui-outline pui-surface" href={localePath(l, path)} hreflang={LOCALE[l]} lang={LOCALE[l]} data-lang-link>{codes[i]}</a>
+    ),
+  )}
 </span>

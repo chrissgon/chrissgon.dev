@@ -1,7 +1,8 @@
 ---
-// A post as a Perfect UI card linking to LinkedIn (site-writing.md): the post's own cover, cropped to one
-// ratio from the centre, as the card's largest element; the title in the post's language; the date; the
-// language badges; comments and reactions read from the post's public page. The cover's alt is empty because
+// A post as a Perfect UI card linking to LinkedIn (site-writing.md, refined in Claude Design): the post's own
+// cover, cropped from the centre; the date (optional); the language badges with reactions and comments read from
+// the post's public page; the title in the post's language. `compact`: the home page's row of four, with a
+// shorter cover. The cover's alt is empty because
 // the title is the link's text right below it.
 import { Image } from "astro:assets";
 import { postTitle, type Lang, type posts } from "../data/index.ts";
@@ -14,12 +15,13 @@ interface Props {
   /** Show the ISO date inside the card (home page); the writing page shows it as the cell's tag. */
   date?: boolean;
   eager?: boolean;
+  compact?: boolean;
 }
-const { post: p, lang, date = true, eager = false } = Astro.props;
+const { post: p, lang, date = true, eager = false, compact = false } = Astro.props;
 const titleLang = p.title[lang] ? undefined : LOCALE[p.lang[0]!];
 ---
 
-<a class="pui-card card-link post-card" href={p.url}>
+<a class:list={["pui-card card-link post-card", { compact }]} href={p.url}>
   <Image
     src={image(p.cover)}
     alt=""
@@ -31,13 +33,13 @@ const titleLang = p.title[lang] ? undefined : LOCALE[p.lang[0]!];
   />
   <span class="pui-card-content">
     {date && <time class="meta" datetime={p.date}>{p.date}</time>}
-    <strong class="title" lang={titleLang}>{postTitle(p, lang)}</strong>
     <span class="badges">
-      {p.lang.map((l) => <span class="pui-badge pui-outline pui-surface">{l.toUpperCase()}</span>)}
+      {p.lang.map((l) => <span class="pui-badge pui-outline pui-surface mono">{l.toUpperCase()}</span>)}
       {p.stats && (
-        <span class="meta">{countLabel(p.stats.comments, lang, "comment", "comments")} · {countLabel(p.stats.reactions, lang, "reaction", "reactions")}</span>
+        <span class="meta">{countLabel(p.stats.reactions, lang, "reaction", "reactions")} · {countLabel(p.stats.comments, lang, "comment", "comments")}</span>
       )}
     </span>
+    <strong class="title" lang={titleLang}>{postTitle(p, lang)}</strong>
   </span>
 </a>
 
@@ -52,11 +54,21 @@ const titleLang = p.title[lang] ? undefined : LOCALE[p.lang[0]!];
     background: var(--pui-bg-emphasis);
     transition: opacity 0.15s;
   }
+  .compact .cover {
+    height: 158px;
+  }
   .post-card:hover .cover {
     opacity: 0.85;
   }
   .post-card .pui-card-content {
     gap: 10px;
+  }
+  .compact .pui-card-content {
+    align-content: start;
+    min-height: 124px;
+  }
+  .compact .title {
+    font-size: 14px;
   }
   .title {
     font-size: 16px;
@@ -69,12 +81,20 @@ const titleLang = p.title[lang] ? undefined : LOCALE[p.lang[0]!];
     align-items: center;
     gap: 6px;
   }
+  .badges .pui-badge {
+    padding: 1px 5px;
+    font-size: 10px;
+  }
   .badges .meta {
-    margin-inline-start: 6px;
+    margin-inline-start: 4px;
+    font-size: 11px;
   }
   @media (max-width: 767px) {
     .post-card .cover {
       height: 300px;
+    }
+    .compact .cover {
+      height: 180px;
     }
   }
   @media (prefers-reduced-motion: reduce) {

@@ -16,6 +16,8 @@ export type Localized = z.infer<typeof Localized>;
 export const Profile = z.strictObject({
   name: z.literal("Christopher Gonçalves"),
   handle: z.literal("chrissgon"),
+  /** The site's own domain, shown as its name in the header and the footer. */
+  domain: z.literal("chrissgon.dev"),
   jobTitle: text,
   /** The approved label, split on " · " into its three parts. */
   label: z.strictObject({

@@ -2,6 +2,7 @@
 export default {
   name: "Christopher Gonçalves",
   handle: "chrissgon",
+  domain: "chrissgon.dev",
   jobTitle: "Senior Software Engineer",
   label: {
     en: [

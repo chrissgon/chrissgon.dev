@@ -66,3 +66,19 @@ export function stackValues(items: readonly Filterable[]): string[] {
   for (const p of items) for (const s of p.stack) counts.set(s, (counts.get(s) ?? 0) + 1);
   return [...counts].sort((a, b) => b[1] - a[1]).map(([s]) => s);
 }
+
+/** A chip of the home page's single row: its group, its value and how many projects it would show. */
+export interface RowChip {
+  group: Group;
+  value: string;
+  count: number;
+}
+
+/**
+ * The home page's one row of chips (the Claude Design home): every status in the given order, then every stack,
+ * most used first, each with the count it would show with the other groups as they are.
+ */
+export function rowChips(items: readonly Filterable[], state: FilterState, statuses: readonly string[]): RowChip[] {
+  const chip = (group: Group, value: string): RowChip => ({ group, value, count: chipCount(items, state, group, value) });
+  return [...statuses.map((v) => chip("status", v)), ...stackValues(items).map((v) => chip("stack", v))];
+}
