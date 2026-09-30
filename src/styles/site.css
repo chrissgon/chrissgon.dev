@@ -185,6 +185,22 @@ output {
   position: relative;
   border-left: 1px solid var(--pui-border);
 }
+/* A grid of bordered cells (lab, numbers, writing): every cell draws its own right and bottom lines and hangs
+   1 px past its track, so the last column's line falls on the frame's right line and the last row's on the
+   container's bottom line instead of doubling them. The container owns the top and left lines, has no padding
+   and draws its bottom line (a .cell, or a border of its own); corner markers, tags and .sr-only headings are
+   not cells. A row with empty slots stays closed at any column count and item count, with no per-breakpoint
+   rules: its last cell keeps its right line, the cells above close the empty slots from the top and the
+   container's bottom line runs under them. scripts/check-layout.ts fails when a .cells grid misses a line. */
+.cells {
+  display: grid;
+}
+.cells > :not(.cm, .tag, .sr-only) {
+  min-width: 0;
+  margin: 0 -1px -1px 0;
+  border-right: 1px solid var(--pui-border);
+  border-bottom: 1px solid var(--pui-border);
+}
 
 .lbl {
   font-family: var(--font-mono);

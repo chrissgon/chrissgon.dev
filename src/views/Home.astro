@@ -114,7 +114,7 @@ const TAB_OFF = "pui-outline pui-surface";
   </Cell>
 
   <Cell class="numbers-cell" aria-label={t(lang, "numbers")} reveal>
-    <div class="human numbers">
+    <div class="human cells numbers">
       {shownStats.map((s) => {
         const [num, unit] = splitFigure(s.value);
         return (
@@ -228,7 +228,7 @@ const TAB_OFF = "pui-outline pui-surface";
 
   <Cell class="lab-cell" id="lab" tag="a.pui-btn.pui-outline.pui-surface" aria-labelledby="lab-title" reveal>
     <div class="sec-head"><h2 id="lab-title" class="index">{index(5, t(lang, "navLab"))}</h2></div>
-    <div class="human lab-row">
+    <div class="human cells lab-row">
       {lab.map((x) => <div class="lab-col"><LabCard item={x} lang={lang} /></div>)}
     </div>
     <AgentText text={agent.lab} />
@@ -378,9 +378,6 @@ const TAB_OFF = "pui-outline pui-surface";
     gap: 14px;
     min-width: 0;
     padding: 36px 32px 34px;
-  }
-  .stat + .stat {
-    border-left: 1px solid var(--pui-border);
   }
   .stat-value {
     display: flex;
@@ -566,15 +563,10 @@ const TAB_OFF = "pui-outline pui-surface";
     margin: 0;
   }
   .lab-row {
-    display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   .lab-col {
-    min-width: 0;
     padding: 24px 24px 20px;
-  }
-  .lab-col + .lab-col {
-    border-left: 1px solid var(--pui-border);
   }
 
   .agents-cell {
@@ -613,12 +605,6 @@ const TAB_OFF = "pui-outline pui-surface";
     .lab-row {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
-    .lab-col {
-      border-bottom: 1px solid var(--pui-border);
-    }
-    .lab-col:nth-child(3n + 1) {
-      border-left: none;
-    }
     .proofs {
       width: 480px;
     }
@@ -632,12 +618,6 @@ const TAB_OFF = "pui-outline pui-surface";
     }
     .numbers {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .stat:nth-child(3) {
-      border-left: none;
-    }
-    .stat:nth-child(n + 3) {
-      border-top: 1px solid var(--pui-border);
     }
     .products-grid {
       grid-template-columns: minmax(0, 1fr);
@@ -748,10 +728,8 @@ const TAB_OFF = "pui-outline pui-surface";
     .lab-row {
       grid-template-columns: minmax(0, 1fr);
     }
-    .lab-col,
-    .lab-col + .lab-col {
+    .lab-col {
       padding: 20px var(--gutter);
-      border-left: none;
     }
     .agents-cell {
       padding: 40px var(--gutter);
