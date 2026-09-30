@@ -44,6 +44,12 @@ export const provisional = {
   cardAdapters: { en: "adapters", pt: "adaptadores" },
   langName: { en: "English", pt: "Português" },
   otherLang: { en: "PT", pt: "EN" },
+  // The round-2 prototype's alt text of the portrait (personal-brand round-2/a-final/build.py); not yet in
+  // site-content.md.
+  portraitAlt: {
+    en: "Christopher Gonçalves at his computer, drawn in dots",
+    pt: "Christopher Gonçalves no computador, desenhado em pontos",
+  },
   homeDescription: {
     en: "Christopher Gonçalves: projects, writing and experiments.",
     pt: "Christopher Gonçalves: projetos, escrita e experimentos.",

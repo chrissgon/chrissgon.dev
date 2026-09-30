@@ -1,8 +1,11 @@
 ---
 // Base layout (design: "Layout base"): head, Perfect UI, canonical, hreflang, JSON-LD, skip link,
 // navigation and language switch. Dark only (decision of 2026-09-29). No custom styling yet: the visual
-// design comes later.
+// design comes later; the only rules here apply the self-hosted fonts (ADR-0006).
+// Preloads: Inter 400 (body text) and 800 (the h1, the LCP) are on the first screen; Inter 600 and
+// JetBrains Mono are not, so they load only when a rule uses them.
 import "@chrissgon/perfectui/perfectui.css";
+import { Font } from "astro:assets";
 import { profile, t, type Lang } from "../data/index.ts";
 import { LOCALE, localePath } from "../lib/format.ts";
 import { assertPublishable, serializeJsonLd, type jsonLd as JsonLdBuilder } from "../lib/jsonld.ts";
@@ -35,6 +38,8 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <Font cssVariable="--font-sans" preload={[{ weight: "400" }, { weight: "800" }]} />
+    <Font cssVariable="--font-mono" />
     <link rel="canonical" href={href(lang, path)} />
     <link rel="alternate" hreflang="en" href={href("en", path)} />
     <link rel="alternate" hreflang="pt-BR" href={href("pt", path)} />
@@ -64,3 +69,18 @@ const nav = [
     </footer>
   </body>
 </html>
+
+<style is:global>
+  html {
+    font-family: var(--font-sans);
+  }
+  h1 {
+    font-weight: 800;
+  }
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+  }
+</style>

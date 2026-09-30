@@ -12,6 +12,8 @@ The design and its decision records are kept locally by the owner, outside this 
 - Text endpoints: `src/pages/llms.txt.ts`, `src/pages/pt/llms.txt.ts`, `src/pages/robots.txt.ts`. Sitemap: `@astrojs/sitemap`.
 - Read-only MCP server: `netlify/functions/mcp.mts` at `/api/mcp` (route and rate limit in its `config`), tools in `src/mcp/server.ts`, reading only `src/data/`. Every tool stays read-only with a strict input schema; `tests/mcp.test.ts` covers the protocol, each tool, unknown data (EDGE-1) and injected instructions (EDGE-3). Local run: `netlify dev --offline --framework '#static' --dir dist` after `npm run build` (`astro dev` does not serve functions).
 - Netlify builds and publishes (`netlify.toml`); this repository's CI never deploys.
+- The portrait island (`src/components/Portrait.astro`) mounts `src/lib/portrait/` on a canvas: pure parts (`levels.ts`, `grid.ts`, `gating.ts`, `colors.ts`) are unit-tested, `mount.ts` holds the DOM. Clips are offered only when their files exist in `public/portrait/` at build time.
+- Fonts come from Astro's Fonts API (`fonts` in `astro.config.mjs`, `<Font>` in `src/layouts/Base.astro`); never add a third-party font link.
 
 ## Commands
 
@@ -24,6 +26,8 @@ The design and its decision records are kept locally by the owner, outside this 
 | Build | `npm run build` | npm and ai-workbench counts, sensitive check of `src/data/`, image check, `astro build`, sensitive check and `check-dist` of `dist/` |
 | Lighthouse | `npm run lighthouse` | after a build; Lighthouse 13.5.0 mobile, performance >= 90, agentic browsing = 100 |
 | Secret scan | `npm run secrets` | add `-- --history` for every commit |
+| Portrait check | `npm run check:portrait` | after a build; Playwright Chromium; `-- --with-synthetic-clips` needs ffmpeg |
+| Portrait clips | `scripts/encode-portrait.sh --help` | ffmpeg; `--self-test` on synthetic clips |
 | npm snapshot | `npm run data:npm -- --update-snapshot` | refreshes `src/data/npm-snapshot.json` |
 | ai-workbench snapshot | `npm run data:workbench -- --update-snapshot` | refreshes `src/data/workbench-snapshot.json` |
 
@@ -37,8 +41,10 @@ The design and its decision records are kept locally by the owner, outside this 
 
 ## Testing
 
-- vitest; tests live in `tests/`. Cover the data schemas, the sensitive-topics check, the generated `llms.txt`, JSON-LD and project cards, the MCP tools, and the build checks (`check-images`, `check-dist`, the Lighthouse gate) whenever they change.
+- vitest; tests live in `tests/`. Cover the data schemas, the sensitive-topics check, the generated `llms.txt`, JSON-LD and project cards, the MCP tools, the build checks (`check-images`, `check-dist`, the Lighthouse gate) and the pure portrait functions (`src/lib/portrait/`) whenever they change.
 - Images committed under `src/assets/` carry no EXIF, GPS, XMP or text metadata (`tests/images.test.ts`).
+- `npm run check:portrait` (Playwright) checks the built home pages: canvas drawn, no video request without clips, with reduced motion or Save-Data, no console errors, no-JS fallback. Run it after changing the portrait or the layout around it.
+- Never commit a source photo or source video of the owner: only the dot grid, the fallback WebP and the encoded clips.
 
 ## Security
 
