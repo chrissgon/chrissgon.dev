@@ -3,7 +3,7 @@
 
 Usage: uv run -q --with pillow scripts/portrait-fallback.py \
          [--poster src/assets/portrait/portrait.json] [--out public/portrait/portrait-fallback.webp] \
-         [--cell 7]
+         [--cell 5.6]
 
 The dots are drawn the way the canvas draws the finished portrait (src/lib/portrait/levels.ts): radius
 sqrt(level / 15) * cell / 2 * 0.96 (at least 0.7 px), colour by band (levels 1-4 the border token, 5-8 the
@@ -27,7 +27,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--poster", default="src/assets/portrait/portrait.json")
     ap.add_argument("--out", default="public/portrait/portrait-fallback.webp")
-    ap.add_argument("--cell", type=float, default=7, help="px per poster cell (page grid 28 / subdiv 4, src/lib/portrait/config.ts)")
+    ap.add_argument("--cell", type=float, default=5.6, help="px per poster cell (page grid 28 / subdiv 5, src/lib/portrait/config.ts)")
     a = ap.parse_args()
 
     p = json.load(open(a.poster))

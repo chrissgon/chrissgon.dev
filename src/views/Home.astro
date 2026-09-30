@@ -67,13 +67,15 @@ const TAB_OFF = "pui-outline pui-surface";
       <div class="human hero-body">
         <p class="hero-label">
           {label[0]} · {label[1]} ·{" "}
-          {pieces.map((p) => {
-            if ("text" in p) return p.text;
-            const product = productBy(p.product);
-            return product ? (
-              <a class:list={["pui-btn", product.id === "perfectui" ? "pui-solid pui-theme" : "pui-outline pui-surface"]} href={product.url}>{product.name}</a>
-            ) : p.product;
-          })}
+          <span class="hero-products">
+            {pieces.map((p) => {
+              if ("text" in p) return p.text;
+              const product = productBy(p.product);
+              return product ? (
+                <a class:list={["pui-btn", product.id === "perfectui" ? "pui-solid pui-theme" : "pui-outline pui-surface"]} href={product.url}>{product.name}</a>
+              ) : p.product;
+            })}
+          </span>
         </p>
         <p class="hero-about">{profile.about[lang][0]}</p>
         <div class="install" data-tabs data-on={TAB_ON} data-off={TAB_OFF} data-copy-root>
@@ -245,12 +247,12 @@ const TAB_OFF = "pui-outline pui-surface";
 </script>
 
 <style>
-  /* Text and portrait share the cell with no divider between them (owner, 2026-09-30); the portrait column
-     takes 55% so the face and the typing hands read larger. */
+  /* Text and portrait share the cell with no divider between them, in two equal columns (owner, 2026-09-30):
+     at 55% the portrait crowded the text and wrapped the label. */
   .hero {
     display: grid;
-    grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
-    min-height: 784px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-height: 756px;
   }
   .hero-text {
     position: relative;
@@ -275,6 +277,11 @@ const TAB_OFF = "pui-outline pui-surface";
     font-size: 17px;
     line-height: 1.75;
     color: var(--pui-text-muted);
+  }
+  /* "Creator of Perfect UI & ai-workbench" moves to the next line as one piece rather than leaving its buttons
+     behind; narrower than the piece, it still wraps inside. */
+  .hero-products {
+    display: inline-block;
   }
   .hero-label .pui-btn {
     --pui-font-size: 0.8125rem;
@@ -315,8 +322,9 @@ const TAB_OFF = "pui-outline pui-surface";
   .install .status:empty {
     display: none;
   }
-  /* The portrait sits on the cell's bottom line and runs to the frame's edge; the column clips its top, which
-     holds little but the shelf, so the hero stays close to one screen. */
+  /* The portrait sits on the cell's bottom line and runs to the frame's edge. The hero's minimum height, 756 px
+     (27 grid cells), holds the whole 734 px portrait and puts the top of its slot near a grid line, so the
+     snapped dots end on the bottom line. */
   .hero-portrait {
     position: relative;
     overflow: clip;
@@ -325,6 +333,9 @@ const TAB_OFF = "pui-outline pui-surface";
   .hero-portrait > :global(.portrait-band) {
     position: absolute;
     inset: auto 0 0;
+  }
+  .hero-portrait :global(.portrait) {
+    margin-left: auto;
   }
   .portrait-caption {
     position: absolute;
@@ -649,12 +660,9 @@ const TAB_OFF = "pui-outline pui-surface";
     .install {
       margin-top: 24px;
     }
-    /* One column: the box runs from just above the hair to the keyboard under the typing hands. */
+    /* One column: the 734 px portrait, keyboard included, in a 728 px box that clips the empty top. */
     .hero-portrait {
       height: 728px;
-    }
-    .hero-portrait > :global(.portrait-band) {
-      bottom: -42px;
     }
     .stat {
       padding: 24px var(--gutter);
