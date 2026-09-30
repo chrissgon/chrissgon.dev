@@ -10,7 +10,10 @@
 //   - no video is requested when the clips are absent, with reduced motion, or with Save-Data
 //   - no console error and no page error
 //   - without JavaScript the fallback image loads and the canvas takes no room
+//   - the pointer pushes dots away, and once it leaves the canvas shows the poster again, pixel for pixel
 //   - with clips (synthetic): a video is requested after load and the dots change over time
+//   - with clips at CPU x8 (DevTools throttling): no long task (> 50 ms) while the clip plays; before the
+//     banded repaint (src/lib/portrait/bands.ts) each video frame repainted every dot in one task
 // Scenarios are independent and run in parallel (--jobs); each uses its own browser context.
 
 import { execFileSync } from "node:child_process";
@@ -125,6 +128,49 @@ async function poster(browser: Browser, base: string, path: string, label: strin
   await s.close();
 }
 
+async function pointer(browser: Browser, base: string, path: string, label: string) {
+  const s = await open(browser, base + path);
+  await sleep(1500);
+  const rest = await drawn(s.page);
+  const face = await s.page.evaluate(() => {
+    const r = document.querySelector("[data-portrait]")!.getBoundingClientRect();
+    return { x: r.left + r.width * 0.42, y: r.top + r.height * 0.33 };
+  });
+  await s.page.mouse.move(face.x - 40, face.y);
+  await s.page.mouse.move(face.x, face.y, { steps: 4 });
+  await sleep(500);
+  const pushed = await drawn(s.page);
+  await s.page.evaluate(() => document.documentElement.dispatchEvent(new MouseEvent("mouseleave")));
+  await sleep(1500);
+  const back = await drawn(s.page);
+  check(`${label} pointer: dots move away from the pointer`, pushed.sig !== rest.sig, `signature ${rest.sig} -> ${pushed.sig}`);
+  check(`${label} pointer: the poster comes back exactly once it leaves`, back.sig === rest.sig && back.n === rest.n, `${rest.n}/${rest.sig} -> ${back.n}/${back.sig}`);
+  check(`${label} pointer: no console errors`, s.errors.length === 0, s.errors.join(" | "));
+  await s.close();
+}
+
+/** Longest main-thread task while a clip plays, with the CPU slowed `rate` times (DevTools throttling). */
+async function clipTasks(browser: Browser, base: string, path: string, label: string, rate = 8) {
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 823 }, deviceScaleFactor: 1.75, isMobile: true, hasTouch: true });
+  await ctx.addInitScript(() => {
+    const w = window as unknown as { __long: number[] };
+    w.__long = [];
+    new PerformanceObserver((l) => { for (const e of l.getEntries()) w.__long.push(Math.round(e.duration)); }).observe({ type: "longtask" });
+  });
+  const page = await ctx.newPage();
+  const cdp = await ctx.newCDPSession(page);
+  await page.goto(base + path, { waitUntil: "load" });
+  await page.waitForFunction(() => [...document.querySelectorAll("video")].some((v) => !v.paused && v.readyState >= 2), null, { timeout: 15000 }).catch(() => {});
+  await sleep(300);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate });
+  await page.evaluate(() => { (window as unknown as { __long: number[] }).__long.length = 0; });
+  await sleep(3000);
+  const long = await page.evaluate(() => (window as unknown as { __long: number[] }).__long);
+  const playing = await page.evaluate(() => [...document.querySelectorAll("video")].some((v) => !v.paused));
+  check(`${label} clips at CPU x${rate}: no long task while the clip plays`, playing && long.length === 0, `playing ${playing}, long tasks (ms): ${long.join(", ")}`);
+  await ctx.close();
+}
+
 async function noJs(browser: Browser, base: string, path: string, label: string) {
   const s = await open(browser, base + path, { javaScriptEnabled: false });
   const img = await s.page.evaluate(() => {
@@ -183,6 +229,7 @@ try {
     tasks.push(() => poster(browser, base, path, label, { saveData: true }, "Save-Data"));
     tasks.push(() => noJs(browser, base, path, label));
     tasks.push(() => narrow(browser, base, path, label));
+    tasks.push(() => pointer(browser, base, path, label));
   }
   if (WITH_CLIPS) {
     // Sequential by need: the clips must exist before the build that finds them, and the build before the checks.
@@ -194,6 +241,7 @@ try {
     servers.push(c.server);
     for (const [path, label] of [["/", "EN"], ["/pt/", "PT"]] as const) {
       tasks.push(() => withClips(browser, c.base, path, label));
+      tasks.push(() => clipTasks(browser, c.base, path, label));
       tasks.push(() => poster(browser, c.base, path, `${label} clips`, { reducedMotion: "reduce" }, "reduced motion"));
       tasks.push(() => poster(browser, c.base, path, `${label} clips`, { saveData: true }, "Save-Data"));
     }
