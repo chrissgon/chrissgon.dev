@@ -44,7 +44,7 @@ The design and its decision records are kept locally by the owner, outside this 
 
 - vitest; tests live in `tests/`. Cover the data schemas, the sensitive-topics check, the generated `llms.txt`, JSON-LD and project cards, the MCP tools, the build checks (`check-images`, `check-dist`, the Lighthouse gate) and the pure portrait functions (`src/lib/portrait/`) whenever they change.
 - Images committed under `src/assets/` carry no EXIF, GPS, XMP or text metadata (`tests/images.test.ts`).
-- `npm run check:portrait` (Playwright) checks the built home pages: canvas drawn, no video request without clips, with reduced motion or Save-Data, no console errors, no-JS fallback, the pointer pushing dots and the poster coming back exactly; with `-- --with-synthetic-clips`, the video path and no long task while a clip plays at CPU x8. Run it after changing the portrait or the layout around it.
+- `npm run check:portrait` (Playwright) checks the built home pages: canvas drawn, no video request without clips, with reduced motion or Save-Data, no console errors, no-JS fallback, the pointer pushing dots and the poster coming back exactly; when the build carries the real clips (`public/portrait/portrait-loop.*`), the video path and no long task while the clip plays at CPU x8, with the pointer check run under Save-Data; `-- --with-synthetic-clips` adds the same video checks on synthetic clips (loop and greeting). Run it after changing the portrait or the layout around it.
 - Never commit a source photo or source video of the owner: only the dot grid, the fallback WebP and the encoded clips.
 
 ## Security

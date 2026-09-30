@@ -24,7 +24,7 @@ const width = Math.round(poster.cols * cell), height = Math.round(poster.rows * 
 ---
 
 <div class="portrait-band">
-  <div class="portrait" data-portrait style={`--portrait-w: ${width}px; --portrait-h: ${height}px`}>
+  <div class="portrait" data-portrait style={`--portrait-w: ${width}px; --portrait-h: ${height}px; --face-x: ${Math.round(face.x * 100)}%`}>
     <canvas data-alt={alt} width="0" height="0"></canvas>
     <noscript><img src={`/${publicDir}/${fallbackName}`} width={width} height={height} alt={alt} /></noscript>
     <script type="application/json" data-portrait-options set:html={json} />
@@ -71,6 +71,6 @@ const width = Math.round(poster.cols * cell), height = Math.round(poster.rows * 
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 42% top;
+    object-position: var(--face-x) top; /* keep the face in a narrower slot, as the canvas does */
   }
 </style>

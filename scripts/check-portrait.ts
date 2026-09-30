@@ -8,6 +8,9 @@
 // Checks, EN and PT, one PASS or FAIL line each on stdout, exit 1 on any failure:
 //   - the canvas is shown and has dots drawn on it; the page scrolls no wider than the viewport (375 px)
 //   - no video is requested when the clips are absent, with reduced motion, or with Save-Data
+//   - when the build has the real clips (dist/portrait/portrait-loop.*), the default visit requests one after
+//     load, the dots change with it, it pauses off-screen, and no long task happens at CPU x8 (the same
+//     checks as the synthetic clips); the pointer check then runs with Save-Data, the poster-only path
 //   - no console error and no page error
 //   - without JavaScript the fallback image loads and the canvas takes no room
 //   - the pointer pushes dots away, and once it leaves the canvas shows the poster again, pixel for pixel
@@ -37,6 +40,8 @@ const flag = (name: string, fallback: string) => {
 const DIST = resolve(flag("--dist", "dist"));
 const JOBS = Math.max(1, Number(flag("--jobs", "4")) || 4);
 const WITH_CLIPS = argv.includes("--with-synthetic-clips");
+// The real clips, when the build carries them (scripts/encode-portrait.sh writes them to public/portrait/).
+const REAL_CLIPS = ["webm", "mp4"].some((x) => existsSync(join(DIST, "portrait", `portrait-loop.${x}`)));
 if (!existsSync(join(DIST, "index.html"))) {
   console.error(`check-portrait: ${DIST}/index.html not found; run npm run build first`);
   process.exit(2);
@@ -128,8 +133,8 @@ async function poster(browser: Browser, base: string, path: string, label: strin
   await s.close();
 }
 
-async function pointer(browser: Browser, base: string, path: string, label: string) {
-  const s = await open(browser, base + path);
+async function pointer(browser: Browser, base: string, path: string, label: string, o: Parameters<typeof open>[2] = {}) {
+  const s = await open(browser, base + path, o);
   await sleep(1500);
   const rest = await drawn(s.page);
   const face = await s.page.evaluate(() => {
@@ -224,12 +229,17 @@ try {
   servers.push(server);
   const tasks: Array<() => Promise<void>> = [];
   for (const [path, label] of [["/", "EN"], ["/pt/", "PT"]] as const) {
-    tasks.push(() => poster(browser, base, path, label, {}, "default"));
+    if (REAL_CLIPS) {
+      tasks.push(() => withClips(browser, base, path, `${label} real`));
+      tasks.push(() => clipTasks(browser, base, path, `${label} real`));
+    } else tasks.push(() => poster(browser, base, path, label, {}, "default"));
     tasks.push(() => poster(browser, base, path, label, { reducedMotion: "reduce" }, "reduced motion"));
     tasks.push(() => poster(browser, base, path, label, { saveData: true }, "Save-Data"));
     tasks.push(() => noJs(browser, base, path, label));
     tasks.push(() => narrow(browser, base, path, label));
-    tasks.push(() => pointer(browser, base, path, label));
+    // With the real clips the default visit plays the loop, so the poster-exact check runs where no clip
+    // plays and the pointer still moves dots: Save-Data (gating.ts).
+    tasks.push(() => (REAL_CLIPS ? pointer(browser, base, path, `${label} Save-Data`, { saveData: true }) : pointer(browser, base, path, label)));
   }
   if (WITH_CLIPS) {
     // Sequential by need: the clips must exist before the build that finds them, and the build before the checks.
