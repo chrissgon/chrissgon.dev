@@ -1,6 +1,18 @@
 // The numbers strip counts up to each figure when it enters the screen (site-home.md, region 4 motion): a
 // pure parser of the figure as shown ("1,014", "1.014", "3.7 kB", "3,7 kB", "600+ hours", "43") and a frame
 // function the page script calls with the progress 0..1. The final frame is always the figure itself.
+// Timing: each number counts for COUNT_MS on an ease-out curve (fast start, slow finish, so the last digits
+// are seen settling), and each cell of the strip starts STAGGER_MS after the one before it.
+
+/** How long one number counts, in ms. */
+export const COUNT_MS = 1800;
+/** The delay between two neighbouring cells of the strip, in ms. */
+export const STAGGER_MS = 150;
+
+/** The progress (0..1) of the cell at `index`, `elapsed` ms after the strip entered the screen. */
+export function progressAt(elapsed: number, index: number): number {
+  return Math.min(1, Math.max(0, (elapsed - index * STAGGER_MS) / COUNT_MS));
+}
 
 export interface Figure {
   prefix: string;

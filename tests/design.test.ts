@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { approved, provisional } from "../src/data/labels.ts";
 import { countLabel, formatDate, splitFigure, splitProducts } from "../src/lib/format.ts";
 import { products, profile } from "../src/data/index.ts";
-import { frame, parseFigure } from "../src/lib/countup.ts";
+import { COUNT_MS, STAGGER_MS, easeOut, frame, parseFigure, progressAt } from "../src/lib/countup.ts";
 import { LLMS_PARTS, llmsParts, llmsText } from "../src/lib/llms.ts";
 import { MODAL_EXAMPLE, SHOWCASE_IDS, productButtons, showcase } from "../src/lib/showcase.ts";
 import { resolveStats } from "../src/lib/stats.ts";
@@ -39,6 +39,55 @@ describe("numbers count-up", () => {
 
   it("leaves a text without a number alone", () => {
     expect(parseFigure("n/a", "en")).toBeNull();
+  });
+
+  it("counts for 1.8 s per number, each cell 150 ms after the one before", () => {
+    expect(COUNT_MS).toBe(1800);
+    expect(STAGGER_MS).toBe(150);
+    expect(progressAt(0, 0)).toBe(0);
+    expect(progressAt(900, 0)).toBe(0.5);
+    expect(progressAt(1800, 0)).toBe(1);
+    expect(progressAt(5000, 0)).toBe(1);
+    expect(progressAt(150, 1)).toBe(0);
+    expect(progressAt(100, 3)).toBe(0);
+    expect(progressAt(450 + 900, 3)).toBe(0.5);
+    expect(progressAt(450 + 1800, 3)).toBe(1);
+  });
+
+  it("eases out: fast start, slow finish", () => {
+    expect(easeOut(0)).toBe(0);
+    expect(easeOut(1)).toBe(1);
+    expect(easeOut(0.5)).toBeGreaterThan(0.5);
+    // The last fifth of the time covers under 1 % of the way, so the final digits are seen settling.
+    expect(1 - easeOut(0.8)).toBeLessThan(0.01);
+    for (let p = 0; p < 1; p += 0.01) expect(easeOut(p + 0.01)).toBeGreaterThanOrEqual(easeOut(p));
+  });
+
+  it.each([
+    ["1,014", "en", /^(\d|[1-9]\d{1,2}|1,0\d\d)$/],
+    ["1.014", "pt", /^(\d|[1-9]\d{1,2}|1\.0\d\d)$/],
+    ["3.7", "en", /^\d\.\d$/],
+    ["3,7", "pt", /^\d,\d$/],
+    ["600+", "en", /^\d{1,3}\+$/],
+    ["48", "pt", /^\d{1,2}$/],
+  ] as const)("keeps the %s (%s) format at every frame and ends exactly on it", (text, lang, shape) => {
+    const f = parseFigure(text, lang)!;
+    for (let t = 0; t <= 2400; t += 16) {
+      const p = progressAt(t, 3);
+      const shown = frame(f, p);
+      expect(shown).toMatch(shape);
+      if (p >= 1) expect(shown).toBe(text);
+    }
+    expect(frame(f, progressAt(COUNT_MS + 3 * STAGGER_MS, 3))).toBe(text);
+  });
+
+  it("shows the decimals counting: 3,7 in PT passes through tenths", () => {
+    const f = parseFigure("3,7", "pt")!;
+    const seen = new Set<string>();
+    for (let t = 0; t <= COUNT_MS; t += 16) seen.add(frame(f, progressAt(t, 0)));
+    expect(seen.size).toBeGreaterThanOrEqual(20);
+    expect(seen).toContain("0,0");
+    expect(seen).toContain("3,7");
   });
 });
 
