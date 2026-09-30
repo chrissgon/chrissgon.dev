@@ -1,7 +1,6 @@
 ---
 // A project as a Perfect UI card (site-projects.md, refined in Claude Design): the cover on top (the project's
-// image, the card the site generates from the data, or a dot pattern generated from the project's id and captioned
-// "cover · <name>", src/lib/patterns.ts), the name in mono, the status badge (soft success when ready, soft warn
+// image, or the cover the site draws from the data, src/components/ProjectVisual.astro), the name in mono, the status badge (soft success when ready, soft warn
 // in progress), type and stack, the approved text and its links. A project in progress has no link
 // (site-content.md 4.2).
 import { Image } from "astro:assets";
@@ -10,15 +9,12 @@ import type { Lang } from "../data/index.ts";
 import type { Project } from "../data/schema.ts";
 import { statusLabel, typeLabel } from "../lib/format.ts";
 import { image } from "../lib/images.ts";
-import { coverPattern } from "../lib/patterns.ts";
 
 interface Props {
   project: Project;
   lang: Lang;
 }
 const { project: p, lang } = Astro.props;
-// Projects the site draws a card for (ProjectVisual.astro); the others without an image show their dot pattern.
-const drawn = p.id === "ai-workbench" || p.id === "doc-github-workflow";
 // How each image sits in the 162 px cover. The two README diagrams have white margins and would lose their top and
 // bottom boxes to a crop, so they are shown whole on white; the others are cropped where their title is.
 const fit: Record<string, string> = {
@@ -42,10 +38,8 @@ const meta = p.types.map((x) => typeLabel(x, lang)).join(" · ") + (p.stack.leng
       loading="lazy"
       decoding="async"
     />
-  ) : drawn ? (
-    <ProjectVisual id={p.id} lang={lang} />
   ) : (
-    <div class="card-media cover-ph" aria-hidden="true"><Fragment set:html={coverPattern(p.id).svg} /><span class="caption">cover · {p.name}</span></div>
+    <ProjectVisual id={p.id} lang={lang} />
   )}
   <div class="pui-card-content grow">
     <div class="card-title-row">
@@ -73,22 +67,5 @@ const meta = p.types.map((x) => typeLabel(x, lang)).join(" · ") + (p.stack.leng
   }
   .links {
     font-size: 14px;
-  }
-  .cover-ph {
-    position: relative;
-    overflow: hidden;
-  }
-  .cover-ph :global(svg) {
-    position: absolute;
-    inset: 0;
-    display: block;
-  }
-  .cover-ph .caption {
-    position: absolute;
-    left: 8px;
-    bottom: 6px;
-    padding: 2px 4px;
-    font-size: 10px;
-    background: var(--pui-bg);
   }
 </style>

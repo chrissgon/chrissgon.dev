@@ -424,6 +424,10 @@ html.js .reveal.in {
   background-image: radial-gradient(circle, var(--pui-border) 1.3px, transparent 1.6px);
   background-size: 7px 7px;
 }
+.dm {
+  background-image: radial-gradient(circle, var(--pui-text-muted) 1.3px, transparent 1.6px);
+  background-size: 7px 7px;
+}
 
 /* ---------- copy field, tabs ---------- */
 
