@@ -23,6 +23,10 @@
 // row with empty slots left open) nor doubled (two parallel lines side by side). The grid is checked as
 // loaded and again with its last 1 to (columns - 1) cells hidden, so every shape of an incomplete last row is
 // seen at every width, whatever the item count (a stat left out, a post removed).
+// In each state with "view as agent" on, a switched-on scope shows only its reading (.agent-text) and the frame
+// (cell tags, corner markers, site header and footer, the switch): any other element that draws text fails, and
+// so does a heading of the scope (outside the hidden human forms) drawn taller than 1 px or missing from the
+// accessibility tree (hidden the .sr-only way, never removed, so aria-labelledby still names its section).
 // One PASS or FAIL line per state on stdout, then a width x page summary; exit 1 on any failure.
 // States are independent and run in parallel (--jobs); each uses its own browser context.
 
@@ -149,10 +153,17 @@ const CELL_LINES = `(() => {
       if (r.missing) out.push(where + ": " + what + " has no line over " + r.missing + " px");
       if (r.doubled) out.push(where + ": " + what + " has a doubled line over " + r.doubled + " px");
     };
-    cells.forEach((c, i) => {
-      const r = c.getBoundingClientRect();
-      report("cell " + (i + 1) + " right edge", edge(v, r.right, r.top, r.bottom));
-      report("cell " + (i + 1) + " bottom edge", edge(h, r.bottom, r.left, r.right));
+    // A cell's lines run the height of its row, not only of its own box: a cell shorter than its row (or than
+    // the grid, in the first or last row) leaves its divider short of the lines above or below it. A row is the
+    // cells whose boxes overlap this one's by more than the 1 px they hang into the next row.
+    const boxes = cells.map((c) => c.getBoundingClientRect());
+    boxes.forEach((r, i) => {
+      const row = boxes.filter((o) => Math.min(o.bottom, r.bottom) - Math.max(o.top, r.top) > 2);
+      let top = Math.min(...row.map((o) => o.top)), bottom = Math.max(...row.map((o) => o.bottom));
+      if (!boxes.some((o) => o.bottom <= top + 2)) top = Math.min(top, g.top);
+      if (!boxes.some((o) => o.top >= bottom - 2)) bottom = Math.max(bottom, g.bottom);
+      report("cell " + (i + 1) + " right edge", edge(v, r.right, top, bottom));
+      report("cell " + (i + 1) + " bottom edge", edge(h, bottom, r.left, r.right));
     });
     report("grid top edge", edge(h, g.top, g.left, g.right));
     report("grid left edge", edge(v, g.left, g.top, g.bottom));
@@ -177,10 +188,54 @@ const CELL_LINES = `(() => {
   return { grids, out };
 })()`;
 
+// Runs in the page, as plain JavaScript. With "view as agent" on, a scope shows only its reading (.agent-text)
+// and the frame: lists every element in a switched-on scope that still draws text (a text box wider and taller
+// than 1 px) outside the reading, the cell tags, corner markers, the site header and footer and the switch, and
+// every heading of the scope (outside the hidden human forms) still drawn taller than 1 px. Returns those
+// headings too, for the accessibility-tree check that follows.
+const AGENT_VIEW = `(() => {
+  const CHROME = ".agent-text, .tag, .cm, .switch-label, .frame > header, .frame > footer, .skip";
+  const scopes = [...document.querySelectorAll("[data-agent-scope]")].filter((s) => s.querySelector(".agent-toggle:checked"));
+  const out = [];
+  const headings = [];
+  const name = (el) => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\\s+/).join(".") : "");
+  const seen = new Set();
+  for (const scope of scopes) {
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const text = n.data.replace(/\\s+/g, " ").trim();
+      const el = n.parentElement;
+      if (!text || !el || el.closest(CHROME) || seen.has(el)) continue;
+      if (getComputedStyle(el).visibility === "hidden") continue;
+      const range = document.createRange();
+      range.selectNodeContents(n);
+      if (![...range.getClientRects()].some((r) => r.width > 1 && r.height > 1 && r.right > 0)) continue;
+      // Text in a box that clips it to 1 px or less (the .sr-only technique) is not drawn.
+      let clipped = false;
+      for (let a = el; a && a !== document.body; a = a.parentElement) {
+        const cs = getComputedStyle(a), r = a.getBoundingClientRect();
+        if ((cs.overflowX !== "visible" || cs.overflowY !== "visible" || cs.clipPath !== "none") && (r.width <= 1 || r.height <= 1)) { clipped = true; break; }
+      }
+      if (clipped) continue;
+      seen.add(el);
+      out.push(name(el) + " shows \\"" + text.slice(0, 40) + "\\"");
+    }
+    for (const h of scope.querySelectorAll("h1, h2, h3, h4, h5, h6")) {
+      if (h.closest(".human, " + CHROME)) continue;
+      const tall = h.getBoundingClientRect().height;
+      if (tall > 1) out.push(name(h) + " is drawn " + Math.round(tall) + " px tall");
+      headings.push({ level: Number(h.tagName[1]), name: h.textContent.replace(/\\s+/g, " ").trim(), sel: name(h) });
+    }
+  }
+  return { scopes: scopes.length, out, headings };
+})()`;
+
 interface Result { page: string; width: number; ok: boolean; info: string }
 const results: Result[] = [];
 const scrollbars = new Set<number>();
 const cellGrids = new Map<string, number>();
+const agentStates = new Set<string>();
+const agentHeadings = new Set<string>();
 
 async function sweep(browser: Browser, base: string, s: State, width: number) {
   const ctx = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: "reduce" });
@@ -248,14 +303,29 @@ async function sweep(browser: Browser, base: string, s: State, width: number) {
     scrollbars.add(m.inner - m.client);
     const lines = (await page.evaluate(CELL_LINES)) as { grids: number; out: string[] };
     cellGrids.set(`${s.page} @ ${width}`, lines.grids);
-    const ok = m.scroll <= m.client && m.out.length === 0 && m.code.length === 0 && errors.length === 0 && lines.out.length === 0;
+    // View as agent: only the reading and the frame show, and the hidden headings stay in the accessibility tree
+    // (Playwright's role query leaves out what assistive technology does not get: display none, visibility
+    // hidden, aria-hidden).
+    const agentOut: string[] = [];
+    if (s.agent) {
+      const av = (await page.evaluate(AGENT_VIEW)) as { scopes: number; out: string[]; headings: Array<{ level: number; name: string; sel: string }> };
+      if (av.scopes) agentStates.add(`${s.page} @ ${width}`);
+      agentOut.push(...av.out);
+      for (const h of av.headings) {
+        const re = new RegExp(`^${h.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+        if ((await page.getByRole("heading", { level: h.level, name: re }).count()) === 0) agentOut.push(`${h.sel} is not in the accessibility tree`);
+        else agentHeadings.add(`${s.page}: ${h.sel}`);
+      }
+    }
+    const ok = m.scroll <= m.client && m.out.length === 0 && m.code.length === 0 && errors.length === 0 && lines.out.length === 0 && agentOut.length === 0;
     const outer = m.out.filter((o) => !o.sel.startsWith("  in: "));
     const info = `scrollWidth ${m.scroll}, clientWidth ${m.client}, innerWidth ${m.inner}` +
       (outer.length ? `; sticks out: ${outer.slice(0, 6).map((o) => `${o.sel} +${o.right}px`).join("; ")}${outer.length > 6 ? `; +${outer.length - 6} more` : ""}` : "") +
       (m.scroll > m.client && !m.out.length ? "; no element box sticks out (a pseudo-element or a shadow?)" : "") +
       (m.code.length ? `; code scrolls sideways: ${m.code.slice(0, 6).map((c) => `${c.sel} +${c.over}px`).join("; ")}${m.code.length > 6 ? `; +${m.code.length - 6} more` : ""}` : "") +
       (errors.length ? `; page errors: ${errors.join(" | ")}` : "") +
-      (lines.out.length ? `; lines: ${lines.out.slice(0, 6).join("; ")}${lines.out.length > 6 ? `; +${lines.out.length - 6} more` : ""}` : "");
+      (lines.out.length ? `; lines: ${lines.out.slice(0, 6).join("; ")}${lines.out.length > 6 ? `; +${lines.out.length - 6} more` : ""}` : "") +
+      (agentOut.length ? `; agent view: ${agentOut.slice(0, 6).join("; ")}${agentOut.length > 6 ? `; +${agentOut.length - 6} more` : ""}` : "");
     results.push({ page: s.page, width, ok, info });
   } finally {
     await ctx.close();
@@ -284,7 +354,8 @@ const order = new Map(states.map((s, i) => [s.page, i]));
 results.sort((a, b) => (order.get(a.page) ?? -1) - (order.get(b.page) ?? -1) || a.width - b.width);
 for (const r of results) console.log(`${r.ok ? "PASS" : "FAIL"} ${r.page} @ ${r.width}${r.ok ? "" : ` (${r.info})`}`);
 // Summary: one row per width, one column per page: the overflow in px, "code" (code scrolling in its box),
-// "lines" (a .cells grid left open or doubled), "FAIL" (another failure) or "ok".
+// "lines" (a .cells grid left open or doubled), "agent" (view as agent shows more than the reading and the
+// frame), "FAIL" (another failure) or "ok".
 const pages = states.map((s) => s.page);
 console.log(`\nwidth | ${pages.join(" | ")}`);
 for (const w of WIDTHS) {
@@ -296,7 +367,8 @@ for (const w of WIDTHS) {
     const over = m ? Number(m[1]) - Number(m[2]) : 0;
     if (over > 0) return `+${over}`;
     if (r.info.includes("; code scrolls sideways: ")) return "code";
-    return r.info.includes("; lines: ") ? "lines" : "FAIL";
+    if (r.info.includes("; lines: ")) return "lines";
+    return r.info.includes("; agent view: ") ? "agent" : "FAIL";
   });
   console.log(`${w} | ${row.join(" | ")}`);
 }
@@ -305,5 +377,6 @@ const failed = results.filter((r) => !r.ok).length;
 console.log(`\nscrollbar widths seen: ${[...scrollbars].sort((a, b) => a - b).join(", ")} px`);
 const gridCount = [...cellGrids.values()].reduce((a, b) => a + b, 0);
 console.log(`cell grids checked: ${gridCount} (in ${[...cellGrids.values()].filter(Boolean).length} of ${cellGrids.size} states)`);
+console.log(`agent views checked: ${agentStates.size} states, ${agentHeadings.size} hidden headings found in the accessibility tree`);
 console.log(`${results.length - failed}/${results.length} passed`);
 process.exit(failed ? 1 : 0);

@@ -205,8 +205,8 @@ output {
   position: relative;
   border-left: 1px solid var(--pui-border);
 }
-/* A grid of bordered cells (lab, numbers, writing): every cell draws its own right and bottom lines and hangs
-   1 px past its track, so the last column's line falls on the frame's right line and the last row's on the
+/* A grid of bordered cells (lab, numbers, products, writing): every cell draws its own right and bottom lines
+   and hangs 1 px past its track, so the last column's line falls on the frame's right line and the last row's on the
    container's bottom line instead of doubling them. The container owns the top and left lines, has no padding
    and draws its bottom line (a .cell, or a border of its own); corner markers, tags and .sr-only headings are
    not cells. A row with empty slots stays closed at any column count and item count, with no per-breakpoint
@@ -376,6 +376,24 @@ pre .ln {
   animation: wipe 0.4s var(--ease);
 }
 [data-agent-scope]:has(.agent-toggle:checked) .human {
+  display: none;
+}
+/* The reading replaces the region's titles too (owner, 2026-09-30: the name and the section titles stayed on
+   screen above their own Markdown headings). Headings and the numbered indexes are hidden the .sr-only way, not
+   removed: screen readers still read them and every aria-labelledby still names its section. The portrait's
+   caption (aria-hidden) goes. What stays is the frame: lines, corner markers, cell tags, header, footer and the
+   switch. scripts/check-layout.ts fails when anything else in the scope shows text with the switch on. */
+[data-agent-scope]:has(.agent-toggle:checked) :is(h1, h2, h3, h4, h5, h6, .index) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+[data-agent-scope]:has(.agent-toggle:checked) .portrait-caption {
   display: none;
 }
 @keyframes wipe {
