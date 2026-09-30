@@ -2,7 +2,7 @@
 
 Christopher Gonçalves's personal site. Static pages for people (EN at `/`, PT at `/pt/`) and a surface for AI agents (`/llms.txt`, `/pt/llms.txt`, schema.org JSON-LD, sitemap), all generated from one typed data module. Built with [Astro](https://astro.build) and [Perfect UI](https://perfectui.dev), no Tailwind.
 
-Status: foundation. The pages render the data without a visual design yet; the design, the dot portrait and the Lighthouse checks come in later pull requests. The read-only MCP server answers at `/api/mcp` (see below).
+Status: foundation. The pages render the data without a visual design yet; the design and the dot portrait come in later pull requests. The read-only MCP server answers at `/api/mcp` (see below).
 
 ## Commands
 
@@ -15,10 +15,17 @@ Node 22.12 or newer (`.nvmrc`), npm.
 | Type-check | `npm run typecheck` |
 | Test | `npm test` |
 | Build | `npm run build` |
+| Lighthouse | `npm run lighthouse` (after a build; needs Chrome) |
 | Secret scan | `npm run secrets` |
 | MCP server locally | `npm run build`, then `netlify dev --offline --framework '#static' --dir dist` (the site and `/api/mcp` on port 8888) |
 
-`npm run build` runs, in order: `scripts/fetch-npm.ts` (npm downloads, with a committed snapshot as fallback), the sensitive-topics check of `src/data/`, `astro build`, and the same check over `dist/`.
+`npm run build` runs, in order: `scripts/fetch-npm.ts` (npm downloads) and `scripts/fetch-workbench.ts` (the ai-workbench skill, agent and adapter counts, from one unauthenticated GET of its git tree on the GitHub API), each with a committed snapshot as fallback and a warning when the API is unreachable; the sensitive-topics check of `src/data/`; `scripts/check-images.ts`; `astro build`; then the sensitive-topics check and `scripts/check-dist.ts` over `dist/`.
+
+## Checks of the build
+
+- **Images** (`scripts/check-images.ts`): every post cover and project image file exists and is not empty; a missing one fails the build naming the post or project. A project without its own image uses a card generated at build from its data (`src/lib/cards.ts`, inline SVG).
+- **dist** (`scripts/check-dist.ts`): every page loads the Perfect UI stylesheet and the home page uses `pui-btn`; no Tailwind file, word, `--tw-` variable or utility class; at most one `<canvas>` per page; the first render of `/` and `/pt/` weighs at most 150 KB (HTML, stylesheets, scripts and their imports, preloads, eager images and every font the CSS declares; gzip for text; the lazy portrait video excluded); both `llms.txt` have an H1, a link and 50 characters; the home pages carry the JSON-LD Person. The weight report goes to stderr.
+- **Lighthouse** (`scripts/lighthouse.ts`, CI job `lighthouse`): Lighthouse 13.5.0 on `dist/` served locally, mobile profile, median of 3 runs: performance at least 90 and agentic browsing 100 on `/` and `/pt/`. Reports land in `lighthouse-report/` (git-ignored) and in the job summary.
 
 ## Data
 
@@ -33,9 +40,12 @@ Everything the site says lives in `src/data/` and is validated with zod on impor
 | `trajectory.ts` | timeline by years and roles, proofs |
 | `lab.ts` | experiments |
 | `stats.ts` | the numbers strip |
+| `npm-snapshot.json`, `workbench-snapshot.json` | fallbacks of the counts read at build |
 | `labels.ts` | interface labels in EN and PT |
 
-To add a post: add its cover to `src/assets/posts/`, add an entry at the top of `src/data/posts.json`, open a pull request.
+To add a post: add its cover to `src/assets/posts/` (without EXIF, GPS or other metadata; a test checks), add an entry at the top of `src/data/posts.json` with its LinkedIn `url`, open a pull request.
+
+The npm count and the ai-workbench counts are read at build; their fallbacks are `src/data/npm-snapshot.json` and `src/data/workbench-snapshot.json` (`npm run data:npm -- --update-snapshot`, `npm run data:workbench -- --update-snapshot`). A snapshot older than 35 days is not shown.
 
 ## MCP server
 

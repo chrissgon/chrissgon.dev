@@ -1,5 +1,5 @@
 // Interface labels in EN and PT.
-// `approved`: verbatim from site-content.md (sections 2, 4 and 8), approved on 2026-09-30.
+// `approved`: verbatim from site-content.md (sections 2, 3.5, 4 and 8), approved on 2026-09-30.
 // `provisional`: headings the minimal pages need that site-content.md does not define yet. They are
 // placeholders until the visual design; replace them with approved texts.
 export const approved = {
@@ -16,11 +16,10 @@ export const approved = {
   filterAll: { en: "All", pt: "Todos" },
   // For agents card: approved on 2026-09-29 (state.md; site-content.md section 2).
   connectAgent: { en: "Connect your agent to this site", pt: "Conecte seu agente a este site" },
+  readLlms: { en: "Read the llms.txt", pt: "Leia o llms.txt" },
 };
 
 export const provisional = {
-  // EN "Read the llms.txt" is approved; the PT text is provisional.
-  readLlms: { en: "Read the llms.txt", pt: "Leia o llms.txt" },
   about: { en: "About", pt: "Sobre" },
   products: { en: "Products", pt: "Produtos" },
   numbers: { en: "Numbers", pt: "Números" },
@@ -37,10 +36,12 @@ export const provisional = {
   before: { en: "Before", pt: "Antes de" },
   now: { en: "now", pt: "hoje" },
   noPosts: { en: "No posts yet.", pt: "Nenhum post ainda." },
-  linkPending: { en: "link coming soon", pt: "link em breve" },
   sourcePending: { en: "source coming soon", pt: "código em breve" },
-  imageGenerated: { en: "image: generated card (coming soon)", pt: "imagem: cartão gerado (em breve)" },
-  imagePending: { en: "image coming soon", pt: "imagem em breve" },
+  // Words of the ai-workbench generated card: PT from site-content.md 3.4 ("43 skills ..., 3 agentes, 2
+  // adaptadores"); the EN words are a translation made here.
+  cardSkills: { en: "skills", pt: "skills" },
+  cardAgents: { en: "agents", pt: "agentes" },
+  cardAdapters: { en: "adapters", pt: "adaptadores" },
   langName: { en: "English", pt: "Português" },
   otherLang: { en: "PT", pt: "EN" },
   homeDescription: {

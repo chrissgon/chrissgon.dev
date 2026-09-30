@@ -2,9 +2,10 @@ import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { lab, posts, products, profile, projects, stats, trajectory } from "../src/data/index.ts";
+import { lab, labels, posts, products, profile, projects, stats, trajectory } from "../src/data/index.ts";
 import { isStale, readNpmCount } from "../src/data/npm.ts";
-import { Posts, Profile, Project, parseData } from "../src/data/schema.ts";
+import { Posts, Profile, Project, Trajectory, parseData } from "../src/data/schema.ts";
+import rawTrajectory from "../src/data/trajectory.ts";
 import rawProfile from "../src/data/profile.ts";
 import rawPosts from "../src/data/posts.json" with { type: "json" };
 
@@ -31,6 +32,29 @@ describe("data module", () => {
     );
   });
 
+  it("has the approved About: paragraphs 1 and 2 verbatim, then the 600+ hours paragraph", () => {
+    expect(profile.about.en).toHaveLength(3);
+    expect(profile.about.pt).toHaveLength(3);
+    expect(profile.about.en[0]).toBe(
+      "I build tech that serves people, and I talk about how I build it. I grew up in a favela in São Paulo's north zone and met my first computer at 6 or 7. I haven't stopped learning since.",
+    );
+    expect(profile.about.pt[1]).toBe(
+      "Hoje sou engenheiro de software sênior, com mais de 6 anos entregando frontends em produção, e continuo empolgado como no primeiro dia.",
+    );
+    expect(profile.about.en[2]).toMatch(/^I've done 600\+ hours/);
+  });
+
+  it("has every proof in EN and PT and rejects a proof without PT", () => {
+    for (const p of trajectory.proofs) expect(p.pt.length).toBeGreaterThan(0);
+    expect(trajectory.proofs.at(-1)).toEqual({ en: "600+ hours of live coding", pt: "600+ horas de live coding" });
+    const bad = { ...rawTrajectory, proofs: [{ en: "only EN" }] };
+    expect(() => parseData(Trajectory, bad, "trajectory.ts")).toThrow(/proofs\.0\.pt/);
+  });
+
+  it("has the approved PT label for the llms.txt link", () => {
+    expect(labels.readLlms).toEqual({ en: "Read the llms.txt", pt: "Leia o llms.txt" });
+  });
+
   it("rejects a field the schema does not declare (EDGE-1)", () => {
     expect(() => parseData(Profile, { ...rawProfile, employer: "x" }, "profile.ts")).toThrow(/Unrecognized key/);
   });
@@ -39,6 +63,12 @@ describe("data module", () => {
     expect(() => parseData(Posts, [post, post], "posts.json")).toThrow(/duplicate post id/);
     expect(() => parseData(Posts, [rawPosts[7], rawPosts[0]], "posts.json")).toThrow(/newest first/);
     expect(parseData(Posts, [], "posts.json")).toEqual([]);
+  });
+
+  it("requires a LinkedIn link on every post", () => {
+    for (const p of posts) expect(p.url).toMatch(/^https:\/\/(www|pt)\.linkedin\.com\/posts\/chrissgon_/);
+    const { url: _url, ...withoutUrl } = post;
+    expect(() => parseData(Posts, [withoutUrl], "posts.json")).toThrow(/url/);
   });
 
   it("rejects a post link outside LinkedIn and a language without a title", () => {
@@ -53,6 +83,20 @@ describe("data module", () => {
     );
     const ready = projects.find((p) => p.status === "ready")!;
     expect(() => parseData(Project, { ...ready, links: [] }, "projects.ts")).toThrow(/ready project needs/);
+  });
+
+  it("gives every project an image file or a generated card, never a pending one (EDGE-5)", () => {
+    for (const p of projects) expect(["file", "generated"]).toContain(p.image.kind);
+    const ready = projects.find((p) => p.status === "ready")!;
+    expect(() => parseData(Project, { ...ready, image: { kind: "pending", note: "x" } }, "projects.ts")).toThrow(/image/);
+    const { image: _image, ...withoutImage } = ready;
+    expect(() => parseData(Project, withoutImage, "projects.ts")).toThrow(/image/);
+    const byId = Object.fromEntries(projects.map((p) => [p.id, p.image]));
+    expect(byId["perfectui"]).toEqual({ kind: "file", src: "projects/perfectui.webp" });
+    expect(byId["goddd"]).toEqual({ kind: "file", src: "projects/goddd.png" });
+    expect(byId["doc-git-patterns"]).toEqual({ kind: "file", src: "projects/doc-git-patterns.png" });
+    expect(byId["ai-workbench"]).toEqual({ kind: "generated" });
+    expect(byId["doc-github-workflow"]).toEqual({ kind: "generated" });
   });
 
   it("points every cover and project image at a file in src/assets (EDGE-5)", () => {

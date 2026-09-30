@@ -21,9 +21,11 @@ The design and its decision records are kept locally by the owner, outside this 
 | Develop | `npm run dev` | |
 | Type-check | `npm run typecheck` | `astro check` and `tsc --noEmit` |
 | Test | `npm test` | vitest, `tests/*.test.ts` |
-| Build | `npm run build` | npm count, sensitive check of `src/data/`, `astro build`, sensitive check of `dist/` |
+| Build | `npm run build` | npm and ai-workbench counts, sensitive check of `src/data/`, image check, `astro build`, sensitive check and `check-dist` of `dist/` |
+| Lighthouse | `npm run lighthouse` | after a build; Lighthouse 13.5.0 mobile, performance >= 90, agentic browsing = 100 |
 | Secret scan | `npm run secrets` | add `-- --history` for every commit |
 | npm snapshot | `npm run data:npm -- --update-snapshot` | refreshes `src/data/npm-snapshot.json` |
+| ai-workbench snapshot | `npm run data:workbench -- --update-snapshot` | refreshes `src/data/workbench-snapshot.json` |
 
 ## Conventions
 
@@ -35,7 +37,8 @@ The design and its decision records are kept locally by the owner, outside this 
 
 ## Testing
 
-- vitest; tests live in `tests/`. Cover the data schemas, the sensitive-topics check, the generated `llms.txt` and JSON-LD, and the MCP tools whenever they change.
+- vitest; tests live in `tests/`. Cover the data schemas, the sensitive-topics check, the generated `llms.txt`, JSON-LD and project cards, the MCP tools, and the build checks (`check-images`, `check-dist`, the Lighthouse gate) whenever they change.
+- Images committed under `src/assets/` carry no EXIF, GPS, XMP or text metadata (`tests/images.test.ts`).
 
 ## Security
 
@@ -45,5 +48,5 @@ The design and its decision records are kept locally by the owner, outside this 
 
 ## Working rules
 
-- `main` is protected: every change goes through a branch and a pull request, merged by squash only when the `secrets` and `build` checks are green. No force push, no rule changes, no bypass.
+- `main` is protected: every change goes through a branch and a pull request, merged by squash only when the required checks (`secrets`, `build`, and `lighthouse` once it is added to the ruleset) are green. No force push, no rule changes, no bypass.
 - Nothing is published outside GitHub from this repository by an agent: Netlify and DNS changes are the owner's.

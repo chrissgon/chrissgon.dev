@@ -54,11 +54,13 @@ export type Product = z.infer<typeof Product>;
 export const PROJECT_TYPES = ["ai-agents", "web-ui", "docs-architecture"] as const;
 export const PROJECT_STATUSES = ["ready", "in-progress"] as const;
 
-/** A project image: a file under src/assets/, a card the site will generate, or one still to be added. */
+/**
+ * A project image: a file under src/assets/, or a card the site generates at build from the data
+ * (src/lib/cards.ts). There is no "pending" image: a missing file fails the build (EDGE-5).
+ */
 export const ProjectImage = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("file"), src: z.string().regex(/^projects\/[a-z0-9-]+\.(png|jpg|webp)$/) }),
   z.strictObject({ kind: z.literal("generated") }),
-  z.strictObject({ kind: z.literal("pending"), note: text }),
 ]);
 
 export const Project = z
@@ -69,14 +71,14 @@ export const Project = z
     status: z.enum(PROJECT_STATUSES),
     stack: z.array(text),
     summary: Localized,
-    image: ProjectImage.optional(),
+    image: ProjectImage,
     links: z.array(z.strictObject({ label: text, url: https })),
   })
   .refine((p) => p.status === "ready" || p.links.length === 0, {
     message: "a project in progress has no link until it exists (site-content.md 4.2)",
   })
-  .refine((p) => p.status === "in-progress" || (p.links.length > 0 && p.stack.length > 0 && p.image), {
-    message: "a ready project needs a link, a stack and an image entry",
+  .refine((p) => p.status === "in-progress" || (p.links.length > 0 && p.stack.length > 0), {
+    message: "a ready project needs a link and a stack",
   });
 export type Project = z.infer<typeof Project>;
 
@@ -88,10 +90,8 @@ export const Post = z
     date: isoDate,
     lang: z.array(z.enum(LANGS)).min(1).max(2),
     cover: z.string().regex(/^posts\/[a-z0-9-]+\.(png|jpg|webp)$/),
-    /** Link to the post on LinkedIn. Optional until the links are added (see README, open items). */
-    url: https
-      .refine((u) => /^https:\/\/(www\.|pt\.)?linkedin\.com\//.test(u), { message: "url must be on linkedin.com" })
-      .optional(),
+    /** Canonical link to the post on LinkedIn (site-content.md section 5). */
+    url: https.refine((u) => /^https:\/\/(www\.|pt\.)?linkedin\.com\//.test(u), { message: "url must be on linkedin.com" }),
   })
   .refine((p) => p.lang.every((l) => p.title[l] !== undefined), {
     message: "every language of the post needs a title",
@@ -126,7 +126,7 @@ export type TrajectoryEntry = z.infer<typeof TrajectoryEntry>;
 export const Trajectory = z.strictObject({
   entries: z.array(TrajectoryEntry).min(1),
   /** Measured proofs, kept apart because the source does not say which role each came from. */
-  proofs: z.array(z.strictObject({ en: text, pt: text.optional() })),
+  proofs: z.array(Localized),
   education: Localized.optional(),
 });
 export type Trajectory = z.infer<typeof Trajectory>;
@@ -147,9 +147,21 @@ export const NpmCount = z.strictObject({
 });
 export type NpmCount = z.infer<typeof NpmCount>;
 
+/** Counts read from the chrissgon/ai-workbench tree on GitHub at build (scripts/fetch-workbench.ts). */
+export const WorkbenchCount = z.strictObject({
+  skills: z.int().positive(),
+  agents: z.int().nonnegative(),
+  adapters: z.int().nonnegative(),
+  /** The git tree the counts were read from. */
+  tree: z.string().regex(/^[0-9a-f]{40}$/),
+  /** The day the tree was read (UTC). */
+  date: isoDate,
+});
+export type WorkbenchCount = z.infer<typeof WorkbenchCount>;
+
 export const Stat = z.strictObject({
   id: z.enum(["npm-downloads", "perfectui-size", "live-coding", "workbench-skills"]),
-  /** The figure as shown; null means "read at build" (the npm count). */
+  /** The figure as shown; null means "read at build" (the npm count, the ai-workbench skill count). */
   value: text.nullable(),
   label: Localized,
   source: text,

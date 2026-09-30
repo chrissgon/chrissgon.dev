@@ -56,13 +56,13 @@ export default {
       },
     },
   ],
-  // The source quotes the proofs in English only; the PT page shows them in English until translated.
+  // EN and PT verbatim from site-content.md section 6 ("Provas em PT", added on 2026-09-30).
   proofs: [
-    { en: "~28× smaller in-house CSS framework (~5 KB vs ~144 KB gzip)" },
-    { en: "Vue 2 → Vue 3: bundle −38%, TTI −42%, test coverage 7% → 87%" },
-    { en: "~10 s to under 3 s load on slow 3G (−70%)" },
-    { en: "300+ WebSocket messages per second under 100 ms" },
-    { en: "600+ hours of live coding" },
+    { en: "~28× smaller in-house CSS framework (~5 KB vs ~144 KB gzip)", pt: "Framework CSS próprio ~28× menor (~5 KB vs ~144 KB gzip)" },
+    { en: "Vue 2 → Vue 3: bundle −38%, TTI −42%, test coverage 7% → 87%", pt: "Migração Vue 2 → Vue 3: bundle −38%, TTI −42%, cobertura de testes de 7% para 87%" },
+    { en: "~10 s to under 3 s load on slow 3G (−70%)", pt: "Carregamento de ~10 s para menos de 3 s em 3G lento (−70%)" },
+    { en: "300+ WebSocket messages per second under 100 ms", pt: "Dashboards com mais de 300 mensagens WebSocket por segundo, latência abaixo de 100 ms" },
+    { en: "600+ hours of live coding", pt: "600+ horas de live coding" },
   ],
   // PT from the source ("entra sem os anos"). Assumption: the EN wording is a translation made here.
   education: {

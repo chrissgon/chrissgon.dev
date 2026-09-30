@@ -47,3 +47,4 @@ export function postTitle(post: (typeof posts)[number], lang: Lang): string {
 
 export { LANGS, type Lang } from "./schema.ts";
 export { readNpmCount } from "./npm.ts";
+export { readWorkbenchCount } from "./workbench.ts";

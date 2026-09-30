@@ -1,21 +1,19 @@
 ---
 import { Image } from "astro:assets";
 import Base from "../layouts/Base.astro";
-import { posts, postTitle, products, profile, projects, readNpmCount, stats, t, trajectory, type Lang } from "../data/index.ts";
-import { formatNumber, formatPeriod, localePath } from "../lib/format.ts";
+import { posts, postTitle, products, profile, projects, readNpmCount, readWorkbenchCount, t, trajectory, type Lang } from "../data/index.ts";
+import { formatPeriod, localePath } from "../lib/format.ts";
 import { image } from "../lib/images.ts";
 import { jsonLd } from "../lib/jsonld.ts";
 import { siteUrl } from "../lib/site.ts";
+import { resolveStats } from "../lib/stats.ts";
 
 interface Props {
   lang: Lang;
 }
 const { lang } = Astro.props;
-const npm = readNpmCount();
 const latest = posts.slice(0, 3);
-const shownStats = stats.filter((s) => s.id !== "npm-downloads" || npm);
-const statValue = (id: string, value: string | null) =>
-  id === "npm-downloads" && npm ? formatNumber(npm.downloads, lang) : (value ?? "");
+const shownStats = resolveStats(lang, { npm: readNpmCount(), workbench: readWorkbenchCount() });
 ---
 
 <Base lang={lang} path="/" title={profile.name} description={profile.label[lang].join(" · ")} jsonld={jsonLd(siteUrl(Astro.site))}>
@@ -34,8 +32,8 @@ const statValue = (id: string, value: string | null) =>
     <ul>
       {shownStats.map((s) => (
         <li>
-          <strong>{statValue(s.id, s.value)}</strong> {s.label[lang]}
-          {s.id === "npm-downloads" && npm && <small>({npm.start} – {npm.end})</small>}
+          <strong>{s.value}</strong> {s.label}
+          {s.period && <small>({s.period.start} – {s.period.end})</small>}
         </li>
       ))}
     </ul>
@@ -60,7 +58,7 @@ const statValue = (id: string, value: string | null) =>
       {latest.map((p) => (
         <li>
           <Image src={image(p.cover)} alt="" width={160} />
-          {p.url ? <a href={p.url}>{postTitle(p, lang)}</a> : <span>{postTitle(p, lang)}</span>}
+          <a href={p.url}>{postTitle(p, lang)}</a>
           <time datetime={p.date}>{p.date}</time>
         </li>
       ))}
@@ -78,7 +76,7 @@ const statValue = (id: string, value: string | null) =>
     {trajectory.education && <p>{t(lang, "education")}: {trajectory.education[lang]}</p>}
     <h3>{t(lang, "proofs")}</h3>
     <ul>
-      {trajectory.proofs.map((p) => <li lang={p[lang] ? undefined : "en"}>{p[lang] ?? p.en}</li>)}
+      {trajectory.proofs.map((p) => <li>{p[lang]}</li>)}
     </ul>
   </section>
 </Base>

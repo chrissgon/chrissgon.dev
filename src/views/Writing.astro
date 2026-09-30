@@ -21,11 +21,8 @@ const { lang } = Astro.props;
       return (
         <li id={p.id}>
           <Image src={image(p.cover)} alt="" width={320} />
-          <h2 lang={titleLang}>{p.url ? <a href={p.url}>{title}</a> : title}</h2>
-          <p>
-            <time datetime={p.date}>{p.date}</time> · {p.lang.map((l) => l.toUpperCase()).join(" · ")}
-            {!p.url && <> · <small>{t(lang, "linkPending")}</small></>}
-          </p>
+          <h2 lang={titleLang}><a href={p.url}>{title}</a></h2>
+          <p><time datetime={p.date}>{p.date}</time> · {p.lang.map((l) => l.toUpperCase()).join(" · ")}</p>
         </li>
       );
     })}
