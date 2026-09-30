@@ -1,24 +1,354 @@
 ---
-import Base from "../layouts/Base.astro";
+// Lab (SCREEN-4), design direction A: the title cell with the experiment count, a row of five cells, each a
+// pui-card with its dot visual, mono name, date, description and source; opening one (/lab#<slug>) splits a
+// cell below into the running experiment and its code. Without JavaScript the same links open the experiment
+// through :target; with it, Esc and × close it and focus returns to the card (FLOW-7).
+import AgentSwitch from "../components/AgentSwitch.astro";
+import AgentText from "../components/AgentText.astro";
+import Cell from "../components/Cell.astro";
+import EvalRuns from "../components/EvalRuns.astro";
+import LabVisual from "../components/LabVisual.astro";
 import McpDemo from "../components/McpDemo.astro";
-import { lab, profile, t, type Lang } from "../data/index.ts";
+import Portrait from "../components/Portrait.astro";
+import Showcase from "../components/Showcase.astro";
+import Base from "../layouts/Base.astro";
+import { lab, products, profile, readNpmCount, readWorkbenchCount, t, type Lang } from "../data/index.ts";
+import { llmsParts } from "../lib/llms.ts";
+import { siteUrl } from "../lib/site.ts";
+import { MCP_PATH } from "../mcp/tools.ts";
 
 interface Props {
   lang: Lang;
 }
 const { lang } = Astro.props;
+const site = siteUrl(Astro.site);
+const about = llmsParts(lang, { site, npm: readNpmCount(), workbench: readWorkbenchCount() }).about;
+const npmPackage = products.find((p) => p.npm)?.npm ?? "@chrissgon/perfectui";
+// The component each experiment is built from: the cell's tag (design artboard A, Lab).
+const TAGS: Record<string, string> = {
+  "dot-portrait": "canvas",
+  "view-as-agent": ".pui-switch",
+  "mcp-live": "pre[role=status]",
+  "perfectui-live": ".pui-group-row",
+  "workbench-evals": ".pui-table",
+};
+// The code beside each opened experiment: the markup or call that makes it, as this site ships it.
+const CODE: Record<string, string> = {
+  "dot-portrait": `<canvas role="img"\n  aria-label="${t(lang, "portraitAlt")}">\n</canvas>`,
+  "view-as-agent": [
+    `<label><input type="checkbox" class="pui-switch agent-toggle"> ${t(lang, "viewAsAgent")}</label>`,
+    "",
+    "[data-agent-scope]:has(.agent-toggle:checked) .agent-text { display: block }",
+    "[data-agent-scope]:has(.agent-toggle:checked) .human { display: none }",
+  ].join("\n"),
+  "mcp-live": `POST ${site}${MCP_PATH}\n${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" })}`,
+  "perfectui-live": `npm i ${npmPackage}\n\nimport "${npmPackage}/perfectui.css";`,
+  "workbench-evals": [
+    `<table class="pui-table">`,
+    `  <thead>`,
+    `    <tr><th>${t(lang, "evalSkill")}</th><th>${t(lang, "evalModel")}</th><th>${t(lang, "evalRun")}</th>`,
+    `        <th>${t(lang, "evalWith")}</th><th>${t(lang, "evalWithout")}</th></tr>`,
+    `  </thead>`,
+    `  ...`,
+    `</table>`,
+  ].join("\n"),
+};
 ---
 
 <Base lang={lang} path="/lab" title={`${t(lang, "navLab")} · ${profile.name}`} description={t(lang, "homeDescription")}>
-  <h1>{t(lang, "navLab")}</h1>
-  <ul>
+  <Cell class="page-title" tag="h1">
+    <h1>{t(lang, "navLab")}</h1>
+    <span class="count">{lab.length}</span>
+  </Cell>
+
+  <Cell class="xp-row" aria-label={t(lang, "navLab")}>
     {lab.map((x) => (
-      <li id={x.id}>
-        <h2><code>{x.id}</code></h2>
-        <p>{x.description[lang]}</p>
-        {x.id === "mcp-live" && <McpDemo lang={lang} variant="lab" />}
-        <p>{x.source ? <a href={x.source}>source</a> : <small>{t(lang, "sourcePending")}</small>}</p>
-      </li>
+      <div class="xp">
+        <span class="tag" aria-hidden="true">{TAGS[x.id]}</span>
+        <article class="pui-card col xp-card" data-card={x.id}>
+          <a class="open-btn" href={`#${x.id}`} aria-controls={x.id} aria-expanded="false" data-open={x.id}>
+            <LabVisual id={x.id} height={180} />
+            <span class="pui-card-content">
+              <span class="xp-name">{x.id}</span>
+              <time class="meta" datetime={x.date}>{x.date}</time>
+              <span class="xp-desc">{x.description[lang]}</span>
+            </span>
+          </a>
+          {x.source && (
+            <div class="xp-actions">
+              <a class="pui-btn pui-outline pui-surface mono" href={x.source}>{t(lang, "source")}</a>
+            </div>
+          )}
+        </article>
+      </div>
     ))}
-  </ul>
+  </Cell>
+
+  {lab.map((x) => (
+    <section class="cell xp-open" id={x.id} aria-labelledby={`${x.id}-title`} tabindex="-1" data-panel={x.id}>
+      <span class="cm tl" aria-hidden="true"></span><span class="cm tr" aria-hidden="true"></span>
+      <div class="xp-run">
+        <span class="tag" aria-hidden="true">{x.id} · open</span>
+        <div class="head-row">
+          <h2 id={`${x.id}-title`} class="xp-title mono">{x.id}</h2>
+          <a class="pui-btn pui-outline pui-surface" href="#" aria-label={t(lang, "close")} data-close>×</a>
+        </div>
+        <p class="xp-lead">{x.description[lang]}</p>
+        {x.id === "dot-portrait" && (
+          <div class="xp-portrait">
+            <Portrait alt={t(lang, "portraitAlt")} />
+          </div>
+        )}
+        {x.id === "view-as-agent" && (
+          <div class="stack" data-agent-scope>
+            <AgentSwitch lang={lang} id="lab-view-as-agent" />
+            <div class="xp-box human">
+              <h3 class="xp-h3">{t(lang, "about")}</h3>
+              {profile.about[lang].map((p) => <p>{p}</p>)}
+            </div>
+            <div class="xp-box agent-box">
+              <AgentText text={about} />
+            </div>
+          </div>
+        )}
+        {x.id === "mcp-live" && <McpDemo lang={lang} variant="lab" />}
+        {x.id === "perfectui-live" && <Showcase lang={lang} labelledby={`${x.id}-title`} prefix="lab" stacked />}
+        {x.id === "workbench-evals" && <EvalRuns lang={lang} />}
+      </div>
+      <div class="xp-code">
+        <span class="tag" aria-hidden="true">code</span>
+        <pre class="code" tabindex="0" data-code={x.id}><code>{CODE[x.id]}</code></pre>
+        {x.source && (
+          <div class="xp-actions-code">
+            <a class="pui-btn pui-outline pui-surface mono" href={x.source}>{t(lang, "source")}</a>
+          </div>
+        )}
+      </div>
+    </section>
+  ))}
 </Base>
+
+<script>
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const panels = [...document.querySelectorAll<HTMLElement>("[data-panel]")];
+  const links = [...document.querySelectorAll<HTMLAnchorElement>("[data-open]")];
+  let last: HTMLAnchorElement | null = null;
+
+  function show(id: string | null, focus: boolean) {
+    for (const p of panels) p.classList.toggle("is-open", p.dataset.panel === id);
+    for (const a of links) {
+      const on = a.dataset.open === id;
+      a.setAttribute("aria-expanded", String(on));
+      a.closest(".xp-card")?.classList.toggle("is-active", on);
+      if (on) last = a;
+    }
+    const panel = panels.find((p) => p.dataset.panel === id);
+    if (panel && focus) {
+      panel.focus({ preventScroll: true });
+      panel.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+    }
+  }
+  const fromHash = () => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    return panels.some((p) => p.dataset.panel === id) ? id : null;
+  };
+  function open(id: string) {
+    if (location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
+    show(id, true);
+  }
+  function close() {
+    const back = last;
+    history.pushState(null, "", location.pathname + location.search);
+    show(null, false);
+    back?.focus();
+  }
+
+  for (const a of links) {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (a.getAttribute("aria-expanded") === "true") close();
+      else open(a.dataset.open ?? "");
+    });
+  }
+  for (const b of document.querySelectorAll<HTMLElement>("[data-close]")) {
+    b.addEventListener("click", (e) => {
+      e.preventDefault();
+      close();
+    });
+  }
+  addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && panels.some((p) => p.classList.contains("is-open"))) close();
+  });
+  addEventListener("popstate", () => show(fromHash(), false));
+  show(fromHash(), false);
+
+  // mcp-live: the code beside the experiment follows the call it makes.
+  document.addEventListener("mcp-request", (e) => {
+    const code = document.querySelector('[data-code="mcp-live"] code');
+    const detail = (e as CustomEvent<{ endpoint: string; body: unknown }>).detail;
+    if (code && detail) code.textContent = `POST ${detail.endpoint}\n${JSON.stringify(detail.body)}`;
+  });
+</script>
+
+<style>
+  .xp-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .xp {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 40px 16px 20px;
+    border-right: 1px solid var(--pui-border);
+  }
+  .xp:last-of-type {
+    border-right: none;
+  }
+  .xp-card {
+    flex: 1;
+    transition: border-color 0.15s;
+  }
+  .xp-card.is-active {
+    border-color: var(--pui-text);
+  }
+  .open-btn {
+    display: flex;
+    flex-direction: column;
+    color: var(--pui-text);
+    text-decoration: none;
+    border-radius: calc(var(--pui-radius) * 1.5);
+  }
+  .open-btn:hover .xp-name {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .open-btn .pui-card-content {
+    gap: 8px;
+  }
+  .xp-name {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .xp-desc {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .xp-actions {
+    display: flex;
+    gap: 4px;
+    padding: 0 16px 16px;
+    margin-top: auto;
+  }
+  .xp-open {
+    display: none;
+    grid-template-columns: minmax(0, 1fr) 460px;
+    min-height: 440px;
+    outline: none;
+  }
+  :global(html:not(.js)) .xp-open:target,
+  .xp-open.is-open {
+    display: grid;
+  }
+  .xp-open.is-open {
+    animation: grow 0.3s var(--ease);
+  }
+  @keyframes grow {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+  .xp-run {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+    padding: 48px var(--gutter) 40px;
+    border-right: 1px solid var(--pui-border);
+  }
+  .xp-title {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+  .xp-lead {
+    color: var(--pui-text-muted);
+    line-height: 1.6;
+  }
+  .xp-code {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+    padding: 48px 24px 24px;
+    background: var(--pui-bg-muted);
+  }
+  .xp-code .code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .xp-actions-code {
+    display: flex;
+    gap: 4px;
+    margin-top: auto;
+  }
+  .xp-portrait {
+    position: relative;
+    overflow: clip;
+    min-height: 480px;
+  }
+  .xp-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 24px;
+    border: 1px solid var(--pui-border);
+    border-radius: calc(var(--pui-radius) * 1.5);
+    line-height: 1.6;
+  }
+  .agent-box {
+    display: none;
+  }
+  [data-agent-scope]:has(.agent-toggle:checked) .agent-box {
+    display: flex;
+  }
+  .xp-h3 {
+    font-size: 24px;
+  }
+  @media (max-width: 1023px) {
+    .xp-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .xp {
+      border-bottom: 1px solid var(--pui-border);
+    }
+    .xp-open {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .xp-run {
+      border-right: none;
+      border-bottom: 1px solid var(--pui-border);
+    }
+  }
+  @media (max-width: 767px) {
+    .xp-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .xp {
+      border-right: none;
+      padding: 36px var(--gutter) 20px;
+    }
+    .xp-portrait {
+      min-height: 420px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .xp-open.is-open {
+      animation: none;
+    }
+  }
+</style>

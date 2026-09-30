@@ -97,11 +97,13 @@ const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
           b.classList.toggle("pui-outline", !on);
           b.classList.toggle("pui-surface", !on);
         }
+        const call = button.dataset.mcpCall ?? "tools/list";
+        root.dispatchEvent(new CustomEvent("mcp-request", { bubbles: true, detail: { endpoint: location.origin + PATH, body: request(call, lang) } }));
         out.textContent = "";
         out.classList.remove("muted");
         let result: { lines: string[]; status: number };
         try {
-          result = await run(button.dataset.mcpCall ?? "tools/list", lang);
+          result = await run(call, lang);
         } catch {
           result = { lines: [], status: 0 };
         }

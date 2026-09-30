@@ -12,12 +12,14 @@ interface Props {
   /** Id of the heading that names the tab list. */
   labelledby: string;
   prefix?: string;
+  /** Code under the live component instead of beside it (narrow slots such as the opened lab cell). */
+  stacked?: boolean;
 }
-const { lang, labelledby, prefix = "pui" } = Astro.props;
+const { lang, labelledby, prefix = "pui", stacked = false } = Astro.props;
 const items = showcase(lang, siteUrl(Astro.site), resolveStats(lang, { npm: readNpmCount(), workbench: readWorkbenchCount() }));
 ---
 
-<div class="showcase" data-tabs>
+<div class:list={["showcase", { stacked }]} data-tabs>
   <div class="pui-group-row" role="tablist" aria-labelledby={labelledby}>
     {items.map((c, i) => (
       <button
@@ -92,6 +94,14 @@ const items = showcase(lang, siteUrl(Astro.site), resolveStats(lang, { npm: read
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+  .stacked .showcase-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stacked .showcase-live {
+    min-height: 220px;
+    border-right: none;
+    border-bottom: 1px solid var(--pui-border);
   }
   @media (max-width: 1023px) {
     .showcase-grid {

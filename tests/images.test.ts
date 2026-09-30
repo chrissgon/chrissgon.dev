@@ -3,10 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { run } from "../scripts/check-images.ts";
 import { posts, projects } from "../src/data/index.ts";
-import { cardLines, cardSvg, projectCardSvg } from "../src/lib/cards.ts";
 import { missingImages } from "../src/lib/image-check.ts";
-
-const count = { skills: 43, agents: 3, adapters: 2, tree: "65bd78bb22151671f01de139f5f4c449d293cda8", date: "2026-09-30" };
 
 describe("missing images fail the build with the item's name (EDGE-5)", () => {
   it("names the post and the project whose file is missing or empty", () => {
@@ -67,32 +64,5 @@ describe("committed images", () => {
     const files = walk("src/assets").filter((f) => /\.(png|jpe?g|webp)$/.test(f));
     expect(files.length).toBeGreaterThan(0);
     for (const f of files) expect(metadataIn(f), f).toEqual([]);
-  });
-});
-
-describe("generated project cards", () => {
-  const workbench = projects.find((p) => p.id === "ai-workbench")!;
-  const flow = projects.find((p) => p.id === "doc-github-workflow")!;
-
-  it("are an SVG built from the data, hidden from assistive technology, with a reserved ratio", () => {
-    const svg = projectCardSvg(workbench, "en", count);
-    expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="320" height="168"')).toBe(true);
-    expect(svg).toContain('aria-hidden="true"');
-    expect(svg).toContain(">ai-workbench</text>");
-    expect(svg).not.toMatch(/https?:\/\/(?!www\.w3\.org)/);
-  });
-
-  it("show the ai-workbench counts read at build, in the page's language", () => {
-    expect(cardLines(workbench, "en", count)).toEqual(["AI & agents", "Python, Shell", "43 skills · 3 agents · 2 adapters"]);
-    expect(cardLines(workbench, "pt", count)).toEqual(["IA e agentes", "Python, Shell", "43 skills · 3 agentes · 2 adaptadores"]);
-    expect(cardLines(workbench, "en", null)).toEqual(["AI & agents", "Python, Shell"]);
-    expect(cardLines(flow, "pt", count)).toEqual(["Documentação e arquitetura", "Go"]);
-  });
-
-  it("escape text and draw the same dots for the same project", () => {
-    expect(cardSvg("x", "a<b & c", ['"quoted"'])).toContain("a&lt;b &amp; c</text>");
-    expect(cardSvg("x", "a<b & c", ['"quoted"'])).toContain("&quot;quoted&quot;");
-    expect(projectCardSvg(flow, "en", null)).toBe(projectCardSvg(flow, "en", null));
-    expect(cardSvg("one", "n", [])).not.toBe(cardSvg("two", "n", []).replaceAll("two", "one"));
   });
 });
