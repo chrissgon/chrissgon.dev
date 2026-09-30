@@ -6,14 +6,17 @@
 //   --channel chrome, the Google Chrome installed on the machine (CI uses the one on the runner image).
 //
 // Each state (page, width) passes when document.documentElement.scrollWidth is no wider than the viewport's
-// layout width (clientWidth, the viewport less a classic scrollbar) and no element's right edge passes it.
+// layout width (clientWidth, the viewport less a classic scrollbar), no element's right edge passes it, and no
+// code scrolls sideways inside its own box: every pre, code, kbd, samp, output, read-only input or textarea,
+// element with a code class (.code, *-code, code-*) and the lab's eval table (.evals) has scrollWidth <=
+// clientWidth (an inline one: its nearest block). Code wraps instead (src/lib/code.ts, src/styles/site.css).
 // Scrollbars are drawn (Chromium hides them when headless), so a 100vw box under a 15 px scrollbar fails
 // here as it does on a desktop with classic scrollbars.
 // States: /, /projects/, /writing/, /lab/ and their /pt/ pages, each as loaded and with every "view as
 // agent" switch on; /lab/ and /pt/lab/ with each experiment opened (/lab/#<id>), and #view-as-agent opened
 // with its switch on. Widths: 320 360 375 390 414 600 768 820 1024 1100 1186 1280 1366 1440 1920.
 // A failing state lists the elements that stick out (their right edge, in px past the viewport), outermost
-// first. One PASS or FAIL line per state on stdout, then a width x page summary; exit 1 on any failure.
+// first, and the code that scrolls sideways (its overflow in px). One PASS or FAIL line per state on stdout, then a width x page summary; exit 1 on any failure.
 // States are independent and run in parallel (--jobs); each uses its own browser context.
 
 import { existsSync } from "node:fs";
@@ -128,14 +131,38 @@ async function sweep(browser: Browser, base: string, s: State, width: number) {
         const pcls = parent && typeof parent.className === "string" && parent.className.trim() ? "." + parent.className.trim().split(/\s+/)[0] : "";
         out.push({ sel: `${outer ? "" : "  in: "}${parent ? parent.tagName.toLowerCase() + pcls + " > " : ""}${el.tagName.toLowerCase()}${id}${cls}`, right: Math.round((r.right + window.scrollX - vw) * 10) / 10 });
       }
-      return { scroll: de.scrollWidth, client: vw, inner: window.innerWidth, out };
+      // Code never scrolls sideways inside its own box: a code element (or, for an inline one, its nearest block)
+      // whose content is wider than its box (scrollWidth > clientWidth) is listed.
+      const code: Array<{ sel: string; over: number }> = [];
+      // .evals: the lab's eval table, whose cells are mono names (skills, models).
+      const CODE = "pre, code, kbd, samp, output, input[readonly], textarea[readonly], .code, [class*='-code'], [class*='code-'], .evals";
+      for (const el of document.body.querySelectorAll<HTMLElement>(CODE)) {
+        const cs = getComputedStyle(el);
+        if (cs.display === "none" || !el.getClientRects().length) continue;
+        // No named helper here: tsx wraps named functions in __name(), which the page does not have.
+        const ecls = typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\s+/).join(".") : "";
+        const p = el.parentElement;
+        const pcls = p && typeof p.className === "string" && p.className.trim() ? "." + p.className.trim().split(/\s+/)[0] : "";
+        const sel = `${p ? p.tagName.toLowerCase() + pcls + " > " : ""}${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${ecls}`;
+        if (cs.display === "inline") {
+          // An inline code element has no scroll box of its own; its nearest block must not scroll sideways. (Its
+          // line boxes are not compared with the block's edge: pre-wrap lets trailing spaces hang past it.)
+          let b = el.parentElement;
+          while (b && getComputedStyle(b).display === "inline") b = b.parentElement;
+          if (b && b.scrollWidth > b.clientWidth) code.push({ sel: `${b.tagName.toLowerCase()} ⊃ ${sel}`, over: b.scrollWidth - b.clientWidth });
+        } else if (el.scrollWidth > el.clientWidth) {
+          code.push({ sel, over: el.scrollWidth - el.clientWidth });
+        }
+      }
+      return { scroll: de.scrollWidth, client: vw, inner: window.innerWidth, out, code };
     });
     scrollbars.add(m.inner - m.client);
-    const ok = m.scroll <= m.client && m.out.length === 0 && errors.length === 0;
+    const ok = m.scroll <= m.client && m.out.length === 0 && m.code.length === 0 && errors.length === 0;
     const outer = m.out.filter((o) => !o.sel.startsWith("  in: "));
     const info = `scrollWidth ${m.scroll}, clientWidth ${m.client}, innerWidth ${m.inner}` +
       (outer.length ? `; sticks out: ${outer.slice(0, 6).map((o) => `${o.sel} +${o.right}px`).join("; ")}${outer.length > 6 ? `; +${outer.length - 6} more` : ""}` : "") +
       (m.scroll > m.client && !m.out.length ? "; no element box sticks out (a pseudo-element or a shadow?)" : "") +
+      (m.code.length ? `; code scrolls sideways: ${m.code.slice(0, 6).map((c) => `${c.sel} +${c.over}px`).join("; ")}${m.code.length > 6 ? `; +${m.code.length - 6} more` : ""}` : "") +
       (errors.length ? `; page errors: ${errors.join(" | ")}` : "");
     results.push({ page: s.page, width, ok, info });
   } finally {

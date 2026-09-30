@@ -1,0 +1,12 @@
+---
+// The lines of a snippet inside a <pre><code>: each line a block whose wrapped rest starts 2 ch past its own
+// indentation, with <wbr> where it may break besides its spaces (src/lib/code.ts; src/styles/site.css, pre .ln).
+// src/scripts/code-lines.ts builds the same markup in the browser.
+import { codeLines } from "../lib/code.ts";
+
+interface Props {
+  text: string;
+}
+const lines = codeLines(Astro.props.text);
+---
+{lines.map((l) => <span class="ln" style={`--in:${l.indent}ch`}>{l.pieces.map((p, i) => <>{i > 0 && <wbr />}{p}</>)}{"\n"}</span>)}

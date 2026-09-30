@@ -67,6 +67,15 @@ samp,
 .mono {
   font-family: var(--font-mono);
 }
+/* Code never scrolls sideways inside its own box: it wraps onto the next line, a long token breaking anywhere
+   when nothing better fits (scripts/check-layout.ts fails on any code element wider than its box). */
+code,
+kbd,
+pre,
+samp,
+output {
+  overflow-wrap: anywhere;
+}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -215,8 +224,14 @@ samp,
   font-size: 13px;
   line-height: 1.6;
   color: var(--pui-text);
-  white-space: pre;
-  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* A code line (src/lib/code.ts, codeLines): when it wraps, the rest starts 2 ch past its own indentation. */
+pre .ln {
+  display: block;
+  padding-left: calc(var(--in, 0ch) + 2ch);
+  text-indent: calc(-1 * (var(--in, 0ch) + 2ch));
 }
 
 /* ---------- skip link, announcement, navigation, footer ---------- */
@@ -412,11 +427,14 @@ html.js .reveal.in {
 
 /* ---------- copy field, tabs ---------- */
 
+/* A text to copy takes the box's whole width. When it and Copy do not fit on one line, Copy moves below it, at
+   the right; a text wider than the box wraps (a URL at its <wbr> points, src/lib/code.ts) and never scrolls. */
 .field {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
   min-width: 0;
   padding: 5px 5px 5px 16px;
   border: 1px solid var(--pui-border);
@@ -424,10 +442,14 @@ html.js .reveal.in {
   background: var(--pui-bg);
 }
 .field code {
+  flex: 1 1 auto;
+  max-width: 100%;
   font-size: 14px;
   user-select: all;
-  overflow-x: auto;
-  white-space: nowrap;
+  white-space: pre-wrap;
+}
+.field > .pui-btn {
+  margin-left: auto;
 }
 .field .pui-btn[hidden] {
   display: none;
