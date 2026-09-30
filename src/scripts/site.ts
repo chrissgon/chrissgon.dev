@@ -2,7 +2,7 @@
 // and reads without JavaScript: tabs (the first tab shows without a script), copy buttons (hidden without a
 // script; the text stays selectable), sections entering on scroll and the numbers counting up. With reduced
 // motion, every final frame shows at once.
-import { frame, parseFigure } from "../lib/countup.ts";
+import { frame, parseFigure, progressAt } from "../lib/countup.ts";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const lang = document.documentElement.lang.startsWith("pt") ? "pt" : "en";
@@ -77,16 +77,37 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-copy]")
   });
 }
 
-// Numbers count up to their figure in 600 ms when they enter the screen.
-function countUp(el: HTMLElement) {
-  const text = el.dataset.count ?? el.textContent ?? "";
-  const figure = parseFigure(text, lang);
-  if (!figure || reduced) return;
+// Numbers count up to their figure when their strip enters the screen: COUNT_MS each on an ease-out curve,
+// every cell STAGGER_MS after the one before. Each number keeps the width of its final figure while it counts
+// (so nothing beside it moves), shows its locale's format at every frame and ends on the exact text.
+function countUp(nums: HTMLElement[]) {
+  if (reduced) return;
+  const items = nums
+    .map((el) => ({ el, text: el.dataset.count ?? el.textContent ?? "" }))
+    .map((x) => ({ ...x, figure: parseFigure(x.text, lang) }))
+    .filter((x): x is typeof x & { figure: NonNullable<typeof x.figure> } => x.figure !== null);
+  if (!items.length) return;
+  // Measure every final width first, then write, so the page lays out once.
+  const widths = items.map((x) => x.el.getBoundingClientRect().width);
+  items.forEach((x, i) => {
+    x.el.style.minWidth = `${widths[i]}px`;
+    x.el.style.textAlign = "right";
+    x.el.textContent = frame(x.figure, 0);
+  });
   const start = performance.now();
   const step = (now: number) => {
-    const p = (now - start) / 600;
-    el.textContent = p >= 1 ? text : frame(figure, p);
-    if (p < 1) requestAnimationFrame(step);
+    let done = true;
+    items.forEach((x, i) => {
+      const p = progressAt(now - start, i);
+      x.el.textContent = p >= 1 ? x.text : frame(x.figure, p);
+      if (p < 1) done = false;
+    });
+    if (!done) return void requestAnimationFrame(step);
+    // Final text in place: give the width back to the layout (the font size changes across breakpoints).
+    for (const x of items) {
+      x.el.style.minWidth = "";
+      x.el.style.textAlign = "";
+    }
   };
   requestAnimationFrame(step);
 }
@@ -98,7 +119,8 @@ const seen = new IntersectionObserver(
       if (!entry.isIntersecting) continue;
       const el = entry.target as HTMLElement;
       el.classList.add("in");
-      for (const n of el.querySelectorAll<HTMLElement>("[data-count]")) countUp(n);
+      const nums = [...el.querySelectorAll<HTMLElement>("[data-count]")];
+      if (nums.length) void document.fonts.ready.then(() => countUp(nums));
       seen.unobserve(el);
     }
   },
