@@ -28,6 +28,7 @@ import { readFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import { chromium, type Browser, type BrowserContextOptions, type Page } from "playwright";
+import { routePick } from "./pick-fixture.ts";
 import { BG_PUSH_R } from "../src/lib/portrait/push.ts";
 
 const argv = process.argv.slice(2);
@@ -84,6 +85,8 @@ interface Opened { page: Page; errors: string[]; lateScripts: string[]; close: (
 
 async function open(browser: Browser, url: string, o: BrowserContextOptions = {}): Promise<Opened> {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, ...o });
+  // The pick section's refresh reads GitHub once it comes near: answer it with the build's round (no network).
+  await routePick(ctx);
   // Counts the animation frames each script asks for (by the script's URL, from the caller's stack), and the
   // layout shifts after the test starts measuring (window.__measure). A string, not a function: tsx would wrap
   // named inner functions in a helper the page does not have.

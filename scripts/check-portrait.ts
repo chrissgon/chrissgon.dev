@@ -30,6 +30,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
 import { chromium, type Browser, type BrowserContextOptions, type Page } from "playwright";
+import { routePick } from "./pick-fixture.ts";
 
 const argv = process.argv.slice(2);
 if (argv.includes("--help")) {
@@ -98,6 +99,8 @@ interface Opened { page: Page; videos: string[]; errors: string[]; close: () => 
 async function open(browser: Browser, url: string, o: BrowserContextOptions & { saveData?: boolean } = {}): Promise<Opened> {
   const { saveData, ...ctxOptions } = o;
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, ...ctxOptions });
+  // The pick section's refresh reads GitHub once it comes near: answer it with the build's round (no network).
+  await routePick(ctx);
   if (saveData) await ctx.addInitScript(() => Object.defineProperty(navigator, "connection", { value: { saveData: true } }));
   const page = await ctx.newPage(), videos: string[] = [], errors: string[] = [];
   page.on("request", (r) => { if (isVideo(r.url())) videos.push(r.url()); });

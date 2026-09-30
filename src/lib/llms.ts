@@ -4,6 +4,8 @@ import { resolveStats } from "./stats.ts";
 import type { NpmCount, WorkbenchCount } from "../data/schema.ts";
 import { MCP_PATH, MCP_TOOLS } from "../mcp/tools.ts";
 import { formatNumber, formatPeriod, localePath, statusLabel, typeLabel } from "./format.ts";
+import { readPickView } from "../data/pick.ts";
+import { pickMarkdown, type PickView } from "./pick.ts";
 
 export interface LlmsOptions {
   /** Absolute site URL without a trailing slash, e.g. https://chrissgon.dev */
@@ -11,6 +13,8 @@ export interface LlmsOptions {
   npm: NpmCount | null;
   /** The ai-workbench counts read at build; absent or null leaves the skill count out. */
   workbench?: WorkbenchCount | null;
+  /** The "Pick the next post" round; absent reads the build's (src/data/pick.ts), null leaves the part empty. */
+  pick?: PickView | null;
 }
 
 const WORDS = {
@@ -19,10 +23,10 @@ const WORDS = {
 } as const;
 
 /** The parts of llms.txt, in order. The home page shows each region's part when "view as agent" is on. */
-export const LLMS_PARTS = ["head", "numbers", "about", "products", "projects", "writing", "trajectory", "lab", "agents", "pages"] as const;
+export const LLMS_PARTS = ["head", "numbers", "about", "products", "projects", "writing", "pick", "trajectory", "lab", "agents", "pages"] as const;
 export type LlmsPart = (typeof LLMS_PARTS)[number];
 
-export function llmsParts(lang: Lang, { site, npm, workbench }: LlmsOptions): Record<LlmsPart, string> {
+export function llmsParts(lang: Lang, { site, npm, workbench, pick }: LlmsOptions): Record<LlmsPart, string> {
   const w = WORDS[lang];
   const url = (path: string) => `${site}${localePath(lang, path)}`;
   const parts = {} as Record<LlmsPart, string>;
@@ -87,6 +91,10 @@ export function llmsParts(lang: Lang, { site, npm, workbench }: LlmsOptions): Re
   }
   out.push("");
   end("writing");
+
+  const round = pick === undefined ? readPickView() : pick;
+  if (round) out.push(pickMarkdown(round, lang));
+  end("pick");
 
   out.push(`## ${t(lang, "trajectory")}`, "");
   for (const e of trajectory.entries) {

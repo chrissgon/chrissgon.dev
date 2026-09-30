@@ -77,11 +77,20 @@ describe("data module", () => {
     expect(() => parseData(Posts, [{ ...post, title: { en: "Only EN" } }], "posts.json")).toThrow(/title/);
   });
 
-  it("keeps projects in progress without links and ready projects with one", () => {
+  it("links a project in progress only to its public repository, and a ready project to at least one link", () => {
     const base = projects.find((p) => p.status === "in-progress")!;
     expect(() => parseData(Project, { ...base, links: [{ label: "x", url: "https://example.com" }] }, "projects.ts")).toThrow(
-      /in progress has no link/,
+      /in progress links only to its public repository/,
     );
+    expect(parseData(Project, { ...base, links: [] }, "projects.ts").links).toEqual([]);
+    const repo = (id: string) => projects.find((p) => p.id === id)!.links;
+    expect(repo("perfectui-for-agents")).toEqual([{ label: "GitHub", url: "https://github.com/chrissgon/perfectui-agents" }]);
+    expect(repo("agent-ready-kit")).toEqual([{ label: "GitHub", url: "https://github.com/chrissgon/agent-ready-kit" }]);
+    expect(repo("light-site-auditor")).toEqual([{ label: "GitHub", url: "https://github.com/chrissgon/light-site-auditor" }]);
+    expect(repo("social-agent")).toEqual([]);
+    for (const id of ["perfectui-for-agents", "agent-ready-kit", "light-site-auditor", "social-agent"]) {
+      expect(projects.find((p) => p.id === id)!.status).toBe("in-progress");
+    }
     const ready = projects.find((p) => p.status === "ready")!;
     expect(() => parseData(Project, { ...ready, links: [] }, "projects.ts")).toThrow(/ready project needs/);
   });

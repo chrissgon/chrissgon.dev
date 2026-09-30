@@ -1,4 +1,6 @@
 // Source: site-content.md section 4 (4.1 ready, 4.2 in progress, 4.3 revisions back after their merge), approved on 2026-09-30. Texts are verbatim.
+// 4.2 "no link until they exist": Perfect UI for agents, Agent-ready kit and Light-site auditor have public
+// repositories since 2026-09-30, so they link to them and stay in progress; Social agent has none yet.
 import products from "./products.ts";
 
 const [perfectui, workbench] = products;
@@ -126,7 +128,7 @@ export default [
       en: "An MCP server and a skill that teach coding agents to build interfaces with Perfect UI.",
       pt: "Um servidor MCP e uma skill que ensinam agentes de código a montar interfaces com a Perfect UI.",
     },
-    links: [],
+    links: [{ label: "GitHub", url: "https://github.com/chrissgon/perfectui-agents" }],
   },
   {
     id: "agent-ready-kit",
@@ -139,7 +141,7 @@ export default [
       en: "One data file in, llms.txt, schema.org data and a read-only MCP server out.",
       pt: "Um arquivo de dados entra; saem o llms.txt, os dados schema.org e um servidor MCP de leitura.",
     },
-    links: [],
+    links: [{ label: "GitHub", url: "https://github.com/chrissgon/agent-ready-kit" }],
   },
   {
     id: "social-agent",
@@ -165,6 +167,6 @@ export default [
       en: "An agent that checks a small business's site for weight, speed on 3G and accessibility, and explains the fixes in plain words.",
       pt: "Um agente que confere o site de um pequeno negócio (peso, velocidade em 3G, acessibilidade) e explica as correções em palavras simples.",
     },
-    links: [],
+    links: [{ label: "GitHub", url: "https://github.com/chrissgon/light-site-auditor" }],
   },
 ];
