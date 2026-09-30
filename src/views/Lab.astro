@@ -316,6 +316,9 @@ const CODE: Record<string, string> = {
   [data-agent-scope]:has(.agent-toggle:checked) .agent-box {
     display: flex;
   }
+  [data-agent-scope] > :global(.switch-label) {
+    align-self: flex-start;
+  }
   .xp-h3 {
     font-size: 24px;
   }
