@@ -22,7 +22,8 @@
     "secrets": "python3 scripts/secret-scan/secret_scan.py",
     "check:portrait": "tsx scripts/check-portrait.ts",
     "check:layout": "tsx scripts/check-layout.ts",
-    "check:griddots": "tsx scripts/check-griddots.ts"
+    "check:griddots": "tsx scripts/check-griddots.ts",
+    "og:image": "tsx scripts/og-image.ts"
   },
   "dependencies": {
     "@astrojs/sitemap": "3.7.4",

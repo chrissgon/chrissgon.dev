@@ -188,8 +188,9 @@ async function emptySpot(page: Page, fromY: number): Promise<{ x: number; y: num
 
 /**
  * A point over bare grid: the element under it and its ancestors paint no box (no background, image or media),
- * nor within `clear` px around it, and it is at least `clear` px from the portrait. Searches the viewport's
- * rows from `fromY`, left to right.
+ * nor within `clear` px around it, and it is at least `clear` px from the portrait. Media no larger than 24 px
+ * (the header's logo symbol) counts as a glyph of text, which is allowed. Searches the viewport's rows from
+ * `fromY`, left to right.
  */
 async function bareSpot(page: Page, fromY: number, clear: number): Promise<{ x: number; y: number } | null> {
   // A string, not a function: tsx would wrap a named inner function in a helper the page does not have.
@@ -198,7 +199,8 @@ async function bareSpot(page: Page, fromY: number, clear: number): Promise<{ x: 
     const bare = function (x, y) {
       for (let e = document.elementFromPoint(x, y); e && e !== document.body; e = e.parentElement) {
         const cs = getComputedStyle(e);
-        if (/^(IMG|VIDEO|CANVAS|svg|PICTURE|IFRAME)$/.test(e.tagName)) return false;
+        const r = e.getBoundingClientRect();
+        if (/^(IMG|VIDEO|CANVAS|svg|PICTURE|IFRAME)$/.test(e.tagName) && (r.width > 24 || r.height > 24)) return false;
         if (cs.backgroundImage !== "none" || !/rgba\\(0, 0, 0, 0\\)|transparent/.test(cs.backgroundColor)) return false;
       }
       return true;

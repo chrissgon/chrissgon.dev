@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { AddressInfo } from "node:net";
@@ -7,8 +7,11 @@ import { describe, expect, it } from "vitest";
 import {
   checkDist,
   firstRenderUrls,
+  hasSvgMetadata,
   llmsTxtProblems,
+  manifestProblems,
   pageWeight,
+  pngSize,
   resolveUrl,
   tailwindClasses,
 } from "../scripts/check-dist.ts";
@@ -25,8 +28,27 @@ import {
 
 const CSS = ".pui-btn{display:inline-flex}\n@font-face{font-family:Inter;src:url(/_astro/inter.woff2) format('woff2')}";
 const LD = '<script type="application/ld+json">{"@graph":[{"@type":"Person"}]}</script>';
+const ICONS =
+  '<link rel="canonical" href="https://chrissgon.dev/"><link rel="icon" href="/favicon.ico" sizes="48x48">' +
+  '<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png">' +
+  '<link rel="manifest" href="/site.webmanifest">';
+const OG =
+  '<meta property="og:image" content="https://chrissgon.dev/og/og-en.png"><meta property="og:image:width" content="1200">' +
+  '<meta property="og:image:height" content="630"><meta property="og:image:alt" content="chrissgon">' +
+  '<meta name="twitter:image" content="https://chrissgon.dev/og/og-en.png">';
 const page = (body: string, head = "") =>
-  `<!doctype html><html><head><link rel="stylesheet" href="/_astro/site.css">${head}${LD}</head><body><a class="pui-btn pui-solid">x</a>${body}</body></html>`;
+  `<!doctype html><html><head><link rel="stylesheet" href="/_astro/site.css">${ICONS}${OG}${head}${LD}</head><body><a class="pui-btn pui-solid">x</a>${body}</body></html>`;
+/** The first bytes of a PNG: signature and IHDR, enough for its size. */
+function png(width: number, height: number): Buffer {
+  const ihdr = Buffer.alloc(25);
+  ihdr.writeUInt32BE(13, 0);
+  ihdr.write("IHDR", 4, "latin1");
+  ihdr.writeUInt32BE(width, 8);
+  ihdr.writeUInt32BE(height, 12);
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), ihdr]);
+}
+const MANIFEST = JSON.stringify({ name: "Christopher Gonçalves", short_name: "chrissgon", start_url: "/", icons: [{ src: "/icon-192.png" }] });
+const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32"/></svg>';
 const LLMS = "# Christopher Gonçalves\n\n> A label long enough to pass the audit.\n\n- [GitHub](https://github.com/chrissgon)\n";
 
 /** A dist/ folder that passes every check; `files` adds or replaces files. */
@@ -40,6 +62,12 @@ function dist(files: Record<string, string | Buffer> = {}): string {
     "_astro/inter.woff2": Buffer.alloc(20_000),
     "llms.txt": LLMS,
     "pt/llms.txt": LLMS,
+    "favicon.ico": Buffer.alloc(100, 1),
+    "favicon.svg": SVG,
+    "apple-touch-icon.png": png(180, 180),
+    "icon-192.png": png(192, 192),
+    "site.webmanifest": MANIFEST,
+    "og/og-en.png": png(1200, 630),
     ...files,
   };
   for (const [path, content] of Object.entries(all)) {
@@ -152,6 +180,66 @@ describe("check-dist (ADR-0009)", () => {
     expect(r.findings).toEqual(
       expect.arrayContaining(["jsonld: index.html has no Person", "llms: pt/llms.txt: no H1"]),
     );
+  });
+
+  it("fails a page without a favicon link, og:image or twitter:image, or pointing to a missing file", () => {
+    const bare = page("").replace(ICONS, '<link rel="canonical" href="https://chrissgon.dev/projects/">').replace(OG, "");
+    expect(checkDist(dist({ "projects/index.html": bare })).findings).toEqual([
+      "head: projects/index.html has no favicon.ico link",
+      "head: projects/index.html has no favicon.svg link",
+      "head: projects/index.html has no apple-touch-icon link",
+      "head: projects/index.html has no manifest link",
+      "head: projects/index.html has no og:image",
+      "head: projects/index.html has no twitter:image",
+    ]);
+    const root = dist();
+    rmSync(join(root, "favicon.svg"));
+    rmSync(join(root, "og/og-en.png"));
+    expect(checkDist(root).findings).toEqual(
+      ["index.html", "projects/index.html", "pt/index.html"].flatMap((p) => [
+        `head: ${p} links favicon.svg to /favicon.svg, which is not in dist/`,
+        `head: ${p} og:image https://chrissgon.dev/og/og-en.png is not in dist/`,
+        `head: ${p} twitter:image https://chrissgon.dev/og/og-en.png is not in dist/`,
+      ]),
+    );
+  });
+
+  it("wants og:image absolute on the page's origin, a PNG of the declared size, with an alt", () => {
+    const relative = page("").replace(OG, OG.replaceAll("https://chrissgon.dev/og/", "/og/"));
+    expect(checkDist(dist({ "projects/index.html": relative })).findings).toEqual([
+      "head: projects/index.html og:image /og/og-en.png is not an absolute URL on the page's origin (https://chrissgon.dev)",
+      "head: projects/index.html twitter:image /og/og-en.png is not an absolute URL on the page's origin (https://chrissgon.dev)",
+    ]);
+    const wrong = page("").replace('content="630"', 'content="600"').replace('<meta property="og:image:alt" content="chrissgon">', "");
+    expect(checkDist(dist({ "projects/index.html": wrong })).findings).toEqual([
+      "head: projects/index.html og:image is 1200x630, declared 1200x600",
+      "head: projects/index.html has no og:image:alt",
+    ]);
+    expect(pngSize(png(1200, 630))).toEqual({ width: 1200, height: 630 });
+    expect(pngSize(Buffer.from("GIF89a not a png at all"))).toBeNull();
+  });
+
+  it("checks the manifest's names, start URL and icons", () => {
+    expect(manifestProblems("site.webmanifest", MANIFEST, () => true)).toEqual([]);
+    expect(manifestProblems("site.webmanifest", "{", () => true)).toEqual(["manifest: site.webmanifest is not valid JSON"]);
+    expect(manifestProblems("site.webmanifest", JSON.stringify({ name: "x", icons: [{ src: "/gone.png" }, {}] }), () => false)).toEqual([
+      "manifest: site.webmanifest has no short_name",
+      "manifest: site.webmanifest has no start_url",
+      "manifest: site.webmanifest icon /gone.png is not in dist/",
+      "manifest: site.webmanifest icon (no src) is not in dist/",
+    ]);
+    const root = dist();
+    rmSync(join(root, "icon-192.png"));
+    expect(checkDist(root).findings).toEqual(["manifest: site.webmanifest icon /icon-192.png is not in dist/"]);
+  });
+
+  it("fails an SVG file or an inline SVG that carries <metadata>", () => {
+    const withMeta = SVG.replace("<rect", "<metadata>c2pa</metadata><rect");
+    expect(hasSvgMetadata("a.svg", SVG)).toBe(false);
+    expect(hasSvgMetadata("a.svg", withMeta)).toBe(true);
+    expect(hasSvgMetadata("index.html", `<p>metadata</p>${SVG}`)).toBe(false);
+    const r = checkDist(dist({ "favicon.svg": withMeta, "pt/index.html": page(withMeta) }));
+    expect(r.findings).toEqual(["svg: favicon.svg carries a <metadata> element", "svg: pt/index.html carries a <metadata> element"]);
   });
 
   it("resolves URLs like a browser on the same origin", () => {
