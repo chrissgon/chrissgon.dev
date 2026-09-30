@@ -7,6 +7,14 @@ import type { ToneOptions } from "./types.ts";
 
 export const tone: ToneOptions = { equalize: true, gamma: 1.9, floor: 5 };
 
+/**
+ * The intro (dots flying from the grid into the portrait) is off: in the hero it would run during page load,
+ * and in Lighthouse's software-rasterised canvas each of its frames is a long task (PR #7 on main: total
+ * blocking time 550-640 ms, performance 84, under the gate of 90). The poster is drawn at once instead.
+ * The renderer keeps the option (`intro: true`) for a placement below the fold or a cheaper intro.
+ */
+export const intro = false;
+
 /** Face centre as 0..1 of the poster, read off the poster preview (between the eyes and the mouth). */
 export const face = { x: 0.42, y: 0.33 };
 
