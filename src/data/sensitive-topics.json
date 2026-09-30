@@ -1,0 +1,12 @@
+{"action": "never_reply_escalate_to_user",
+ "topics": {
+  "fe": {"keywords": ["deus", "jesus", "cristo", "cristão", "cristã", "igreja", "fé", "religião", "religioso", "bíblia", "oração", "ateu", "god", "christ", "christian", "church", "faith", "religion", "bible", "pray", "atheist"], "exclude": []},
+  "politica": {"keywords": ["política", "político", "eleição", "eleições", "voto", "partido", "governo", "presidente", "esquerda", "direita", "politics", "political", "election", "vote", "government", "president", "left-wing", "right-wing"], "exclude": ["política de privacidade", "privacy policy", "política de cache", "cache policy"]},
+  "familia": {"keywords": ["família", "pai", "mãe", "irmão", "irmã", "esposa", "namorada", "filho", "filha", "family", "father", "mother", "brother", "sister", "wife", "girlfriend", "son", "daughter", "parents"], "exclude": ["font-family", "família tipográfica", "font family"]},
+  "idade": {"keywords": ["idade", "quantos anos você tem", "how old", "your age"], "exclude": []},
+  "renda": {"keywords": ["salário", "quanto você ganha", "renda", "salary", "how much do you make", "income"], "exclude": []},
+  "empregador_clientes": {"keywords": ["onde você trabalha", "sua empresa", "seus clientes", "seu cliente", "where do you work", "your employer", "your company", "your clients"], "exclude": []},
+  "localizacao": {"keywords": ["onde você mora", "endereço", "seu bairro", "where do you live", "your address", "your neighborhood"], "exclude": []},
+  "lideranca": {"keywords": ["liderança", "gestão de pessoas", "leadership", "people management"], "exclude": []},
+  "emprego": {"keywords": ["vaga", "proposta de emprego", "oportunidade de emprego", "está contratando", "open to work", "job offer", "hiring", "recruiter", "recrutador"], "exclude": []}
+ }}

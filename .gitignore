@@ -1,0 +1,20 @@
+# Dependencies and build output
+node_modules/
+dist/
+.astro/
+.netlify/
+
+# Generated at build time (scripts/fetch-npm.ts)
+src/data/generated/
+
+# Local only: project documents and private terms stay off the public repository
+docs/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS and editor noise
+.DS_Store
+*.log

@@ -1,0 +1,84 @@
+---
+import { Image } from "astro:assets";
+import Base from "../layouts/Base.astro";
+import { posts, postTitle, products, profile, projects, readNpmCount, stats, t, trajectory, type Lang } from "../data/index.ts";
+import { formatNumber, formatPeriod, localePath } from "../lib/format.ts";
+import { image } from "../lib/images.ts";
+import { jsonLd } from "../lib/jsonld.ts";
+import { siteUrl } from "../lib/site.ts";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const npm = readNpmCount();
+const latest = posts.slice(0, 3);
+const shownStats = stats.filter((s) => s.id !== "npm-downloads" || npm);
+const statValue = (id: string, value: string | null) =>
+  id === "npm-downloads" && npm ? formatNumber(npm.downloads, lang) : (value ?? "");
+---
+
+<Base lang={lang} path="/" title={profile.name} description={profile.label[lang].join(" · ")} jsonld={jsonLd(siteUrl(Astro.site))}>
+  <section aria-labelledby="hero">
+    <h1 id="hero">{profile.name}</h1>
+    <p>{profile.label[lang].join(" · ")}</p>
+    <p>
+      {products.map((p) => (
+        <a class={p.id === "perfectui" ? "pui-btn pui-solid pui-theme" : "pui-btn pui-outline pui-surface"} href={p.url}>{p.name}</a>
+      ))}
+    </p>
+  </section>
+
+  <section aria-labelledby="numbers">
+    <h2 id="numbers">{t(lang, "numbers")}</h2>
+    <ul>
+      {shownStats.map((s) => (
+        <li>
+          <strong>{statValue(s.id, s.value)}</strong> {s.label[lang]}
+          {s.id === "npm-downloads" && npm && <small>({npm.start} – {npm.end})</small>}
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section aria-labelledby="about">
+    <h2 id="about">{t(lang, "about")}</h2>
+    {profile.about[lang].map((p) => <p>{p}</p>)}
+  </section>
+
+  <section aria-labelledby="products">
+    <h2 id="products">{t(lang, "products")}</h2>
+    <ul>
+      {products.map((p) => <li><a href={p.url}>{p.name}</a>: {p.summary[lang]}</li>)}
+    </ul>
+    <p><a href={localePath(lang, "/projects")}>{t(lang, "allProjects")} ({projects.length})</a></p>
+  </section>
+
+  <section aria-labelledby="writing">
+    <h2 id="writing">{t(lang, "latestWriting")}</h2>
+    <ul>
+      {latest.map((p) => (
+        <li>
+          <Image src={image(p.cover)} alt="" width={160} />
+          {p.url ? <a href={p.url}>{postTitle(p, lang)}</a> : <span>{postTitle(p, lang)}</span>}
+          <time datetime={p.date}>{p.date}</time>
+        </li>
+      ))}
+    </ul>
+    <p><a href={localePath(lang, "/writing")}>{t(lang, "allWriting")} ({posts.length})</a></p>
+  </section>
+
+  <section aria-labelledby="trajectory">
+    <h2 id="trajectory">{t(lang, "trajectory")}</h2>
+    <ol>
+      {trajectory.entries.map((e) => (
+        <li><strong>{formatPeriod(e, lang)}</strong>{e.role && <> · {e.role}</>}: {e.focus[lang]}</li>
+      ))}
+    </ol>
+    {trajectory.education && <p>{t(lang, "education")}: {trajectory.education[lang]}</p>}
+    <h3>{t(lang, "proofs")}</h3>
+    <ul>
+      {trajectory.proofs.map((p) => <li lang={p[lang] ? undefined : "en"}>{p[lang] ?? p.en}</li>)}
+    </ul>
+  </section>
+</Base>

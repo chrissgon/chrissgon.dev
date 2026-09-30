@@ -1,0 +1,186 @@
+// Schemas of every public fact the site shows (ADR-0001). Every object is strict: a field that is not
+// declared here (employer, location, birthDate...) fails the build with "Unrecognized key" (EDGE-1).
+import { z } from "zod";
+
+export const LANGS = ["en", "pt"] as const;
+export type Lang = (typeof LANGS)[number];
+
+const https = z.url({ protocol: /^https$/ });
+const isoDate = z.iso.date();
+const text = z.string().trim().min(1);
+
+/** A text in both languages. */
+export const Localized = z.strictObject({ en: text, pt: text });
+export type Localized = z.infer<typeof Localized>;
+
+export const Profile = z.strictObject({
+  name: z.literal("Christopher Gonçalves"),
+  handle: z.literal("chrissgon"),
+  jobTitle: text,
+  /** The approved label, split on " · " into its three parts. */
+  label: z.strictObject({
+    en: z.tuple([text, text, text]),
+    pt: z.tuple([text, text, text]),
+  }),
+  /** Paragraphs of the approved "About"; at least one per language. */
+  about: z.strictObject({ en: z.array(text).min(1), pt: z.array(text).min(1) }),
+  liveCodingHours: z.int().positive(),
+  profiles: z
+    .array(
+      z.strictObject({
+        network: z.enum(["GitHub", "LinkedIn", "npm"]),
+        handle: text,
+        url: https,
+      }),
+    )
+    .length(3),
+});
+export type Profile = z.infer<typeof Profile>;
+
+export const Product = z.strictObject({
+  id: z.enum(["perfectui", "ai-workbench"]),
+  name: text,
+  url: https,
+  codeRepository: https.refine((u) => u.startsWith("https://github.com/chrissgon/"), {
+    message: "codeRepository must be a chrissgon repository on GitHub",
+  }),
+  npm: z.literal("@chrissgon/perfectui").optional(),
+  license: z.literal("MIT"),
+  programmingLanguage: z.array(text).min(1),
+  summary: Localized,
+});
+export type Product = z.infer<typeof Product>;
+
+export const PROJECT_TYPES = ["ai-agents", "web-ui", "docs-architecture"] as const;
+export const PROJECT_STATUSES = ["ready", "in-progress"] as const;
+
+/** A project image: a file under src/assets/, a card the site will generate, or one still to be added. */
+export const ProjectImage = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("file"), src: z.string().regex(/^projects\/[a-z0-9-]+\.(png|jpg|webp)$/) }),
+  z.strictObject({ kind: z.literal("generated") }),
+  z.strictObject({ kind: z.literal("pending"), note: text }),
+]);
+
+export const Project = z
+  .strictObject({
+    id: z.string().regex(/^[a-z0-9-]+$/),
+    name: text,
+    types: z.array(z.enum(PROJECT_TYPES)).min(1),
+    status: z.enum(PROJECT_STATUSES),
+    stack: z.array(text),
+    summary: Localized,
+    image: ProjectImage.optional(),
+    links: z.array(z.strictObject({ label: text, url: https })),
+  })
+  .refine((p) => p.status === "ready" || p.links.length === 0, {
+    message: "a project in progress has no link until it exists (site-content.md 4.2)",
+  })
+  .refine((p) => p.status === "in-progress" || (p.links.length > 0 && p.stack.length > 0 && p.image), {
+    message: "a ready project needs a link, a stack and an image entry",
+  });
+export type Project = z.infer<typeof Project>;
+
+export const Post = z
+  .strictObject({
+    id: z.string().regex(/^[a-z0-9-]+$/),
+    /** Card title per language of the post, verbatim from site-content.md. */
+    title: z.strictObject({ en: text.optional(), pt: text.optional() }),
+    date: isoDate,
+    lang: z.array(z.enum(LANGS)).min(1).max(2),
+    cover: z.string().regex(/^posts\/[a-z0-9-]+\.(png|jpg|webp)$/),
+    /** Link to the post on LinkedIn. Optional until the links are added (see README, open items). */
+    url: https
+      .refine((u) => /^https:\/\/(www\.|pt\.)?linkedin\.com\//.test(u), { message: "url must be on linkedin.com" })
+      .optional(),
+  })
+  .refine((p) => p.lang.every((l) => p.title[l] !== undefined), {
+    message: "every language of the post needs a title",
+  });
+export type Post = z.infer<typeof Post>;
+
+/** Posts: unique ids, newest first. An empty list is valid. */
+export const Posts = z
+  .array(Post)
+  .superRefine((posts, ctx) => {
+    const seen = new Set<string>();
+    for (const p of posts) {
+      if (seen.has(p.id)) ctx.addIssue({ code: "custom", message: `duplicate post id ${p.id}` });
+      seen.add(p.id);
+    }
+    for (let i = 1; i < posts.length; i++) {
+      if (posts[i]!.date > posts[i - 1]!.date) {
+        ctx.addIssue({ code: "custom", message: `posts must be newest first: ${posts[i]!.id}` });
+      }
+    }
+  });
+
+export const TrajectoryEntry = z.strictObject({
+  /** Years, never a birth year: `from` absent means "before `to`"; `to` null means "now". */
+  from: z.int().min(2000).optional(),
+  to: z.int().min(2000).nullable(),
+  role: text.nullable(),
+  focus: Localized,
+});
+export type TrajectoryEntry = z.infer<typeof TrajectoryEntry>;
+
+export const Trajectory = z.strictObject({
+  entries: z.array(TrajectoryEntry).min(1),
+  /** Measured proofs, kept apart because the source does not say which role each came from. */
+  proofs: z.array(z.strictObject({ en: text, pt: text.optional() })),
+  education: Localized.optional(),
+});
+export type Trajectory = z.infer<typeof Trajectory>;
+
+export const LabItem = z.strictObject({
+  id: z.string().regex(/^[a-z0-9-]+$/),
+  description: Localized,
+  /** Link to the code in this repository; absent until the experiment is built here. */
+  source: https.optional(),
+});
+export type LabItem = z.infer<typeof LabItem>;
+
+export const NpmCount = z.strictObject({
+  downloads: z.int().nonnegative(),
+  start: isoDate,
+  end: isoDate,
+  package: z.literal("@chrissgon/perfectui"),
+});
+export type NpmCount = z.infer<typeof NpmCount>;
+
+export const Stat = z.strictObject({
+  id: z.enum(["npm-downloads", "perfectui-size", "live-coding", "workbench-skills"]),
+  /** The figure as shown; null means "read at build" (the npm count). */
+  value: text.nullable(),
+  label: Localized,
+  source: text,
+});
+export type Stat = z.infer<typeof Stat>;
+
+export const SensitiveTopics = z.strictObject({
+  action: text,
+  topics: z.record(
+    z.string(),
+    z.strictObject({ keywords: z.array(text).min(1), exclude: z.array(text) }),
+  ),
+});
+export type SensitiveTopics = z.infer<typeof SensitiveTopics>;
+
+/**
+ * False positives found in this site's own texts, added to a topic's `exclude` at check time. Kept apart
+ * from sensitive-topics.json so that file stays a verbatim copy of the brand profile's list.
+ */
+export const SensitiveExclude = z.record(
+  z.string(),
+  z.array(z.strictObject({ phrase: text, reason: text })).min(1),
+);
+export type SensitiveExclude = z.infer<typeof SensitiveExclude>;
+
+/** Parse a value and turn a zod error into the build message `data: <file> <path>: <error>`. */
+export function parseData<T>(schema: z.ZodType<T>, value: unknown, file: string): T {
+  const result = schema.safeParse(value);
+  if (!result.success) {
+    const lines = result.error.issues.map((i) => `data: ${file} ${i.path.join(".") || "(root)"}: ${i.message}`);
+    throw new Error(lines.join("\n"));
+  }
+  return result.data;
+}

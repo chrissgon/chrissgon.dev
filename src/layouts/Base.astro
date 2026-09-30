@@ -1,0 +1,66 @@
+---
+// Base layout (design: "Layout base"): head, Perfect UI, canonical, hreflang, JSON-LD, skip link,
+// navigation and language switch. Dark only (decision of 2026-09-29). No custom styling yet: the visual
+// design comes later.
+import "@chrissgon/perfectui/perfectui.css";
+import { profile, t, type Lang } from "../data/index.ts";
+import { LOCALE, localePath } from "../lib/format.ts";
+import { serializeJsonLd } from "../lib/jsonld.ts";
+import { siteUrl } from "../lib/site.ts";
+
+interface Props {
+  lang: Lang;
+  /** The page's path without the locale prefix: "/", "/projects", ... */
+  path: string;
+  title: string;
+  description: string;
+  jsonld?: object;
+}
+
+const { lang, path, title, description, jsonld } = Astro.props;
+const site = siteUrl(Astro.site);
+const other: Lang = lang === "en" ? "pt" : "en";
+const href = (l: Lang, p: string) => `${site}${localePath(l, p)}`;
+const nav = [
+  { key: "navProjects", path: "/projects" },
+  { key: "navWriting", path: "/writing" },
+  { key: "navLab", path: "/lab" },
+] as const;
+---
+
+<!doctype html>
+<html lang={LOCALE[lang]} data-pui-mode="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={href(lang, path)} />
+    <link rel="alternate" hreflang="en" href={href("en", path)} />
+    <link rel="alternate" hreflang="pt-BR" href={href("pt", path)} />
+    <link rel="alternate" hreflang="x-default" href={href("en", path)} />
+    <link rel="alternate" type="text/plain" href={lang === "en" ? "/llms.txt" : "/pt/llms.txt"} title="llms.txt" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    {jsonld && <script type="application/ld+json" set:html={serializeJsonLd(jsonld)} />}
+  </head>
+  <body>
+    <a href="#main">{t(lang, "skipToContent")}</a>
+    <header>
+      <nav>
+        <a href={localePath(lang, "/")}>{profile.name}</a>
+        {nav.map((n) => <a href={localePath(lang, n.path)} aria-current={n.path === path ? "page" : undefined}>{t(lang, n.key)}</a>)}
+        <a href={lang === "en" ? "/llms.txt" : "/pt/llms.txt"}>{t(lang, "navAgents")}</a>
+        <a href={localePath(other, path)} hreflang={LOCALE[other]} lang={LOCALE[other]}>{t(lang, "otherLang")}</a>
+      </nav>
+    </header>
+    <main id="main">
+      <slot />
+    </main>
+    <footer>
+      <h2>{t(lang, "profiles")}</h2>
+      <ul>
+        {profile.profiles.map((p) => <li><a href={p.url} rel="me">{p.network}: {p.handle}</a></li>)}
+      </ul>
+    </footer>
+  </body>
+</html>

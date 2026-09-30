@@ -1,0 +1,52 @@
+---
+import { Image } from "astro:assets";
+import Base from "../layouts/Base.astro";
+import { PROJECT_STATUSES } from "../data/schema.ts";
+import { profile, projects, t, type Lang } from "../data/index.ts";
+import { countBy, statusLabel, typeLabel } from "../lib/format.ts";
+import { image } from "../lib/images.ts";
+import { jsonLd } from "../lib/jsonld.ts";
+import { siteUrl } from "../lib/site.ts";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+// Filters (site-content.md 4): counts per type, status and stack. Interactive filtering comes with the design.
+const byType = countBy(projects, (p) => p.types.map((x) => typeLabel(x, lang)));
+const byStatus = countBy(projects, (p) => [statusLabel(p.status, lang)]);
+const byStack = countBy(projects, (p) => p.stack);
+---
+
+<Base lang={lang} path="/projects" title={`${t(lang, "navProjects")} · ${profile.name}`} description={t(lang, "homeDescription")} jsonld={jsonLd(siteUrl(Astro.site))}>
+  <h1>{t(lang, "navProjects")}</h1>
+  <dl>
+    <dt>{t(lang, "filterAll")}</dt>
+    <dd>{projects.length}</dd>
+    <dt>{t(lang, "byType")}</dt>
+    <dd>{byType.map(([k, n]) => `${k} (${n})`).join(" · ")}</dd>
+    <dt>{t(lang, "byStatus")}</dt>
+    <dd>{byStatus.map(([k, n]) => `${k} (${n})`).join(" · ")}</dd>
+    <dt>{t(lang, "byStack")}</dt>
+    <dd>{byStack.map(([k, n]) => `${k} (${n})`).join(" · ")}</dd>
+  </dl>
+
+  {PROJECT_STATUSES.map((status) => (
+    <section>
+      <h2>{statusLabel(status, lang)}</h2>
+      <ul>
+        {projects.filter((p) => p.status === status).map((p) => (
+          <li id={p.id}>
+            <h3>{p.name}</h3>
+            {p.image?.kind === "file" && <Image src={image(p.image.src)} alt="" width={320} />}
+            {p.image?.kind === "generated" && <p><small>{t(lang, "imageGenerated")}</small></p>}
+            {p.image?.kind === "pending" && <p><small>{t(lang, "imagePending")}</small></p>}
+            <p>{p.summary[lang]}</p>
+            <p><small>{p.types.map((x) => typeLabel(x, lang)).join(" · ")}{p.stack.length > 0 && <> · {p.stack.join(", ")}</>}</small></p>
+            {p.links.length > 0 && <p>{p.links.map((l) => <a href={l.url}>{l.label}</a>)}</p>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+</Base>

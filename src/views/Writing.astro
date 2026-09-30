@@ -1,0 +1,33 @@
+---
+import { Image } from "astro:assets";
+import Base from "../layouts/Base.astro";
+import { posts, postTitle, profile, t, type Lang } from "../data/index.ts";
+import { LOCALE } from "../lib/format.ts";
+import { image } from "../lib/images.ts";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+---
+
+<Base lang={lang} path="/writing" title={`${t(lang, "navWriting")} · ${profile.name}`} description={t(lang, "homeDescription")}>
+  <h1>{t(lang, "navWriting")}</h1>
+  {posts.length === 0 && <p>{t(lang, "noPosts")}</p>}
+  <ul>
+    {posts.map((p) => {
+      const title = postTitle(p, lang);
+      const titleLang = p.title[lang] ? undefined : LOCALE[p.lang[0]!];
+      return (
+        <li id={p.id}>
+          <Image src={image(p.cover)} alt="" width={320} />
+          <h2 lang={titleLang}>{p.url ? <a href={p.url}>{title}</a> : title}</h2>
+          <p>
+            <time datetime={p.date}>{p.date}</time> · {p.lang.map((l) => l.toUpperCase()).join(" · ")}
+            {!p.url && <> · <small>{t(lang, "linkPending")}</small></>}
+          </p>
+        </li>
+      );
+    })}
+  </ul>
+</Base>

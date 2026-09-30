@@ -1,0 +1,13 @@
+# Netlify build settings (ADR-0005). Deploys are configured on Netlify, not by this repository's CI.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Old routes of the previous site (ADR-0010). /projects exists again, so only /carrer is redirected.
+[[redirects]]
+  from = "/carrer"
+  to = "/"
+  status = 301

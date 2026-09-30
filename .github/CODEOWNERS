@@ -1,0 +1,11 @@
+# Files that define the repository's rules and its checks: changes need the owner's review.
+/AGENTS.md                         @chrissgon
+/.github/                          @chrissgon
+/.githooks/                        @chrissgon
+/scripts/secret-scan/              @chrissgon
+/.secret-scan-allow                @chrissgon
+/scripts/check-sensitive.ts        @chrissgon
+/src/lib/sensitive.ts              @chrissgon
+/src/data/sensitive-topics.json    @chrissgon
+/src/data/sensitive-exclude.json   @chrissgon
+/netlify.toml                      @chrissgon

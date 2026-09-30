@@ -1,0 +1,22 @@
+---
+import Base from "../layouts/Base.astro";
+import { lab, profile, t, type Lang } from "../data/index.ts";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+---
+
+<Base lang={lang} path="/lab" title={`${t(lang, "navLab")} · ${profile.name}`} description={t(lang, "homeDescription")}>
+  <h1>{t(lang, "navLab")}</h1>
+  <ul>
+    {lab.map((x) => (
+      <li id={x.id}>
+        <h2><code>{x.id}</code></h2>
+        <p>{x.description[lang]}</p>
+        <p>{x.source ? <a href={x.source}>source</a> : <small>{t(lang, "sourcePending")}</small>}</p>
+      </li>
+    ))}
+  </ul>
+</Base>

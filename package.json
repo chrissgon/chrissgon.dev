@@ -1,0 +1,34 @@
+{
+  "name": "chrissgon.dev",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Christopher Gonçalves's personal site: static Astro pages, llms.txt and schema.org data from one typed data module.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "data:npm": "tsx scripts/fetch-npm.ts",
+    "check:data": "tsx scripts/check-sensitive.ts --data",
+    "check:dist": "tsx scripts/check-sensitive.ts --dist",
+    "build": "npm run data:npm && npm run check:data && astro build && npm run check:dist",
+    "preview": "astro preview",
+    "typecheck": "astro check && tsc --noEmit",
+    "test": "vitest run",
+    "secrets": "python3 scripts/secret-scan/secret_scan.py"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "3.7.4",
+    "@chrissgon/perfectui": "1.0.0",
+    "astro": "7.3.5",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@types/node": "24.19.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.2"
+  }
+}
