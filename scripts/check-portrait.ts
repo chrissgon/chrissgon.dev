@@ -7,6 +7,8 @@
 //
 // Checks, EN and PT, one PASS or FAIL line each on stdout, exit 1 on any failure:
 //   - the canvas is shown and has dots drawn on it; the page scrolls no wider than the viewport (375 px)
+//   - at 375 px (touch) the portrait starts behind the hero text with no line between them, and every link
+//     and button of the text takes a tap (elementFromPoint), and a tapped install tab is selected
 //   - no video is requested when the clips are absent, with reduced motion, or with Save-Data
 //   - when the build has the real clips (dist/portrait/portrait-loop.*), the default visit requests one after
 //     load, the dots change with it, it pauses off-screen, and no long task happens at CPU x8 (the same
@@ -230,10 +232,33 @@ async function noJs(browser: Browser, base: string, path: string, label: string)
 }
 
 async function narrow(browser: Browser, base: string, path: string, label: string) {
-  const s = await open(browser, base + path, { viewport: { width: 375, height: 812 } });
+  const s = await open(browser, base + path, { viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
   await sleep(300);
   const w = await s.page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
   check(`${label} 375 px: no horizontal scroll`, w.scroll <= w.client, `${w.scroll} > ${w.client}`);
+  // One column: the portrait is the hero's background. Its slot starts behind the text (no divider between
+  // them), and every control of the text still takes the tap: nothing of the portrait is on top of it.
+  const hero = await s.page.evaluate(() => {
+    const text = document.querySelector(".hero-text")!, slot = document.querySelector("[data-portrait]")!;
+    const hits = [...text.querySelectorAll<HTMLElement>("a, button:not([hidden])")].filter((e) => e.offsetParent).map((e) => {
+      const r = e.getBoundingClientRect();
+      e.scrollIntoView({ block: "center" });
+      const q = e.getBoundingClientRect(), hit = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+      return { name: e.textContent!.trim(), top: r.top, ok: !!hit && (hit === e || e.contains(hit)) };
+    });
+    scrollTo(0, 0);
+    return {
+      behind: slot.getBoundingClientRect().top < text.getBoundingClientRect().bottom,
+      border: getComputedStyle(text).borderBottomWidth,
+      missed: hits.filter((h) => !h.ok).map((h) => h.name),
+      count: hits.length,
+    };
+  });
+  check(`${label} 375 px: the portrait starts behind the text, with no line between them`, hero.behind && hero.border === "0px", JSON.stringify(hero));
+  check(`${label} 375 px: every link and button of the hero text takes the tap`, hero.count >= 6 && hero.missed.length === 0, JSON.stringify(hero));
+  const tab = s.page.locator('.hero [role="tab"]').nth(1);
+  await tab.tap();
+  check(`${label} 375 px: a tap on an install tab selects it`, (await tab.getAttribute("aria-selected")) === "true");
   check(`${label} 375 px: no console errors`, s.errors.length === 0, s.errors.join(" | "));
   await s.close();
 }
