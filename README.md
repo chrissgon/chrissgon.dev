@@ -19,6 +19,7 @@ Node 22.12 or newer (`.nvmrc`), npm.
 | Secret scan | `npm run secrets` |
 | MCP server locally | `npm run build`, then `netlify dev --offline --framework '#static' --dir dist` (the site and `/api/mcp` on port 8888) |
 | Portrait check (after a build) | `npm run check:portrait` (add `-- --with-synthetic-clips` to check the video path; needs ffmpeg) |
+| Layout check (after a build) | `npm run check:layout`: no horizontal scroll on any page at 15 widths from 320 to 1920 px |
 
 `npm run build` runs, in order: `scripts/fetch-npm.ts` (npm downloads) and `scripts/fetch-workbench.ts` (the ai-workbench skill, agent and adapter counts, from one unauthenticated GET of its git tree on the GitHub API), each with a committed snapshot as fallback and a warning when the API is unreachable; the sensitive-topics check of `src/data/`; `scripts/check-images.ts`; `astro build`; then the sensitive-topics check and `scripts/check-dist.ts` over `dist/`.
 
