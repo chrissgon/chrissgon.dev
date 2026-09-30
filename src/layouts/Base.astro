@@ -15,6 +15,7 @@ import LangSwitch from "../components/LangSwitch.astro";
 import { profile, t, type Lang } from "../data/index.ts";
 import { LOCALE, localePath } from "../lib/format.ts";
 import { assertPublishable, serializeJsonLd, type jsonLd as JsonLdBuilder } from "../lib/jsonld.ts";
+import { OG_HEIGHT, OG_LOCALE, OG_WIDTH, ogImageAlt, ogImagePath } from "../lib/og.ts";
 import { siteUrl } from "../lib/site.ts";
 
 interface Props {
@@ -31,6 +32,7 @@ interface Props {
 const { lang, path, title, description, jsonld, agentScope = false } = Astro.props;
 const site = siteUrl(Astro.site);
 const href = (l: Lang, p: string) => `${site}${localePath(l, p)}`;
+const ogImage = `${site}${ogImagePath(lang)}`;
 const nav = [
   { key: "navProjects", href: localePath(lang, "/projects"), path: "/projects" },
   { key: "navWriting", href: localePath(lang, "/writing"), path: "/writing" },
@@ -56,13 +58,35 @@ const nav = [
     <link rel="alternate" hreflang="x-default" href={href("en", path)} />
     <link rel="alternate" type="text/plain" href={lang === "en" ? "/llms.txt" : "/pt/llms.txt"} title="llms.txt" />
     <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#000000" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={profile.domain} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={href(lang, path)} />
+    <meta property="og:locale" content={OG_LOCALE[lang]} />
+    <meta property="og:locale:alternate" content={OG_LOCALE[lang === "en" ? "pt" : "en"]} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content={String(OG_WIDTH)} />
+    <meta property="og:image:height" content={String(OG_HEIGHT)} />
+    <meta property="og:image:alt" content={ogImageAlt(lang)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={ogImageAlt(lang)} />
     {jsonld && <script type="application/ld+json" set:html={serializeJsonLd(assertPublishable(jsonld))} />}
   </head>
   <body data-agent-scope={agentScope ? "" : undefined}>
     <a class="skip pui-btn pui-solid pui-inverse" href="#main">{t(lang, "skipToContent")}</a>
     <div class="frame">
       <Cell as="header" class="nav">
-        <a class="brand" href={localePath(lang, "/")}>{profile.domain}</a>
+        <a class:list={["brand", { "brand-tight": agentScope }]} href={localePath(lang, "/")}>
+          <svg class="brand-mark" aria-hidden="true" focusable="false" width="23.5" height="21" viewBox="0 0 23.5 21"><g transform="translate(2.5 2.5)"><path d="M13 0H6A6 6 0 0 0 0 6V10A6 6 0 0 0 6 16H13" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="square" stroke-linejoin="round" /><path d="M10 5.5h11v5h-11Z" fill="#07B6F0" /></g></svg><span class="brand-text">{profile.domain}</span>
+        </a>
         <nav class="nav-links">
           {nav.map((n) => <a href={n.href} aria-current={n.path === path ? "page" : undefined}>{t(lang, n.key)}</a>)}
         </nav>

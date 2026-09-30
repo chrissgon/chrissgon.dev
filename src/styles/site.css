@@ -2,7 +2,7 @@
    Claude Design (claude-design/home-full.webp, 2026-09-30): the page shows its own skeleton. Every section is a cell with a 1px border and corner markers over the brand dot grid, with
    a mono caption naming the Perfect UI classes that build it and, on the home page, a numbered index. Colours are Perfect UI's dark tokens only
    (--pui-bg #000, --pui-text #fff, --pui-text-muted #9ca3af, --pui-bg-muted #111827, --pui-bg-emphasis
-   #1f2937, --pui-border #374151, --pui-theme #07b6f0 on one element per viewport). No gradients, shadows or
+   #1f2937, --pui-border #374151, --pui-theme #07b6f0 on one element per viewport, the logo's bar in the header aside). No gradients, shadows or
    glows: the radial-gradient images below are dot patterns, the brand's halftone, not colour gradients. */
 
 :root {
@@ -295,6 +295,19 @@ pre .ln {
   font-weight: 600;
   color: var(--pui-text);
   text-decoration: none;
+}
+/* The logo's symbol (logo 4a, for dark backgrounds: a white C and the bar in the theme colour) before the domain,
+   a little taller than the text's capitals (11 px against 9.5 px) and centred on them. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+.brand-mark {
+  flex: none;
+  width: auto;
+  height: 11px;
 }
 .nav-links {
   display: flex;
@@ -683,6 +696,19 @@ html.js .reveal.in {
   .brand {
     grid-area: brand;
     padding: 0 var(--gutter);
+  }
+  /* Below 390 px the home page's header row (the domain, "view as agent" and EN / PT) is wider than the screen,
+     and the domain ran under the switch. There the row shows the symbol alone; the domain stays the link's
+     accessible name. */
+  @media (max-width: 389.98px) {
+    .brand-tight .brand-text {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
   .nav-end {
     grid-area: end;

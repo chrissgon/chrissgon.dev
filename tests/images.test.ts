@@ -2,6 +2,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { run } from "../scripts/check-images.ts";
+import { pngSize } from "../scripts/check-dist.ts";
+import { OG_HEIGHT, OG_WIDTH, ogImagePath } from "../src/lib/og.ts";
 import { posts, projects } from "../src/data/index.ts";
 import { missingImages } from "../src/lib/image-check.ts";
 
@@ -30,7 +32,10 @@ describe("missing images fail the build with the item's name (EDGE-5)", () => {
   });
 });
 
-/** Metadata that could carry a location, a device or a name: EXIF, XMP, IPTC and PNG text chunks. */
+/**
+ * Metadata that could carry a location, a device or a name: EXIF, XMP, IPTC, PNG text chunks and the C2PA
+ * manifest (the caBX chunk) of a design-tool export.
+ */
 function metadataIn(file: string): string[] {
   const b = readFileSync(file);
   const found: string[] = [];
@@ -38,7 +43,7 @@ function metadataIn(file: string): string[] {
     for (let i = 8; i < b.length; ) {
       const len = b.readUInt32BE(i);
       const type = b.toString("latin1", i + 4, i + 8);
-      if (["eXIf", "tEXt", "iTXt", "zTXt", "tIME"].includes(type)) found.push(`png ${type}`);
+      if (["eXIf", "tEXt", "iTXt", "zTXt", "tIME", "caBX"].includes(type)) found.push(`png ${type}`);
       i += 12 + len;
     }
   } else if (b.toString("latin1", 0, 4) === "RIFF") {
@@ -64,5 +69,21 @@ describe("committed images", () => {
     const files = walk("src/assets").filter((f) => /\.(png|jpe?g|webp)$/.test(f));
     expect(files.length).toBeGreaterThan(0);
     for (const f of files) expect(metadataIn(f), f).toEqual([]);
+  });
+
+  it("in public/ (icons, share images) carry no metadata, and SVGs no <metadata> element", () => {
+    const files = walk("public");
+    const images = files.filter((f) => /\.(png|ico|jpe?g|webp)$/.test(f));
+    expect(images).toEqual(expect.arrayContaining(["public/favicon.ico", "public/apple-touch-icon.png", "public/og/og-en.png"]));
+    for (const f of images) expect(metadataIn(f), f).toEqual([]);
+    for (const f of files.filter((x) => x.endsWith(".svg"))) expect(readFileSync(f, "utf8"), f).not.toMatch(/<metadata\b/i);
+  });
+
+  it("include a share image per language, 1200 x 630 and under 100 KB", () => {
+    for (const lang of ["en", "pt"] as const) {
+      const b = readFileSync(join("public", ogImagePath(lang)));
+      expect(pngSize(b)).toEqual({ width: OG_WIDTH, height: OG_HEIGHT });
+      expect(b.length).toBeLessThan(100 * 1024);
+    }
   });
 });

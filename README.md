@@ -20,14 +20,23 @@ Node 22.12 or newer (`.nvmrc`), npm.
 | MCP server locally | `npm run build`, then `netlify dev --offline --framework '#static' --dir dist` (the site and `/api/mcp` on port 8888) |
 | Portrait check (after a build) | `npm run check:portrait` (add `-- --with-synthetic-clips` to check the video path; needs ffmpeg) |
 | Layout check (after a build) | `npm run check:layout`: no horizontal scroll on any page at 15 widths from 320 to 1920 px, and every grid of bordered cells closed |
+| Share images (after a build) | `npm run og:image`: redraws `public/og/og-en.png` and `og-pt.png`; commit them |
 
 `npm run build` runs, in order: `scripts/fetch-npm.ts` (npm downloads) and `scripts/fetch-workbench.ts` (the ai-workbench skill, agent and adapter counts, from one unauthenticated GET of its git tree on the GitHub API), each with a committed snapshot as fallback and a warning when the API is unreachable; the sensitive-topics check of `src/data/`; `scripts/check-images.ts`; `astro build`; then the sensitive-topics check and `scripts/check-dist.ts` over `dist/`.
 
 ## Checks of the build
 
 - **Images** (`scripts/check-images.ts`): every post cover and project image file exists and is not empty; a missing one fails the build naming the post or project. A project without its own image uses a cover drawn at build from its data in the brand's dots (`src/components/ProjectVisual.astro`, one drawing per project listed in `src/lib/project-visuals.ts`; a test fails when a generated project has none).
-- **dist** (`scripts/check-dist.ts`): every page loads the Perfect UI stylesheet and the home page uses `pui-btn`; no Tailwind file, word, `--tw-` variable or utility class; at most one `<canvas>` per page; the first render of `/` and `/pt/` weighs at most 150 KB (HTML, stylesheets, scripts and their imports, preloads, eager images and every font the CSS declares; gzip for text; the lazy portrait video excluded); both `llms.txt` have an H1, a link and 50 characters; the home pages carry the JSON-LD Person. The weight report goes to stderr.
+- **dist** (`scripts/check-dist.ts`): every page loads the Perfect UI stylesheet and the home page uses `pui-btn`; no Tailwind file, word, `--tw-` variable or utility class; at most one `<canvas>` per page; the first render of `/` and `/pt/` weighs at most 150 KB (HTML, stylesheets, scripts and their imports, preloads, eager images and every font the CSS declares; gzip for text; the lazy portrait video excluded); both `llms.txt` have an H1, a link and 50 characters; the home pages carry the JSON-LD Person; every page links `favicon.ico`, `favicon.svg`, `apple-touch-icon.png` and `site.webmanifest`, and carries `og:image` and `twitter:image`, each pointing to a file in `dist/` (the share image an absolute URL on the site's origin, a PNG of the declared `og:image:width` and `og:image:height`, with an alt); the manifest has a name, a short name, a start URL and icons that exist; no SVG file or inline SVG carries a `<metadata>` element. Icons and share images are not first-render bytes; the header's inline symbol is. The weight report goes to stderr.
 - **Lighthouse** (`scripts/lighthouse.ts`, CI job `lighthouse`): Lighthouse 13.5.0 on `dist/` served locally, mobile profile, one discarded warm-up run per page then the median of 5 runs: performance at least 90 and agentic browsing 100 on `/` and `/pt/`. Reports land in `lighthouse-report/` (git-ignored) and in the job summary.
+
+## Logo, icons and share images
+
+The logo is 4a from the owner's brand export (a white C with a floating bar in `#07b6f0`, and the wordmark "chrissgon"). The site ships only what it uses, each file with the export's C2PA metadata removed (the `<metadata>` element of SVGs, the `caBX` chunk of PNGs; the drawing and the pixels unchanged):
+
+- `public/`: `favicon.ico` (16, 32, 48), `favicon.svg`, `apple-touch-icon.png` (180), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` and `site.webmanifest`, linked from `src/layouts/Base.astro`. Keep these paths: search engines show a favicon only from a stable URL.
+- The header's brand link starts with the symbol as inline SVG (`.brand-mark`, `aria-hidden`); below 390 px on the home page, where the header row holds the "view as agent" switch, it shows the symbol alone and the domain stays the link's accessible name.
+- `public/og/og-en.png` and `og-pt.png` (1200 x 630): drawn by `scripts/og-image.ts` from `scripts/og-image/lockup.svg` and `profile.label` over the page's dot grid, in the build's own Inter. Redraw them with `npm run og:image` after a build whenever the label or the logo changes, and commit them. A test keeps them 1200 x 630 and under 100 KB, and every image in `public/` free of metadata.
 
 ## Data
 

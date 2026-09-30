@@ -8,7 +8,12 @@
 //     scripts and their static imports, preloads, eager images, and every font the loaded CSS declares (an
 //     upper bound), gzip for text and raw bytes for binaries; the lazy portrait video is excluded;
 //   - a llms.txt lacks an H1, a link or 50 characters (the Lighthouse `llms-txt` audit), or a home page
-//     lacks the JSON-LD Person.
+//     lacks the JSON-LD Person;
+//   - a page lacks a favicon link (favicon.ico, favicon.svg, apple-touch-icon, manifest), og:image or
+//     twitter:image, or one of them points to a file that is not in dist/; og:image is not an absolute URL on
+//     the page's origin, not a PNG of the declared og:image:width and og:image:height, or has no alt; the
+//     manifest lacks a name, short_name, start_url or icons, or an icon is not in dist/;
+//   - an SVG file, or an inline <svg> of a page, carries a <metadata> element.
 //
 // Usage: tsx scripts/check-dist.ts [--dist <dir>] [--budget-kb <n>] [--json]
 // Findings go to stdout (one per line; with --json, a JSON report); the weight report goes to stderr.
@@ -160,6 +165,103 @@ export function llmsTxtProblems(text: string): string[] {
   return problems;
 }
 
+/** The icon links every page carries (favicon/head-snippet.html of logo 4a), by what they must match. */
+export const ICON_LINKS: { name: string; match: (rel: string[], tag: string) => boolean }[] = [
+  { name: "favicon.ico", match: (rel, tag) => rel.includes("icon") && /\.ico$/i.test(attr(tag, "href") ?? "") },
+  { name: "favicon.svg", match: (rel, tag) => rel.includes("icon") && (attr(tag, "type") ?? "") === "image/svg+xml" },
+  { name: "apple-touch-icon", match: (rel) => rel.includes("apple-touch-icon") },
+  { name: "manifest", match: (rel) => rel.includes("manifest") },
+];
+
+/** Width and height of a PNG from its IHDR chunk; null when the bytes are not a PNG. */
+export function pngSize(b: Buffer): { width: number; height: number } | null {
+  if (b.length < 24 || !b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return null;
+  if (b.toString("latin1", 12, 16) !== "IHDR") return null;
+  return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) };
+}
+
+const metaContent = (html: string, key: string): string | undefined => {
+  for (const [tag] of html.matchAll(/<meta\b[^>]*>/gi)) {
+    if ((attr(tag, "property") ?? attr(tag, "name")) === key) return attr(tag, "content");
+  }
+  return undefined;
+};
+
+/**
+ * Icons and share image of one page: each icon link present and pointing to a file of dist/; og:image and
+ * twitter:image absolute, on the page's own origin (its canonical), pointing to a PNG of dist/ whose size is the
+ * declared og:image:width and og:image:height, with an alt text.
+ */
+export function headProblems(page: string, html: string, read: (p: string) => Buffer | null): string[] {
+  const problems: string[] = [];
+  const links = [...renderedHtml(html).matchAll(/<link\b[^>]*>/gi)].map(([tag]) => ({
+    tag,
+    rel: (attr(tag, "rel") ?? "").toLowerCase().split(/\s+/),
+  }));
+  for (const icon of ICON_LINKS) {
+    const link = links.find((l) => icon.match(l.rel, l.tag));
+    const href = link && attr(link.tag, "href");
+    if (!href) {
+      problems.push(`head: ${page} has no ${icon.name} link`);
+      continue;
+    }
+    const path = resolveUrl(href, page);
+    if (!path || !read(path)) problems.push(`head: ${page} links ${icon.name} to ${href}, which is not in dist/`);
+  }
+  const canonical = links.find((l) => l.rel.includes("canonical"));
+  const origin = canonical ? new URL(attr(canonical.tag, "href") ?? "", "http://invalid").origin : null;
+  for (const key of ["og:image", "twitter:image"]) {
+    const url = metaContent(html, key);
+    if (!url) {
+      problems.push(`head: ${page} has no ${key}`);
+      continue;
+    }
+    if (!/^https?:\/\//.test(url) || new URL(url).origin !== origin) {
+      problems.push(`head: ${page} ${key} ${url} is not an absolute URL on the page's origin (${origin ?? "no canonical"})`);
+      continue;
+    }
+    const file = read(resolveUrl(new URL(url).pathname, page) ?? "");
+    if (!file) {
+      problems.push(`head: ${page} ${key} ${url} is not in dist/`);
+      continue;
+    }
+    if (key !== "og:image") continue;
+    const size = pngSize(file);
+    const declared = { width: Number(metaContent(html, "og:image:width")), height: Number(metaContent(html, "og:image:height")) };
+    if (!size) problems.push(`head: ${page} og:image ${url} is not a PNG`);
+    else if (size.width !== declared.width || size.height !== declared.height) {
+      problems.push(`head: ${page} og:image is ${size.width}x${size.height}, declared ${declared.width}x${declared.height}`);
+    }
+    if (!metaContent(html, "og:image:alt")) problems.push(`head: ${page} has no og:image:alt`);
+  }
+  return problems;
+}
+
+/** The web app manifest: a name, a short name, a start URL, and every icon a file of dist/. */
+export function manifestProblems(path: string, text: string, exists: (p: string) => boolean): string[] {
+  let m: { name?: unknown; short_name?: unknown; start_url?: unknown; icons?: { src?: unknown }[] };
+  try {
+    m = JSON.parse(text);
+  } catch {
+    return [`manifest: ${path} is not valid JSON`];
+  }
+  const problems: string[] = [];
+  for (const key of ["name", "short_name", "start_url"] as const) {
+    if (typeof m[key] !== "string" || !m[key]) problems.push(`manifest: ${path} has no ${key}`);
+  }
+  if (!Array.isArray(m.icons) || !m.icons.length) problems.push(`manifest: ${path} lists no icon`);
+  for (const icon of Array.isArray(m.icons) ? m.icons : []) {
+    const src = typeof icon.src === "string" ? icon.src : "";
+    const p = resolveUrl(src, path);
+    if (!src || !p || !exists(p)) problems.push(`manifest: ${path} icon ${src || "(no src)"} is not in dist/`);
+  }
+  return problems;
+}
+
+/** An SVG file, or an inline <svg> of a page, that carries a <metadata> element (the C2PA block of an export). */
+export const hasSvgMetadata = (path: string, text: string): boolean =>
+  path.endsWith(".svg") ? /<metadata\b/i.test(text) : [...text.matchAll(/<svg\b[\s\S]*?<\/svg>/gi)].some(([s]) => /<metadata\b/i.test(s));
+
 export interface Report {
   findings: string[];
   weights: Weight[];
@@ -178,10 +280,14 @@ export function checkDist(dist: string, budgetKb = BUDGET_KB): Report {
       const content = text(f);
       if (/tailwind/i.test(content)) findings.push(`tailwind: the word "tailwind" in ${f}`);
       if (/--tw-[a-z]/.test(content)) findings.push(`tailwind: --tw- variables in ${f}`);
+      if ((f.endsWith(".svg") || f.endsWith(".html")) && hasSvgMetadata(f, content)) findings.push(`svg: ${f} carries a <metadata> element`);
     }
   }
 
   const cssWithPui = new Set(files.filter((f) => f.endsWith(".css") && /\.pui-btn\b/.test(text(f))));
+  const fileSet = new Set(files);
+  const read = (p: string) => (fileSet.has(p) ? readFileSync(join(dist, p)) : null);
+  const manifests = new Set<string>();
   for (const page of htmlPages) {
     const html = text(page);
     for (const cls of tailwindClasses(html)) findings.push(`tailwind: class "${cls}" in ${page}`);
@@ -193,7 +299,14 @@ export function checkDist(dist: string, budgetKb = BUDGET_KB): Report {
       return p !== null && cssWithPui.has(p);
     });
     if (!inline && !linked) findings.push(`perfect-ui: ${page} does not load the Perfect UI stylesheet (.pui-btn)`);
+    findings.push(...headProblems(page, html, read));
+    for (const [tag] of renderedHtml(html).matchAll(/<link\b[^>]*>/gi)) {
+      const href = /\brel\s*=\s*["']?manifest\b/i.test(tag) ? attr(tag, "href") : undefined;
+      const p = href && resolveUrl(href, page);
+      if (p && fileSet.has(p)) manifests.add(p);
+    }
   }
+  for (const m of manifests) findings.push(...manifestProblems(m, text(m), (p) => fileSet.has(p)));
 
   const weights: Weight[] = [];
   for (const page of HOME_PAGES) {
