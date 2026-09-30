@@ -92,6 +92,8 @@ export const Post = z
     cover: z.string().regex(/^posts\/[a-z0-9-]+\.(png|jpg|webp)$/),
     /** Canonical link to the post on LinkedIn (site-content.md section 5). */
     url: https.refine((u) => /^https:\/\/(www\.|pt\.)?linkedin\.com\//.test(u), { message: "url must be on linkedin.com" }),
+    /** Comments and reactions from the post's public JSON-LD (interactionStatistic), and the day they were read. */
+    stats: z.strictObject({ comments: z.int().nonnegative(), reactions: z.int().nonnegative(), read: isoDate }).optional(),
   })
   .refine((p) => p.lang.every((l) => p.title[l] !== undefined), {
     message: "every language of the post needs a title",
@@ -131,11 +133,27 @@ export const Trajectory = z.strictObject({
 });
 export type Trajectory = z.infer<typeof Trajectory>;
 
+/** One checked eval result of an ai-workbench skill: the score of a model with and without the skill. */
+export const EvalRun = z.strictObject({
+  skill: z.string().regex(/^[a-z0-9-]+$/),
+  iteration: z.int().positive(),
+  model: text,
+  /** The model's role in the eval, e.g. "floor model" / "modelo floor". */
+  role: Localized,
+  withSkill: z.number().min(0).max(1),
+  withoutSkill: z.number().min(0).max(1),
+});
+export type EvalRun = z.infer<typeof EvalRun>;
+
 export const LabItem = z.strictObject({
   id: z.string().regex(/^[a-z0-9-]+$/),
+  /** The day the experiment first ran (design briefs, site-lab.md). */
+  date: isoDate,
   description: Localized,
   /** Link to the code in this repository; absent until the experiment is built here. */
   source: https.optional(),
+  /** workbench-evals only: the checked runs it shows. */
+  runs: z.array(EvalRun).optional(),
 });
 export type LabItem = z.infer<typeof LabItem>;
 
@@ -152,6 +170,10 @@ export const WorkbenchCount = z.strictObject({
   skills: z.int().positive(),
   agents: z.int().nonnegative(),
   adapters: z.int().nonnegative(),
+  /** Skills per name prefix (`eng-`, `design-`...), in the tree's order; absent in older snapshots. */
+  prefixes: z.record(z.string().regex(/^[a-z]+$/), z.int().positive()).optional(),
+  /** Agent names (agents/<name>.md); absent in older snapshots. */
+  agentNames: z.array(z.string().regex(/^[a-z0-9-]+$/)).optional(),
   /** The git tree the counts were read from. */
   tree: z.string().regex(/^[0-9a-f]{40}$/),
   /** The day the tree was read (UTC). */
@@ -161,8 +183,8 @@ export type WorkbenchCount = z.infer<typeof WorkbenchCount>;
 
 export const Stat = z.strictObject({
   id: z.enum(["npm-downloads", "perfectui-size", "live-coding", "workbench-skills"]),
-  /** The figure as shown; null means "read at build" (the npm count, the ai-workbench skill count). */
-  value: text.nullable(),
+  /** The figure as shown, per language when it differs; null means "read at build" (the npm count, the ai-workbench skill count). */
+  value: z.union([text, Localized]).nullable(),
   label: Localized,
   source: text,
 });

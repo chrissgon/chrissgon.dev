@@ -1,0 +1,21 @@
+---
+// A cell of the page frame (design direction A): a section with a 1px bottom border, corner markers and a mono
+// tag naming the Perfect UI component that builds it. The tag describes the markup, so it is hidden from
+// assistive technology.
+import type { HTMLAttributes } from "astro/types";
+
+type Props = HTMLAttributes<"section"> & {
+  as?: "section" | "div" | "nav" | "footer" | "header" | "aside";
+  tag?: string;
+  /** Enter on scroll (site-home.md motion); never on the first screen. */
+  reveal?: boolean;
+};
+
+const { as: Tag = "section", tag, reveal = false, class: className, ...rest } = Astro.props;
+---
+
+<Tag class:list={["cell", className, { reveal }]} {...rest}>
+  <span class="cm tl" aria-hidden="true"></span><span class="cm tr" aria-hidden="true"></span>
+  {tag && <span class="tag" aria-hidden="true">{tag}</span>}
+  <slot />
+</Tag>

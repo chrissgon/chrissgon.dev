@@ -25,12 +25,27 @@ export interface TreeEntry {
  * Counts of a recursive tree of chrissgon/ai-workbench: a skill is a `skills/<name>/SKILL.md` file, an
  * agent an `agents/<name>.md` file other than a README, an adapter a folder directly under `adapters/`.
  */
-export function countTree(entries: TreeEntry[]): { skills: number; agents: number; adapters: number } {
-  const count = (re: RegExp, type: string) => entries.filter((e) => e.type === type && re.test(e.path)).length;
+export function countTree(entries: TreeEntry[]): {
+  skills: number;
+  agents: number;
+  adapters: number;
+  prefixes: Record<string, number>;
+  agentNames: string[];
+} {
+  const match = (re: RegExp, type: string) => entries.filter((e) => e.type === type && re.test(e.path));
+  const skills = match(/^skills\/[^/]+\/SKILL\.md$/, "blob");
+  const agents = match(/^agents\/(?!README\.md$)[^/]+\.md$/, "blob");
+  const prefixes: Record<string, number> = {};
+  for (const s of skills) {
+    const prefix = /^skills\/([a-z]+)-/.exec(s.path)?.[1];
+    if (prefix) prefixes[prefix] = (prefixes[prefix] ?? 0) + 1;
+  }
   return {
-    skills: count(/^skills\/[^/]+\/SKILL\.md$/, "blob"),
-    agents: count(/^agents\/(?!README\.md$)[^/]+\.md$/, "blob"),
-    adapters: count(/^adapters\/[^/]+$/, "tree"),
+    skills: skills.length,
+    agents: agents.length,
+    adapters: match(/^adapters\/[^/]+$/, "tree").length,
+    prefixes: Object.fromEntries(Object.entries(prefixes).sort(([a], [b]) => a.localeCompare(b))),
+    agentNames: agents.map((a) => a.path.slice("agents/".length, -".md".length)).sort(),
   };
 }
 

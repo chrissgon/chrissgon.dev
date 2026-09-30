@@ -1,0 +1,618 @@
+/* Design direction A, "Estrutura à mostra" (personal-brand site-home.md, chosen on 2026-09-30): the page shows
+   its own skeleton. Every section is a cell with a 1px border and corner markers over the brand dot grid, with
+   a mono tag naming the Perfect UI component that builds it. Colours are Perfect UI's dark tokens only
+   (--pui-bg #000, --pui-text #fff, --pui-text-muted #9ca3af, --pui-bg-muted #111827, --pui-bg-emphasis
+   #1f2937, --pui-border #374151, --pui-theme #07b6f0 on one element per viewport). No gradients, shadows or
+   glows: the radial-gradient images below are dot patterns, the brand's halftone, not colour gradients. */
+
+:root {
+  --gutter: 40px;
+  --frame: 1200px;
+  --grid: 28px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+html {
+  font-family: var(--font-sans);
+  background: var(--pui-bg);
+  color: var(--pui-text);
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The brand dot grid: 1.4 px dots every 28 px in #1f2937, anchored to the document so the portrait's halo
+   (src/lib/portrait/grid.ts, dots at 14 px + n × 28 px) lands on the same dots. */
+body {
+  margin: 0;
+  background-color: var(--pui-bg);
+  background-image: radial-gradient(circle, var(--pui-bg-emphasis) 0.7px, transparent 1px);
+  background-size: var(--grid) var(--grid);
+  background-position: 0 0;
+  line-height: 1.5;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a:not([class]) {
+  color: var(--pui-text);
+  text-underline-offset: 3px;
+}
+a:not([class]):hover {
+  color: var(--pui-text-muted);
+}
+:focus-visible {
+  outline: 2px solid var(--pui-theme);
+  outline-offset: 2px;
+}
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+p {
+  margin: 0;
+}
+img {
+  max-width: 100%;
+}
+code,
+kbd,
+pre,
+samp,
+.mono {
+  font-family: var(--font-mono);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- frame, cells, corner markers, tags ---------- */
+
+.frame {
+  max-width: var(--frame);
+  min-height: 100vh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-inline: 1px solid var(--pui-border);
+}
+.frame > main {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+.cell {
+  position: relative;
+  border-bottom: 1px solid var(--pui-border);
+}
+.cm {
+  position: absolute;
+  z-index: 2;
+  width: 11px;
+  height: 11px;
+  pointer-events: none;
+}
+.cm::before,
+.cm::after {
+  content: "";
+  position: absolute;
+  background: var(--pui-text);
+}
+.cm::before {
+  left: 5px;
+  top: 0;
+  width: 1px;
+  height: 11px;
+}
+.cm::after {
+  top: 5px;
+  left: 0;
+  width: 11px;
+  height: 1px;
+}
+.cm.tl {
+  top: -6px;
+  left: -6px;
+}
+.cm.tr {
+  top: -6px;
+  right: -6px;
+}
+.tag {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--pui-text-muted);
+  pointer-events: none;
+}
+.pad {
+  padding: 48px var(--gutter);
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.split {
+  display: flex;
+}
+.split > .side {
+  position: relative;
+  border-left: 1px solid var(--pui-border);
+}
+
+.lbl {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pui-text-muted);
+}
+.h2 {
+  font-size: 32px;
+  line-height: 1.15;
+}
+.muted {
+  color: var(--pui-text-muted);
+}
+.meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--pui-text-muted);
+}
+.lead {
+  font-size: 18px;
+  line-height: 1.6;
+}
+.head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+.head-row > a {
+  font-size: 16px;
+}
+.code {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--pui-text);
+  white-space: pre;
+  overflow: auto;
+}
+
+/* ---------- skip link, announcement, navigation, footer ---------- */
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 20;
+}
+.skip:focus {
+  left: 16px;
+}
+.ann {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 var(--gutter);
+  font-size: 14px;
+}
+.ann .tag {
+  position: static;
+}
+.ann-post {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-inline-start: auto;
+  min-width: 0;
+}
+.ann-post a {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--gutter);
+}
+.brand {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pui-text);
+  text-decoration: none;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 15px;
+}
+.nav-links a {
+  color: var(--pui-text);
+  text-decoration: none;
+}
+.nav-links a[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+.nav-links a:hover {
+  color: var(--pui-text-muted);
+}
+.lang {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--pui-text-muted);
+  white-space: nowrap;
+}
+.lang a {
+  color: var(--pui-text-muted);
+  text-decoration: none;
+}
+.lang a:hover {
+  color: var(--pui-text);
+}
+.lang [aria-current] {
+  color: var(--pui-text);
+}
+.nav-bar {
+  display: contents;
+}
+.site-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 40px var(--gutter);
+  border-bottom: none;
+}
+.profiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+/* ---------- view as agent (CSS only: works without JavaScript) ---------- */
+
+.agent-text {
+  display: none;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--pui-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+[data-agent-scope]:has(.agent-toggle:checked) .agent-text {
+  display: block;
+  animation: wipe 0.4s var(--ease);
+}
+[data-agent-scope]:has(.agent-toggle:checked) .human {
+  display: none;
+}
+@keyframes wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  vertical-align: middle;
+  height: 44px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--pui-border);
+  border-radius: var(--pui-radius);
+  background: var(--pui-bg);
+  cursor: pointer;
+  letter-spacing: 0;
+  line-height: 1;
+}
+.switch-label .pui-switch {
+  /* Perfect UI sizes the switch from --pui-font-size (2.286 × by 1.143 ×): a larger size, not a transform. */
+  --pui-font-size: 1.5rem;
+}
+.switch-label span {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pui-text);
+}
+
+/* ---------- motion: sections enter on scroll; nothing is hidden without JavaScript ---------- */
+
+html.js .reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.4s var(--ease),
+    transform 0.4s var(--ease);
+}
+html.js .reveal.in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.js .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  [data-agent-scope]:has(.agent-toggle:checked) .agent-text {
+    animation: none;
+  }
+}
+
+/* ---------- dot fills for generated visuals ---------- */
+
+.dw {
+  background-image: radial-gradient(circle, var(--pui-text) 1.3px, transparent 1.6px);
+  background-size: 7px 7px;
+}
+.dg {
+  background-image: radial-gradient(circle, var(--pui-border) 1.3px, transparent 1.6px);
+  background-size: 7px 7px;
+}
+
+/* ---------- copy field, tabs ---------- */
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 5px 5px 5px 16px;
+  border: 1px solid var(--pui-border);
+  border-radius: var(--pui-radius);
+  background: var(--pui-bg);
+}
+.field code {
+  font-size: 14px;
+  user-select: all;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.field .pui-btn[hidden] {
+  display: none;
+}
+.status {
+  min-height: 18px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--pui-text-muted);
+}
+[role="tablist"] {
+  max-width: 100%;
+  overflow-x: auto;
+}
+[role="tabpanel"][hidden] {
+  display: none;
+}
+
+/* ---------- cards ---------- */
+
+.card-link {
+  display: flex;
+  flex-direction: column;
+  color: var(--pui-text);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.card-link:hover {
+  border-color: var(--pui-text-muted);
+}
+.pui-card.col {
+  display: flex;
+  flex-direction: column;
+}
+.pui-card .pui-card-content.grow {
+  flex: 1;
+  align-content: start;
+}
+.card-media {
+  display: block;
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-bottom: 1px solid var(--pui-border);
+  background: var(--pui-bg);
+}
+.card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.card-name {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+}
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+.grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+}
+.grid5 {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* ---------- page title cell (projects, writing, lab) ---------- */
+
+.page-title {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 56px var(--gutter) 40px;
+}
+.page-title h1 {
+  font-size: 72px;
+  line-height: 1;
+}
+.page-title .count {
+  font-family: var(--font-mono);
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- breakpoints: 1024, 768, 375 ---------- */
+
+@media (max-width: 1023px) {
+  :root {
+    --gutter: 24px;
+  }
+  .grid3,
+  .grid4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  :root {
+    --gutter: 12px;
+  }
+  .frame {
+    margin: 0 8px;
+  }
+  .pad {
+    padding: 32px var(--gutter);
+  }
+  .tag {
+    top: 10px;
+    left: 12px;
+    font-size: 11px;
+  }
+  .h2 {
+    font-size: 24px;
+  }
+  .lead {
+    font-size: 16px;
+  }
+  .ann {
+    height: 36px;
+    font-size: 13px;
+  }
+  .ann > .tag {
+    display: none;
+  }
+  .ann-post {
+    margin-inline-start: 0;
+  }
+  .nav {
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+  }
+  .nav-bar {
+    display: flex;
+    height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--gutter);
+  }
+  .nav-links {
+    height: 40px;
+    gap: 20px;
+    padding: 0 var(--gutter);
+    overflow-x: auto;
+    white-space: nowrap;
+    border-top: 1px solid var(--pui-bg-emphasis);
+    font-size: 14px;
+  }
+  .nav-links .lang {
+    display: none;
+  }
+  .split {
+    flex-direction: column;
+  }
+  .split > .side {
+    border-left: none;
+    border-top: 1px solid var(--pui-border);
+  }
+  .grid3,
+  .grid4,
+  .grid5 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .page-title {
+    padding: 40px var(--gutter) 28px;
+  }
+  .page-title h1 {
+    font-size: 40px;
+  }
+  .page-title .count {
+    font-size: 28px;
+  }
+  .site-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .switch-label {
+    height: 34px;
+    padding: 0 10px 0 8px;
+  }
+  .switch-label .pui-switch {
+    --pui-font-size: 1rem;
+  }
+  .switch-label span {
+    font-size: 13px;
+  }
+}
+@media (min-width: 768px) {
+  .nav-bar .lang {
+    display: none;
+  }
+}

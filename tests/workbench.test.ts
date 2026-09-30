@@ -28,7 +28,7 @@ const npm = { downloads: 1014, start: "2026-08-30", end: "2026-09-28", package: 
 
 describe("ai-workbench counts from the GitHub tree", () => {
   it("counts SKILL.md files one level under skills/, agent files and adapter folders", () => {
-    expect(countTree(tree)).toEqual({ skills: 2, agents: 1, adapters: 2 });
+    expect(countTree(tree)).toEqual({ skills: 2, agents: 1, adapters: 2, prefixes: { biz: 1, eng: 1 }, agentNames: ["reviewer"] });
   });
 
   it("reads an API answer and refuses a truncated or malformed one", () => {
@@ -36,6 +36,8 @@ describe("ai-workbench counts from the GitHub tree", () => {
       skills: 2,
       agents: 1,
       adapters: 2,
+      prefixes: { biz: 1, eng: 1 },
+      agentNames: ["reviewer"],
       tree: sha,
       date: "2026-09-30",
     });
@@ -44,8 +46,10 @@ describe("ai-workbench counts from the GitHub tree", () => {
     expect(fromTreeResponse({ sha, truncated: false, tree: [] }, today)).toMatch(/unexpected counts/);
   });
 
-  it("has a committed snapshot of 43 skills", () => {
-    expect(workbenchSnapshot.skills).toBe(43);
+  it("has a committed snapshot whose prefix counts add up to the skills", () => {
+    const sum = Object.values(workbenchSnapshot.prefixes ?? {}).reduce((a, b) => a + b, 0);
+    expect(sum).toBe(workbenchSnapshot.skills);
+    expect(workbenchSnapshot.agentNames).toHaveLength(workbenchSnapshot.agents);
   });
 
   it("falls back to the snapshot, prefers the build file and omits a stale count", () => {

@@ -1,0 +1,106 @@
+---
+// perfectui-live: tabs Button · Card · Modal · Switch · Table, each with the live Perfect UI component on one
+// side and its markup on the other. Both come from the same string (src/lib/showcase.ts), so the code shown is
+// the component's own. Without JavaScript the first tab shows.
+import { readNpmCount, readWorkbenchCount, type Lang } from "../data/index.ts";
+import { showcase } from "../lib/showcase.ts";
+import { siteUrl } from "../lib/site.ts";
+import { resolveStats } from "../lib/stats.ts";
+
+interface Props {
+  lang: Lang;
+  /** Id of the heading that names the tab list. */
+  labelledby: string;
+  prefix?: string;
+}
+const { lang, labelledby, prefix = "pui" } = Astro.props;
+const items = showcase(lang, siteUrl(Astro.site), resolveStats(lang, { npm: readNpmCount(), workbench: readWorkbenchCount() }));
+---
+
+<div class="showcase" data-tabs>
+  <div class="pui-group-row" role="tablist" aria-labelledby={labelledby}>
+    {items.map((c, i) => (
+      <button
+        type="button"
+        role="tab"
+        id={`${prefix}-tab-${c.id}`}
+        aria-controls={`${prefix}-panel-${c.id}`}
+        aria-selected={i === 0 ? "true" : "false"}
+        tabindex={i === 0 ? 0 : -1}
+        class:list={["pui-btn", i === 0 ? "pui-solid pui-inverse" : "pui-outline pui-surface"]}
+      >
+        {c.name}
+      </button>
+    ))}
+  </div>
+  {items.map((c, i) => (
+    <div class="showcase-grid" role="tabpanel" id={`${prefix}-panel-${c.id}`} aria-labelledby={`${prefix}-tab-${c.id}`} hidden={i > 0}>
+      <div class="showcase-live">
+        <span class="tag" aria-hidden="true">live</span>
+        <div class={`live live-${c.id}`} set:html={c.html} />
+      </div>
+      <div class="showcase-code">
+        <span class="tag" aria-hidden="true">markup</span>
+        <pre class="code" tabindex="0"><code set:text={c.html} /></pre>
+      </div>
+    </div>
+  ))}
+</div>
+
+<style>
+  .showcase {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .showcase-grid {
+    display: grid;
+    grid-template-columns: 480px minmax(0, 1fr);
+    min-height: 340px;
+    border: 1px solid var(--pui-border);
+    border-radius: calc(var(--pui-radius) * 1.5);
+    overflow: hidden;
+  }
+  .showcase-live {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px 24px;
+    border-right: 1px solid var(--pui-border);
+    background: var(--pui-bg);
+  }
+  .showcase-code {
+    position: relative;
+    padding: 40px 24px 24px;
+    background: var(--pui-bg-muted);
+    overflow: auto;
+  }
+  .live {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .live-button {
+    gap: 12px;
+  }
+  .live :global(.pui-card) {
+    width: min(420px, 100%);
+  }
+  .live-switch :global(label) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  @media (max-width: 1023px) {
+    .showcase-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .showcase-live {
+      border-right: none;
+      border-bottom: 1px solid var(--pui-border);
+      min-height: 220px;
+    }
+  }
+</style>

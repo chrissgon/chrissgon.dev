@@ -2,7 +2,7 @@
 
 Christopher Gonçalves's personal site. Static pages for people (EN at `/`, PT at `/pt/`) and a surface for AI agents (`/llms.txt`, `/pt/llms.txt`, schema.org JSON-LD, sitemap), all generated from one typed data module. Built with [Astro](https://astro.build) and [Perfect UI](https://perfectui.dev), no Tailwind.
 
-Status: foundation. The pages render the data without a visual design yet; the home hero carries the dot portrait (poster only until the clips exist) and the fonts are self-hosted. The design comes in later pull requests. The read-only MCP server answers at `/api/mcp` (see below).
+Status: design direction A, "Estrutura à mostra" (chosen by the owner on 2026-09-30): every section is a cell of a visible frame with corner markers and the tag of the Perfect UI component that builds it, and a real `pui-switch` "view as agent" in the home label turns every region into its llms.txt reading, with CSS only. The home hero carries the dot portrait (poster only until the clips exist); the fonts are self-hosted. The read-only MCP server answers at `/api/mcp` (see below).
 
 ## Commands
 

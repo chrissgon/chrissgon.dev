@@ -1,5 +1,6 @@
 // /llms.txt and /pt/llms.txt, generated from the data module (ADR-0001; https://llmstxt.org/).
 import { lab, posts, postTitle, products, profile, projects, stats, t, trajectory, type Lang } from "../data/index.ts";
+import { resolveStats } from "./stats.ts";
 import type { NpmCount, WorkbenchCount } from "../data/schema.ts";
 import { MCP_PATH, MCP_TOOLS } from "../mcp/tools.ts";
 import { formatNumber, formatPeriod, localePath, statusLabel, typeLabel } from "./format.ts";
@@ -17,31 +18,51 @@ const WORDS = {
   pt: { downloads: "downloads de", to: "a", code: "Código", license: "Licença", type: "Tipo", stack: "Stack", languages: "Idiomas", pages: "Páginas", home: "Início", other: "English (llms.txt)" },
 } as const;
 
-export function llmsText(lang: Lang, { site, npm, workbench }: LlmsOptions): string {
+/** The parts of llms.txt, in order. The home page shows each region's part when "view as agent" is on. */
+export const LLMS_PARTS = ["head", "numbers", "about", "products", "projects", "writing", "trajectory", "lab", "agents", "pages"] as const;
+export type LlmsPart = (typeof LLMS_PARTS)[number];
+
+export function llmsParts(lang: Lang, { site, npm, workbench }: LlmsOptions): Record<LlmsPart, string> {
   const w = WORDS[lang];
   const url = (path: string) => `${site}${localePath(lang, path)}`;
-  const out: string[] = [];
+  const parts = {} as Record<LlmsPart, string>;
+  let out: string[] = [];
+  const end = (part: LlmsPart) => {
+    parts[part] = out.join("\n");
+    out = [];
+  };
 
   out.push(`# ${profile.name}`, "", `> ${profile.label[lang].join(" · ")}`, "");
-  out.push(...profile.about[lang].flatMap((p) => [p, ""]));
   for (const p of profile.profiles) out.push(`- [${p.network}](${p.url}): ${p.handle}`);
   out.push("");
+  end("head");
+
+  const shown = resolveStats(lang, { npm, workbench: workbench ?? null });
+  out.push(`## ${t(lang, "numbers")}`, "");
+  for (const s of shown) out.push(`- ${s.value}: ${s.label}${s.period ? ` (${s.period.start} ${w.to} ${s.period.end})` : ""}`);
+  out.push("");
+  end("numbers");
+
+  out.push(`## ${t(lang, "about")}`, "");
+  out.push(...profile.about[lang].flatMap((p) => [p, ""]));
+  end("about");
 
   out.push(`## ${t(lang, "products")}`, "");
   for (const p of products) {
-    const parts = [`- [${p.name}](${p.url}): ${p.summary[lang]}`, `${w.code}: ${p.codeRepository}.`];
+    const bits = [`- [${p.name}](${p.url}): ${p.summary[lang]}`, `${w.code}: ${p.codeRepository}.`];
     if (p.npm) {
       const count = npm ? ` (${formatNumber(npm.downloads, lang)} ${w.downloads} ${npm.start} ${w.to} ${npm.end})` : "";
-      parts.push(`npm: ${p.npm}${count}.`);
+      bits.push(`npm: ${p.npm}${count}.`);
     }
     const skills = stats.find((s) => s.id === "workbench-skills");
     if (p.id === "ai-workbench" && workbench && skills) {
-      parts.push(`${formatNumber(workbench.skills, lang)} ${skills.label[lang]}.`);
+      bits.push(`${formatNumber(workbench.skills, lang)} ${skills.label[lang]}.`);
     }
-    parts.push(`${w.license}: ${p.license}.`);
-    out.push(parts.join(" "));
+    bits.push(`${w.license}: ${p.license}.`);
+    out.push(bits.join(" "));
   }
   out.push("");
+  end("products");
 
   out.push(`## ${t(lang, "navProjects")}`, "");
   for (const status of ["ready", "in-progress"] as const) {
@@ -57,12 +78,15 @@ export function llmsText(lang: Lang, { site, npm, workbench }: LlmsOptions): str
     out.push("");
   }
 
+  end("projects");
+
   out.push(`## ${t(lang, "navWriting")}`, "");
   for (const p of posts) {
     const title = postTitle(p, lang);
     out.push(`- [${title}](${p.url}) (${p.date}; ${w.languages}: ${p.lang.map((l) => l.toUpperCase()).join(", ")})`);
   }
   out.push("");
+  end("writing");
 
   out.push(`## ${t(lang, "trajectory")}`, "");
   for (const e of trajectory.entries) {
@@ -72,6 +96,7 @@ export function llmsText(lang: Lang, { site, npm, workbench }: LlmsOptions): str
   out.push("", `### ${t(lang, "proofs")}`, "");
   for (const p of trajectory.proofs) out.push(`- ${p[lang]}`);
   out.push("");
+  end("trajectory");
 
   out.push(`## ${t(lang, "navLab")}`, "");
   for (const x of lab) {
@@ -79,11 +104,13 @@ export function llmsText(lang: Lang, { site, npm, workbench }: LlmsOptions): str
     out.push(`- ${x.id}: ${x.description[lang]} (${state})`);
   }
   out.push("");
+  end("lab");
 
   // The read-only MCP server (ADR-0004), as in the approved prototype's "For agents" section.
   out.push(`## ${t(lang, "navAgents")}`, "");
   out.push(`- [${t(lang, "connectAgent")}](${site}${MCP_PATH}): MCP, Streamable HTTP, POST (${MCP_TOOLS.join(", ")})`);
   out.push("");
+  end("agents");
 
   out.push(`## ${w.pages}`, "");
   out.push(`- [${w.home}](${url("/")})`);
@@ -92,5 +119,11 @@ export function llmsText(lang: Lang, { site, npm, workbench }: LlmsOptions): str
   out.push(`- [${t(lang, "navLab")}](${url("/lab")})`);
   out.push(`- [${w.other}](${site}${lang === "en" ? "/pt/llms.txt" : "/llms.txt"})`);
   out.push("");
-  return out.join("\n");
+  end("pages");
+  return parts;
+}
+
+export function llmsText(lang: Lang, options: LlmsOptions): string {
+  const parts = llmsParts(lang, options);
+  return LLMS_PARTS.map((p) => parts[p]).join("\n");
 }
