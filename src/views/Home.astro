@@ -656,13 +656,21 @@ const TAB_OFF = "pui-outline pui-surface";
     }
   }
   @media (max-width: 767px) {
+    /* One column (owner, 2026-09-30): no line between text and portrait; the portrait is the hero's background.
+       Its box rises --hero-overlap (7 grid cells) behind the text, so the hair starts behind the install box and
+       the face reads just below it, where there is no text: the column is full width at every phone size, so
+       the face cannot sit beside the text. Behind the text the dots are dimmed to --hero-dim (a mask, not a
+       visible gradient): a white dot then shows as rgb(51,51,51) at most, which keeps the muted label at 4.9:1
+       and white text at 12.6:1 (WCAG AA). The text stays on top, and no part of the portrait takes a tap. */
     .hero {
+      --hero-overlap: 196px;
+      --hero-dim: 0.2;
       grid-template-columns: minmax(0, 1fr);
       min-height: 0;
     }
     .hero-text {
+      z-index: 1;
       padding: 44px var(--gutter) 32px;
-      border-bottom: 1px solid var(--pui-border);
     }
     .hero-text .index {
       margin-bottom: 20px;
@@ -682,9 +690,27 @@ const TAB_OFF = "pui-outline pui-surface";
     .install {
       margin-top: 24px;
     }
-    /* One column: the whole 666 px portrait, keyboard included, in a 672 px box (24 grid cells). */
+    /* The whole 666 px portrait, keyboard included, in a 672 px box (24 grid cells) at the hero's bottom. The
+       halo may rise above the box, behind the text; the sides and the bottom stay clipped. --text-end is where
+       the text ends (the install box's bottom, above the text's 32 px bottom padding), measured from the box's
+       top. The canvas (which starts --halo above the slot) and the no-JS image are dimmed down to there, and
+       their dots reach full brightness one grid cell (28 px) lower. */
     .hero-portrait {
+      --text-end: calc(var(--hero-overlap) - 32px);
       height: 672px;
+      margin-top: calc(-1 * var(--hero-overlap));
+      overflow: visible;
+      clip-path: inset(-240px 0 0 0);
+      pointer-events: none;
+    }
+    .hero-portrait :global(canvas),
+    .hero-portrait :global(.portrait img) {
+      --slot-top: calc(672px - var(--portrait-h));
+      --dim-end: calc(var(--text-end) - var(--slot-top));
+      mask-image: linear-gradient(to bottom, rgb(0 0 0 / var(--hero-dim)) var(--dim-end), #000 calc(var(--dim-end) + 28px));
+    }
+    .hero-portrait :global(canvas) {
+      --dim-end: calc(var(--halo) + var(--text-end) - var(--slot-top));
     }
     .stat {
       padding: 24px var(--gutter);
