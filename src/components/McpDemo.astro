@@ -1,0 +1,51 @@
+---
+// mcp-live (lab): runs `tools/list` on this site's read-only MCP server and prints the answer in mono.
+// Minimal and unstyled until the lab's visual design. Without JavaScript the button stays hidden and the
+// address and the tool names built from the server's list remain. On an error or a 429 the page prints the
+// HTTP status and that same list (design: AgentsCard).
+import { MCP_PATH, MCP_TOOLS } from "../mcp/tools.ts";
+import { siteUrl } from "../lib/site.ts";
+
+const endpoint = `${siteUrl(Astro.site)}${MCP_PATH}`;
+const fallback = JSON.stringify(MCP_TOOLS.map((name) => ({ name, readOnlyHint: true })), null, 2);
+---
+
+<div data-mcp-demo data-fallback={fallback}>
+  <p><code>{endpoint}</code></p>
+  <button type="button" class="pui-btn" data-mcp-run hidden>tools/list</button>
+  <pre aria-live="polite" data-mcp-out><code>{MCP_TOOLS.join("\n")}</code></pre>
+</div>
+
+<script>
+  const PATH = "/api/mcp";
+
+  for (const root of document.querySelectorAll<HTMLElement>("[data-mcp-demo]")) {
+    const button = root.querySelector<HTMLButtonElement>("[data-mcp-run]");
+    const out = root.querySelector<HTMLElement>("[data-mcp-out]");
+    if (!button || !out) continue;
+    button.hidden = false;
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      let text: string;
+      try {
+        const res = await fetch(PATH, {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const body = (await res.json()) as { result?: { tools?: { name: string; annotations?: { readOnlyHint?: boolean } }[] } };
+        const tools = body.result?.tools ?? [];
+        text = JSON.stringify(
+          tools.map((t) => ({ name: t.name, readOnlyHint: t.annotations?.readOnlyHint === true })),
+          null,
+          2,
+        );
+      } catch (err) {
+        text = `${err instanceof Error ? err.message : "error"}\n${root.dataset.fallback ?? ""}`;
+      }
+      out.textContent = text;
+      button.disabled = false;
+    });
+  }
+</script>

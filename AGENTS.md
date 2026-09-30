@@ -10,6 +10,7 @@ The design and its decision records are kept locally by the owner, outside this 
 - Static output, no adapter (`astro.config.mjs`); i18n with EN unprefixed and PT under /pt/; `site` comes from the `URL` environment variable, else `https://chrissgon.dev`.
 - One view per page in `src/views/`, used by the EN page in `src/pages/` and the PT page in `src/pages/pt/`.
 - Text endpoints: `src/pages/llms.txt.ts`, `src/pages/pt/llms.txt.ts`, `src/pages/robots.txt.ts`. Sitemap: `@astrojs/sitemap`.
+- Read-only MCP server: `netlify/functions/mcp.mts` at `/api/mcp` (route and rate limit in its `config`), tools in `src/mcp/server.ts`, reading only `src/data/`. Every tool stays read-only with a strict input schema; `tests/mcp.test.ts` covers the protocol, each tool, unknown data (EDGE-1) and injected instructions (EDGE-3). Local run: `netlify dev --offline --framework '#static' --dir dist` after `npm run build` (`astro dev` does not serve functions).
 - Netlify builds and publishes (`netlify.toml`); this repository's CI never deploys.
 
 ## Commands
@@ -34,7 +35,7 @@ The design and its decision records are kept locally by the owner, outside this 
 
 ## Testing
 
-- vitest; tests live in `tests/`. Cover the data schemas, the sensitive-topics check and the generated `llms.txt` and JSON-LD whenever they change.
+- vitest; tests live in `tests/`. Cover the data schemas, the sensitive-topics check, the generated `llms.txt` and JSON-LD, and the MCP tools whenever they change.
 
 ## Security
 

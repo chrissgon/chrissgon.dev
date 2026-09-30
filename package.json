@@ -21,11 +21,13 @@
   "dependencies": {
     "@astrojs/sitemap": "3.7.4",
     "@chrissgon/perfectui": "1.0.0",
+    "@modelcontextprotocol/sdk": "1.31.0",
     "astro": "7.3.5",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
+    "@netlify/functions": "6.0.0",
     "@types/node": "22.20.4",
     "tsx": "4.23.15",
     "typescript": "6.0.3",

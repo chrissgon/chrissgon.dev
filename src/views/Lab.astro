@@ -1,5 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
+import McpDemo from "../components/McpDemo.astro";
 import { lab, profile, t, type Lang } from "../data/index.ts";
 
 interface Props {
@@ -15,6 +16,7 @@ const { lang } = Astro.props;
       <li id={x.id}>
         <h2><code>{x.id}</code></h2>
         <p>{x.description[lang]}</p>
+        {x.id === "mcp-live" && <McpDemo />}
         <p>{x.source ? <a href={x.source}>source</a> : <small>{t(lang, "sourcePending")}</small>}</p>
       </li>
     ))}

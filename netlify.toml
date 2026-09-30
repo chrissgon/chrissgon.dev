@@ -6,6 +6,18 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# The read-only MCP server (ADR-0004, ADR-0005): netlify/functions/mcp.mts at /api/mcp, bundled with
+# esbuild together with the data module. Its route and its rate limit (30 requests per 60 s per IP) are in
+# the function's `config`: Netlify does not read function rate limits from this file. Custom [[headers]]
+# do not apply to function responses either, so the function sets its own (cache-control: no-store,
+# x-content-type-options: nosniff); no CORS headers, since the page calls it from the same origin.
+# https://docs.netlify.com/manage/security/secure-access-to-sites/rate-limiting/ and
+# https://docs.netlify.com/manage/routing/headers/ (accessed 2026-09-30).
+[functions]
+  node_bundler = "esbuild"
+  # The npm count written by the build (ADR-0003); without it the function falls back to the snapshot.
+  included_files = ["src/data/generated/npm.json"]
+
 # Old routes of the previous site (ADR-0010). /projects exists again, so only /carrer is redirected.
 [[redirects]]
   from = "/carrer"

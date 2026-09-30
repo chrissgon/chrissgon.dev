@@ -14,6 +14,8 @@ export const approved = {
   statusReady: { en: "Ready", pt: "Pronto" },
   statusInProgress: { en: "In progress", pt: "Em construção" },
   filterAll: { en: "All", pt: "Todos" },
+  // For agents card: approved on 2026-09-29 (state.md; site-content.md section 2).
+  connectAgent: { en: "Connect your agent to this site", pt: "Conecte seu agente a este site" },
 };
 
 export const provisional = {

@@ -1,6 +1,7 @@
 // /llms.txt and /pt/llms.txt, generated from the data module (ADR-0001; https://llmstxt.org/).
 import { lab, posts, postTitle, products, profile, projects, t, trajectory, type Lang } from "../data/index.ts";
 import type { NpmCount } from "../data/schema.ts";
+import { MCP_PATH, MCP_TOOLS } from "../mcp/tools.ts";
 import { formatNumber, formatPeriod, localePath, statusLabel, typeLabel } from "./format.ts";
 
 export interface LlmsOptions {
@@ -72,6 +73,11 @@ export function llmsText(lang: Lang, { site, npm }: LlmsOptions): string {
     const state = x.source ? `${w.code}: ${x.source}` : statusLabel("in-progress", lang);
     out.push(`- ${x.id}: ${x.description[lang]} (${state})`);
   }
+  out.push("");
+
+  // The read-only MCP server (ADR-0004), as in the approved prototype's "For agents" section.
+  out.push(`## ${t(lang, "navAgents")}`, "");
+  out.push(`- [${t(lang, "connectAgent")}](${site}${MCP_PATH}): MCP, Streamable HTTP, POST (${MCP_TOOLS.join(", ")})`);
   out.push("");
 
   out.push(`## ${w.pages}`, "");
