@@ -5,7 +5,6 @@
     "date": "2026-09-29",
     "lang": ["pt", "en"],
     "cover": "posts/perfectui-1-0-launch.jpg",
-    "coverFocus": "left",
     "url": "https://pt.linkedin.com/posts/chrissgon_perfect-ui-10-est%C3%A1-no-ar-perfect-ui-10-activity-7510677333259964416-xJQ7",
     "stats": {"comments": 5, "reactions": 3, "read": "2026-09-30"}
   },
@@ -15,7 +14,6 @@
     "date": "2026-09-28",
     "lang": ["pt", "en"],
     "cover": "posts/perfectui-1-0-teaser.jpg",
-    "coverFocus": "left",
     "url": "https://pt.linkedin.com/posts/chrissgon_amanh%C3%A3-sai-o-perfect-ui-10-perfect-ui-activity-7510310057717334016-jHho",
     "stats": {"comments": 1, "reactions": 8, "read": "2026-09-30"}
   },
@@ -44,7 +42,6 @@
     "date": "2023-07-05",
     "lang": ["en"],
     "cover": "posts/own-bootstrap-part-2.jpg",
-    "coverFocus": "left",
     "url": "https://www.linkedin.com/posts/chrissgon_how-to-create-your-own-bootstrap-part-2-activity-7082357473440899073-PYRt",
     "stats": {"comments": 1, "reactions": 10, "read": "2026-09-30"}
   },
@@ -54,7 +51,6 @@
     "date": "2023-06-28",
     "lang": ["en"],
     "cover": "posts/own-bootstrap-part-1.jpg",
-    "coverFocus": "left",
     "url": "https://www.linkedin.com/posts/chrissgon_how-to-create-your-own-bootstrap-part-1-activity-7079820769987280896-Pi6K",
     "stats": {"comments": 3, "reactions": 14, "read": "2026-09-30"}
   },
@@ -64,7 +60,6 @@
     "date": "2023-06-08",
     "lang": ["pt"],
     "cover": "posts/gomanga.png",
-    "coverFocus": "right",
     "url": "https://pt.linkedin.com/posts/chrissgon_github-chrissgongomanga-a-powerful-manga-activity-7072557890481397761-qwyE",
     "stats": {"comments": 4, "reactions": 19, "read": "2026-09-30"}
   },

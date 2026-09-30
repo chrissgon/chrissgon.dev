@@ -93,7 +93,7 @@ export const Post = z
     date: isoDate,
     lang: z.array(z.enum(LANGS)).min(1).max(2),
     cover: z.string().regex(/^posts\/[a-z0-9-]+\.(png|jpg|webp)$/),
-    /** Where the 9:16 crop of the cover is anchored, so the post's subject stays in view (src/lib/covers.ts):
+    /** Where the 4:5 crop of the cover is anchored, so the post's subject stays in view (src/lib/covers.ts):
      * an edge, the centre (the default), or "entropy", the image service's crop around the most detailed region,
      * for a subject away from every edge and from the centre. */
     coverFocus: z.enum(["left", "center", "right", "entropy"]).optional(),

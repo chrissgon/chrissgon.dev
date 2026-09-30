@@ -1,10 +1,11 @@
-// A post's cover as a 9:16 portrait, cropped at build (owner, 2026-09-30: "capas maiores 9:16"). The crop is the
-// largest 9:16 rectangle the source holds, anchored where the post's subject is (`coverFocus` in src/data/posts.json).
+// A post's cover as a 4:5 portrait, cropped at build (owner, 2026-09-30: "capas maiores 9:16", then "16x9 ficou muito
+// grande, diminua um pouco": 4:5, LinkedIn's portrait post size, 1080 x 1350). The crop is the largest 4:5 rectangle
+// the source holds, anchored where the post's subject is (`coverFocus` in src/data/posts.json).
 // The srcset never asks for a width above that crop: the image service does not enlarge, and a request larger than
 // the source in both directions would come back uncropped.
 
 /** Width over height of a post cover. */
-export const COVER_RATIO = 9 / 16;
+export const COVER_RATIO = 4 / 5;
 
 /** Srcset candidates: the four-column card (about 288 px) at 1x and 2x, and 432 for the phone layouts at 1.5x-2x. */
 export const COVER_WIDTHS = [288, 432, 576] as const;
