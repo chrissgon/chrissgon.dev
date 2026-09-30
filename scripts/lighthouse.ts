@@ -2,11 +2,16 @@
 // when a page scores under the gates of ADR-0009: performance >= 0.9 and agentic-browsing = 1 (AC-7 gate,
 // AC-8). The `agentic-browsing` category exists only from Lighthouse 13, hence the CLI and not @lhci/cli.
 //
-// Usage: tsx scripts/lighthouse.ts [--dist dist] [--pages /,/pt/] [--runs 3] [--out lighthouse-report]
+// Usage: tsx scripts/lighthouse.ts [--dist dist] [--pages /,/pt/] [--warmup 1] [--runs 5] [--out lighthouse-report]
 //                                  [--performance 0.9] [--agentic 1]
-// Serves dist/ on 127.0.0.1 (gzip, like the CDN), runs the CLI `--runs` times per page (Chrome from
-// CHROME_PATH or the system install) and gates on the median score of each category. Reports go to
-// `--out` (one JSON per run); the summary goes to stdout and to $GITHUB_STEP_SUMMARY when set.
+// Serves dist/ on 127.0.0.1 (gzip, like the CDN), runs the CLI `--warmup` times per page and discards those
+// runs, then `--runs` measured times per page (Chrome from CHROME_PATH or the system install), and gates on
+// the median score of each category. The warm-up absorbs the cold start of a fresh runner (first Chrome
+// launch, cold disk cache, jobs still settling): before it, the first run on / scored 55 to 95 in CI while
+// the next ones scored 98 to 99. The gates never move; only the measured runs count. Each run's
+// benchmarkIndex (Lighthouse's CPU estimate of the machine) is reported so a slow runner is visible.
+// Reports go to `--out` (one JSON per run, warm-ups included); the summary goes to stdout and to
+// $GITHUB_STEP_SUMMARY when set.
 // Exit 0 when every page passes, 1 when a gate fails, 2 on a usage or run error.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync, appendFileSync } from "node:fs";
@@ -84,6 +89,12 @@ export function scoresOf(lhr: { categories?: Record<string, { score: number | nu
   };
 }
 
+/** The benchmarkIndex of one Lighthouse result: its CPU estimate of the machine, higher is faster. */
+export function benchmarkOf(lhr: { environment?: { benchmarkIndex?: number } }): number | null {
+  const b = lhr.environment?.benchmarkIndex;
+  return typeof b === "number" && Number.isFinite(b) ? b : null;
+}
+
 /** Median scores of several runs of one page. */
 export function medianScores(runs: Scores[]): Scores {
   const pick = (c: Category) => median(runs.map((r) => r[c]).filter((v): v is number => v !== null));
@@ -140,7 +151,7 @@ async function runLighthouse(url: string, out: string): Promise<Record<string, u
 
 async function main(argv: string[]): Promise<number> {
   if (argv.includes("--help")) {
-    console.log("Usage: tsx scripts/lighthouse.ts [--dist dist] [--pages /,/pt/] [--runs 3] [--out lighthouse-report] [--performance 0.9] [--agentic 1]");
+    console.log("Usage: tsx scripts/lighthouse.ts [--dist dist] [--pages /,/pt/] [--warmup 1] [--runs 5] [--out lighthouse-report] [--performance 0.9] [--agentic 1]");
     return 0;
   }
   const opt = (name: string, fallback: string) => {
@@ -149,15 +160,19 @@ async function main(argv: string[]): Promise<number> {
   };
   const dist = resolve(opt("--dist", "dist"));
   const pages = opt("--pages", "/,/pt/").split(",").filter(Boolean);
-  const runs = Number(opt("--runs", "3"));
+  const warmup = Number(opt("--warmup", "1"));
+  const runs = Number(opt("--runs", "5"));
   const out = resolve(opt("--out", "lighthouse-report"));
   const gates = { performance: Number(opt("--performance", "0.9")), "agentic-browsing": Number(opt("--agentic", "1")) };
   if (!existsSync(join(dist, "index.html"))) {
     console.error(`lighthouse: ${dist}/index.html not found; run npm run build first`);
     return 2;
   }
-  if (!Number.isInteger(runs) || runs < 1 || Object.values(gates).some((g) => !(g >= 0 && g <= 1))) {
-    console.error("lighthouse: --runs must be a positive integer and the gates between 0 and 1");
+  if (
+    !Number.isInteger(runs) || runs < 1 || !Number.isInteger(warmup) || warmup < 0 ||
+    Object.values(gates).some((g) => !(g >= 0 && g <= 1))
+  ) {
+    console.error("lighthouse: --runs must be a positive integer, --warmup a non-negative integer and the gates between 0 and 1");
     return 2;
   }
   mkdirSync(out, { recursive: true });
@@ -165,33 +180,44 @@ async function main(argv: string[]): Promise<number> {
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const rows: string[] = [];
   const failures: string[] = [];
+  const pct = (v: number | null) => (v === null ? "n/a" : String(Math.round(v * 100)));
   try {
     // One page and one run at a time: parallel Chrome instances on one runner compete for the CPU and
     // would skew the performance score.
     for (const page of pages) {
+      const name = page.replace(/\W+/g, "-").replace(/^-|-$/g, "") || "home";
+      const warm: string[] = [];
+      for (let i = 1; i <= warmup; i++) {
+        const lhr = await runLighthouse(`${base}${page}`, join(out, `${name}-warmup-${i}.json`));
+        const s = scoresOf(lhr as Parameters<typeof scoresOf>[0]);
+        warm.push(pct(s.performance));
+        console.error(`lighthouse: ${page} warm-up ${i} (discarded): ${JSON.stringify({ ...s, benchmarkIndex: benchmarkOf(lhr) })}`);
+      }
       const results: Scores[] = [];
+      const benchmarks: (number | null)[] = [];
       let agentic: string[] = [];
       for (let i = 1; i <= runs; i++) {
-        const lhr = await runLighthouse(`${base}${page}`, join(out, `${page.replace(/\W+/g, "-").replace(/^-|-$/g, "") || "home"}-${i}.json`));
+        const lhr = await runLighthouse(`${base}${page}`, join(out, `${name}-${i}.json`));
         results.push(scoresOf(lhr as Parameters<typeof scoresOf>[0]));
+        benchmarks.push(benchmarkOf(lhr));
         agentic = failingAgenticAudits(lhr as Parameters<typeof failingAgenticAudits>[0]);
-        console.error(`lighthouse: ${page} run ${i}: ${JSON.stringify(results.at(-1))}`);
+        console.error(`lighthouse: ${page} run ${i}: ${JSON.stringify({ ...results.at(-1), benchmarkIndex: benchmarks.at(-1) })}`);
       }
       const m = medianScores(results);
-      const pct = (v: number | null) => (v === null ? "n/a" : String(Math.round(v * 100)));
-      rows.push(`| ${page} | ${pct(m.performance)} | ${pct(m["agentic-browsing"])} | ${results.map((r) => pct(r.performance)).join(", ")} | ${agentic.join(", ") || "none"} |`);
+      const bench = benchmarks.map((b) => (b === null ? "n/a" : String(Math.round(b)))).join(", ");
+      rows.push(`| ${page} | ${pct(m.performance)} | ${pct(m["agentic-browsing"])} | ${results.map((r) => pct(r.performance)).join(", ")} | ${warm.join(", ") || "none"} | ${bench} | ${agentic.join(", ") || "none"} |`);
       failures.push(...gateFailures(page, m, gates));
     }
   } finally {
     server.close();
   }
   const summary = [
-    `### Lighthouse 13.5.0, mobile, median of ${runs} run(s)`,
+    `### Lighthouse 13.5.0, mobile, median of ${runs} run(s) after ${warmup} discarded warm-up run(s) per page`,
     "",
-    `Gates: performance >= ${gates.performance * 100}, agentic-browsing >= ${gates["agentic-browsing"] * 100}.`,
+    `Gates, on the median: performance >= ${gates.performance * 100}, agentic-browsing >= ${gates["agentic-browsing"] * 100}.`,
     "",
-    "| Page | Performance | Agentic browsing | Performance per run | Agentic audits not passing |",
-    "|------|-------------|------------------|---------------------|----------------------------|",
+    "| Page | Performance | Agentic browsing | Performance per run | Warm-up (discarded) | benchmarkIndex per run | Agentic audits not passing |",
+    "|------|-------------|------------------|---------------------|---------------------|------------------------|----------------------------|",
     ...rows,
     "",
     ...(failures.length ? failures.map((f) => `- ${f}`) : ["All gates pass."]),

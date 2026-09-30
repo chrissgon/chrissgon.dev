@@ -13,6 +13,7 @@ import {
   tailwindClasses,
 } from "../scripts/check-dist.ts";
 import {
+  benchmarkOf,
   failingAgenticAudits,
   fileFor,
   gateFailures,
@@ -180,6 +181,19 @@ describe("lighthouse gate (ADR-0009)", () => {
       performance: 0.92,
       "agentic-browsing": 1,
     });
+  });
+
+  it("reads the benchmarkIndex of a run, null when missing", () => {
+    expect(benchmarkOf({ environment: { benchmarkIndex: 1834.5 } })).toBe(1834.5);
+    expect(benchmarkOf({ environment: {} })).toBeNull();
+    expect(benchmarkOf({})).toBeNull();
+  });
+
+  it("keeps one or two slow runs out of the median of 5 without moving the gate", () => {
+    const runs = [0.55, 0.77, 0.99, 0.99, 0.99].map((p) => scoresOf(lhr(p, 1)));
+    expect(gateFailures("/", medianScores(runs), gates)).toEqual([]);
+    const slow = [0.55, 0.77, 0.89, 0.99, 0.99].map((p) => scoresOf(lhr(p, 1)));
+    expect(gateFailures("/", medianScores(slow), gates)).toEqual(["lighthouse: / performance 89 is under 90"]);
   });
 
   it("passes at the gates and fails under them or without a category", () => {
