@@ -283,7 +283,7 @@ describe("portrait data in the repository", () => {
     expect(poster.levels).toBe(16);
     expect(poster.data).toMatch(/^[0-9a-f]+$/);
     expect(poster.data.length).toBe(poster.cols * poster.rows);
-    expect([poster.cols, poster.rows]).toEqual([110, 131]);
+    expect([poster.cols, poster.rows]).toEqual([100, 119]);
     expect(statSync("src/assets/portrait/portrait.json").size).toBeLessThanOrEqual(30 * 1024);
   });
 

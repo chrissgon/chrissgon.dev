@@ -95,9 +95,11 @@ const TAB_OFF = "pui-outline pui-surface";
             ))}
           </div>
           <div class="field install-field">
-            {installs.map((x, i) => (
-              <code role="tabpanel" id={`install-${x.id}`} aria-labelledby={`install-tab-${x.id}`} hidden={i > 0}>{x.cmd}</code>
-            ))}
+            <div class="install-cmds">
+              {installs.map((x, i) => (
+                <code role="tabpanel" id={`install-${x.id}`} aria-labelledby={`install-tab-${x.id}`} hidden={i > 0}>{x.cmd}</code>
+              ))}
+            </div>
             <button type="button" class="pui-btn pui-outline pui-surface" data-copy="[role=tabpanel]:not([hidden])" data-copied={t(lang, "copied")} data-fallback={t(lang, "copyFallback")} hidden>{t(lang, "copy")}</button>
           </div>
           <span class="status" role="status" data-copy-status></span>
@@ -252,7 +254,7 @@ const TAB_OFF = "pui-outline pui-surface";
   .hero {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    min-height: 756px;
+    min-height: 743px;
   }
   .hero-text {
     position: relative;
@@ -312,19 +314,39 @@ const TAB_OFF = "pui-outline pui-surface";
   .install [role="tab"].pui-outline {
     color: var(--pui-text);
   }
+  /* The whole command always shows: when the command and Copy do not fit on one line (the two-column hero near
+     768 px, phones under about 390 px), Copy wraps below it, at the right, instead of the command scrolling
+     inside the box. The four commands share one grid cell, the hidden ones kept in the layout but invisible, so
+     the box is as wide as the longest command and does not change height when the tab changes. It never shrinks
+     below the command; only a box narrower than the command itself (none from 320 px up) would scroll. */
   .install-field {
+    flex-wrap: wrap;
+    row-gap: 8px;
     padding: 12px 12px 12px 18px;
     background: var(--pui-bg-muted);
   }
-  .install-field code {
+  .install-cmds {
+    display: grid;
+    flex: 1 0 auto;
+    max-width: 100%;
+  }
+  .install-cmds > code {
+    grid-area: 1 / 1;
     font-size: 13px;
+  }
+  .install-cmds > code[hidden] {
+    display: block;
+    visibility: hidden;
+  }
+  .install-field .pui-btn {
+    margin-left: auto;
   }
   .install .status:empty {
     display: none;
   }
-  /* The portrait sits on the cell's bottom line and runs to the frame's edge. The hero's minimum height, 756 px
-     (27 grid cells), holds the whole 734 px portrait and puts the top of its slot near a grid line, so the
-     snapped dots end on the bottom line. */
+  /* The portrait sits on the cell's bottom line and runs to the frame's edge. The hero's minimum height, 743 px,
+     holds the whole 666 px portrait and puts the top of its slot on a grid line (page y 140, the hero starting at
+     64), so the snapped dots end on the bottom line. */
   .hero-portrait {
     position: relative;
     overflow: clip;
@@ -660,9 +682,9 @@ const TAB_OFF = "pui-outline pui-surface";
     .install {
       margin-top: 24px;
     }
-    /* One column: the 734 px portrait, keyboard included, in a 728 px box that clips the empty top. */
+    /* One column: the whole 666 px portrait, keyboard included, in a 672 px box (24 grid cells). */
     .hero-portrait {
-      height: 728px;
+      height: 672px;
     }
     .stat {
       padding: 24px var(--gutter);
