@@ -12,9 +12,15 @@
 // clientWidth (an inline one: its nearest block). Code wraps instead (src/lib/code.ts, src/styles/site.css).
 // Scrollbars are drawn (Chromium hides them when headless), so a 100vw box under a 15 px scrollbar fails
 // here as it does on a desktop with classic scrollbars.
-// States: /, /projects/, /writing/, /lab/ and their /pt/ pages, each as loaded and with every "view as
-// agent" switch on; /lab/ and /pt/lab/ with each experiment opened (/lab/#<id>), and #view-as-agent opened
-// with its switch on. Widths: 320 360 375 390 414 600 768 820 1024 1100 1186 1280 1366 1440 1920.
+// States: /, /projects/, /writing/, /lab/ and their /pt/ pages, each as loaded and with the header's "view as
+// agent" switch on ("agent"); /lab/ and /pt/lab/ with each experiment opened (/lab/#<id>), as loaded and with the
+// header's switch on, and #view-as-agent opened with only the experiment's own switch on ("demo");
+// /projects/ and /pt/projects/ through the filters and back ("filters": a chip pressed, the switch on shows every
+// project in the reading, the switch off shows the same filtered cards and pressed chip, "All" shows them all).
+// Widths: 320 360 375 390 414 600 768 820 1024 1100 1186 1280 1366 1440 1920.
+// The switches are turned on the way a user does (Playwright's check(), which fails when the switch is covered
+// or off screen), and every state checks the header: its symbol and domain, navigation links, switch and EN / PT
+// control never overlap and stay inside the viewport.
 // A failing state lists the elements that stick out (their right edge, in px past the viewport), outermost
 // first, and the code that scrolls sideways (its overflow in px).
 // Each state also checks the lines of every grid of bordered cells (.cells, src/styles/site.css): every cell's
@@ -27,6 +33,10 @@
 // (cell tags, corner markers, site header and footer, the switch): any other element that draws text fails, and
 // so does a heading of the scope (outside the hidden human forms) drawn taller than 1 px or missing from the
 // accessibility tree (hidden the .sr-only way, never removed, so aria-labelledby still names its section).
+// Scopes are told apart as the CSS does (src/styles/site.css): a scope is on when one of its own switches (whose
+// nearest scope it is) is checked, and governs its own regions. Every state checks that exactly the expected
+// scopes are on (none as loaded, the page's with "agent", the experiment's alone with "demo") and that no scope
+// that is off shows any of its own readings, so neither switch swaps the other's scope.
 // One PASS or FAIL line per state on stdout, then a width x page summary; exit 1 on any failure.
 // States are independent and run in parallel (--jobs); each uses its own browser context.
 
@@ -34,7 +44,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 
 const argv = process.argv.slice(2);
 if (argv.includes("--help")) {
@@ -82,7 +92,8 @@ async function serve(root: string): Promise<{ server: Server; base: string }> {
   return { server, base: `http://127.0.0.1:${addr.port}` };
 }
 
-interface State { page: string; path: string; hash: string; agent: boolean }
+// agent: which switch is turned on: none, the header's (the page's scope) or the lab experiment's (its own scope).
+interface State { page: string; path: string; hash: string; agent: "" | "page" | "demo"; filters?: boolean }
 const PAGES = ["/", "/projects/", "/writing/", "/lab/"];
 const LAB_IDS = await (async () => {
   const html = await readFile(join(DIST, "lab", "index.html"), "utf8");
@@ -92,10 +103,13 @@ const states: State[] = [];
 for (const prefix of ["", "/pt"]) {
   for (const p of PAGES) {
     const path = prefix + p;
-    states.push({ page: path, path, hash: "", agent: false }, { page: `${path} agent`, path, hash: "", agent: true });
+    states.push({ page: path, path, hash: "", agent: "" }, { page: `${path} agent`, path, hash: "", agent: "page" });
+    if (p === "/projects/") states.push({ page: `${path} filters`, path, hash: "", agent: "", filters: true });
     if (p === "/lab/") {
-      for (const id of LAB_IDS) states.push({ page: `${path}#${id}`, path, hash: `#${id}`, agent: false });
-      if (LAB_IDS.includes("view-as-agent")) states.push({ page: `${path}#view-as-agent agent`, path, hash: "#view-as-agent", agent: true });
+      for (const id of LAB_IDS) {
+        states.push({ page: `${path}#${id}`, path, hash: `#${id}`, agent: "" }, { page: `${path}#${id} agent`, path, hash: `#${id}`, agent: "page" });
+      }
+      if (LAB_IDS.includes("view-as-agent")) states.push({ page: `${path}#view-as-agent demo`, path, hash: "#view-as-agent", agent: "demo" });
     }
   }
 }
@@ -191,21 +205,32 @@ const CELL_LINES = `(() => {
 // Runs in the page, as plain JavaScript. With "view as agent" on, a scope shows only its reading (.agent-text)
 // and the frame: lists every element in a switched-on scope that still draws text (a text box wider and taller
 // than 1 px) outside the reading, the cell tags, corner markers, the site header and footer and the switch, and
-// every heading of the scope (outside the hidden human forms) still drawn taller than 1 px. Returns those
-// headings too, for the accessibility-tree check that follows.
+// every heading of the scope (outside the hidden human forms and closed regions) still drawn taller than 1 px.
+// Returns those headings too, for the accessibility-tree check that follows.
 const AGENT_VIEW = `(() => {
   const CHROME = ".agent-text, .tag, .cm, .switch-label, .frame > header, .frame > footer, .skip";
-  const scopes = [...document.querySelectorAll("[data-agent-scope]")].filter((s) => s.querySelector(".agent-toggle:checked"));
+  const SCOPE = "[data-agent-scope]";
+  // A scope's own elements are those whose nearest scope it is; a nested scope checks its own.
+  const mine = (scope, el) => el.closest(SCOPE) === scope;
+  const all = [...document.querySelectorAll(SCOPE)];
+  const scopes = all.filter((s) => [...s.querySelectorAll(".agent-toggle")].some((t) => t.checked && mine(s, t)));
   const out = [];
   const headings = [];
   const name = (el) => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\\s+/).join(".") : "");
+  // A scope that is off shows none of its readings, whatever the other scope's switch says.
+  for (const scope of all.filter((s) => !scopes.includes(s))) {
+    for (const r of scope.querySelectorAll(".agent-text")) {
+      if (mine(scope, r) && getComputedStyle(r).display !== "none") out.push(name(r) + " shows its reading while its scope's switch is off");
+    }
+  }
   const seen = new Set();
   for (const scope of scopes) {
+    if (![...scope.querySelectorAll(".agent-text")].some((r) => mine(scope, r) && r.getClientRects().length)) out.push(name(scope) + " is on but shows no reading");
     const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
       const text = n.data.replace(/\\s+/g, " ").trim();
       const el = n.parentElement;
-      if (!text || !el || el.closest(CHROME) || seen.has(el)) continue;
+      if (!text || !el || !mine(scope, el) || el.closest(CHROME) || seen.has(el)) continue;
       if (getComputedStyle(el).visibility === "hidden") continue;
       const range = document.createRange();
       range.selectNodeContents(n);
@@ -221,14 +246,92 @@ const AGENT_VIEW = `(() => {
       out.push(name(el) + " shows \\"" + text.slice(0, 40) + "\\"");
     }
     for (const h of scope.querySelectorAll("h1, h2, h3, h4, h5, h6")) {
-      if (h.closest(".human, " + CHROME)) continue;
+      if (!mine(scope, h) || h.closest(".human, " + CHROME)) continue;
+      // A region closed whatever the switch says (a lab experiment not opened) is not checked.
+      let closed = false;
+      for (let a = h; a && a !== scope; a = a.parentElement) if (getComputedStyle(a).display === "none") { closed = true; break; }
+      if (closed) continue;
       const tall = h.getBoundingClientRect().height;
       if (tall > 1) out.push(name(h) + " is drawn " + Math.round(tall) + " px tall");
       headings.push({ level: Number(h.tagName[1]), name: h.textContent.replace(/\\s+/g, " ").trim(), sel: name(h) });
     }
   }
-  return { scopes: scopes.length, out, headings };
+  const nested = scopes.filter((s) => s.parentElement && s.parentElement.closest(SCOPE)).length;
+  return { top: scopes.length - nested, nested, out, headings };
 })()`;
+
+// Runs in the page, as plain JavaScript. The header's pieces (the symbol, the domain when drawn, each navigation
+// link as far as its row shows it, the switch, EN / PT) must not overlap one another or leave the viewport.
+const HEADER = `(() => {
+  const header = document.querySelector(".frame > header");
+  if (!header) return ["no site header"];
+  const vw = document.documentElement.clientWidth;
+  const drawn = (r) => r.width > 1 && r.height > 1;
+  const pieces = [];
+  const add = (label, group, el) => {
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (drawn(r)) pieces.push({ label, group, r: { left: r.left, right: r.right, top: r.top, bottom: r.bottom } });
+  };
+  add("symbol", "brand", header.querySelector(".brand-mark"));
+  add("domain", "brand", header.querySelector(".brand-text"));
+  add("switch", "switch", header.querySelector(".switch-label"));
+  add("EN / PT", "lang", header.querySelector(".lang"));
+  const links = header.querySelector(".nav-links");
+  if (links) {
+    const box = links.getBoundingClientRect();
+    for (const a of links.querySelectorAll("a")) {
+      const r = a.getBoundingClientRect();
+      const c = { left: Math.max(r.left, box.left), right: Math.min(r.right, box.right), top: Math.max(r.top, box.top), bottom: Math.min(r.bottom, box.bottom) };
+      if (c.right - c.left > 1 && c.bottom - c.top > 1) pieces.push({ label: "link " + a.textContent.trim(), group: "links", r: c });
+    }
+  }
+  const out = [];
+  if (!pieces.some((p) => p.group === "switch")) out.push("the header has no view-as-agent switch");
+  for (const p of pieces) {
+    if (p.r.left < -0.5 || p.r.right > vw + 0.5) out.push(p.label + " leaves the viewport");
+  }
+  for (let i = 0; i < pieces.length; i++) {
+    for (let j = i + 1; j < pieces.length; j++) {
+      const a = pieces[i], b = pieces[j];
+      if (a.group === b.group) continue;
+      const w = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+      const h = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+      if (w > 0.5 && h > 0.5) out.push(a.label + " overlaps " + b.label + " by " + Math.round(w) + " px");
+    }
+  }
+  return out;
+})()`;
+
+// /projects/ "filters": press a chip that narrows the list, turn the header's switch on (the reading lists every
+// project, the cards are gone), turn it off (the same cards and the pressed chip are back), then press "All".
+async function filtersFlow(page: Page): Promise<string[]> {
+  const out: string[] = [];
+  const shown = () => page.evaluate(() => [...document.querySelectorAll(".card-slot")].filter((e) => e.getClientRects().length).length);
+  const total = await page.locator(".card-slot").count();
+  const chips = page.locator("[data-filters] [data-group]");
+  let chip = -1;
+  let narrowed = total;
+  for (let i = 0; i < (await chips.count()) && chip < 0; i++) {
+    await chips.nth(i).click();
+    const n = await shown();
+    if (n > 0 && n < total) { chip = i; narrowed = n; } else await chips.nth(i).click();
+  }
+  if (chip < 0) return ["filters: no chip narrows the list"];
+  await page.locator(".frame > header .agent-toggle").check();
+  const reading = page.locator(".agent-text").first();
+  if (!(await reading.isVisible())) out.push("filters: the reading is not shown with the switch on");
+  const items = (await reading.innerText()).split("\n").filter((l) => l.startsWith("- ")).length;
+  if (items !== total) out.push(`filters: the reading lists ${items} projects, not all ${total}`);
+  if ((await shown()) !== 0) out.push("filters: project cards still show with the switch on");
+  await page.locator(".frame > header .agent-toggle").uncheck();
+  if ((await shown()) !== narrowed) out.push(`filters: ${await shown()} cards after switching back, not the ${narrowed} filtered`);
+  if ((await chips.nth(chip).getAttribute("aria-pressed")) !== "true") out.push("filters: the pressed chip is not pressed after switching back");
+  if (await reading.isVisible()) out.push("filters: the reading still shows with the switch off");
+  await page.locator("[data-filters] [data-all]").first().click();
+  if ((await shown()) !== total) out.push(`filters: "All" shows ${await shown()} of ${total} cards`);
+  return out;
+}
 
 interface Result { page: string; width: number; ok: boolean; info: string }
 const results: Result[] = [];
@@ -244,14 +347,18 @@ async function sweep(browser: Browser, base: string, s: State, width: number) {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(String(e)));
     await page.goto(base + s.path + s.hash, { waitUntil: "load" });
-    if (s.agent) {
-      await page.evaluate(() => {
-        for (const c of document.querySelectorAll<HTMLInputElement>(".agent-toggle")) {
-          c.checked = true;
-          c.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-      });
-    }
+    const flowOut: string[] = [];
+    // Turned on as a user does: check() clicks the switch and fails when something covers it.
+    const toggle = async (sel: string) => {
+      try {
+        await page.locator(sel).check({ timeout: 5000 });
+      } catch (e) {
+        flowOut.push(`cannot turn on ${sel}: ${String(e).split("\n")[0]}`);
+      }
+    };
+    if (s.agent === "page") await toggle(".frame > header .agent-toggle");
+    if (s.agent === "demo") await toggle("[data-agent-scope] [data-agent-scope] .agent-toggle");
+    if (s.filters) flowOut.push(...(await filtersFlow(page)));
     // Reveal-on-scroll and the portrait size themselves after load; let them settle.
     await page.waitForTimeout(300);
     const m = await page.evaluate(() => {
@@ -306,11 +413,13 @@ async function sweep(browser: Browser, base: string, s: State, width: number) {
     // View as agent: only the reading and the frame show, and the hidden headings stay in the accessibility tree
     // (Playwright's role query leaves out what assistive technology does not get: display none, visibility
     // hidden, aria-hidden).
-    const agentOut: string[] = [];
+    const agentOut: string[] = [...flowOut, ...((await page.evaluate(HEADER)) as string[]).map((m) => `header: ${m}`)];
+    const av = (await page.evaluate(AGENT_VIEW)) as { top: number; nested: number; out: string[]; headings: Array<{ level: number; name: string; sel: string }> };
+    agentOut.push(...av.out);
+    const want = { "": [0, 0], page: [1, 0], demo: [0, 1] }[s.agent];
+    if (av.top !== want[0] || av.nested !== want[1]) agentOut.push(`scopes on: ${av.top} page, ${av.nested} nested; expected ${want[0]} and ${want[1]}`);
     if (s.agent) {
-      const av = (await page.evaluate(AGENT_VIEW)) as { scopes: number; out: string[]; headings: Array<{ level: number; name: string; sel: string }> };
-      if (av.scopes) agentStates.add(`${s.page} @ ${width}`);
-      agentOut.push(...av.out);
+      if (av.top + av.nested) agentStates.add(`${s.page} @ ${width}`);
       for (const h of av.headings) {
         const re = new RegExp(`^${h.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
         if ((await page.getByRole("heading", { level: h.level, name: re }).count()) === 0) agentOut.push(`${h.sel} is not in the accessibility tree`);

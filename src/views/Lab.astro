@@ -3,6 +3,10 @@
 // pui-card with its dot visual, mono name, date, description and source; opening one (/lab#<slug>) splits a
 // cell below into the running experiment and its code. Without JavaScript the same links open the experiment
 // through :target; with it, Esc and × close it and focus returns to the card (FLOW-7).
+// "view as agent" (the header's switch): the row of cards becomes the lab part of llms.txt and an opened
+// experiment shows its own line of it; the count, the cards, the running experiment and its code are human. The
+// view-as-agent experiment is a scope of its own inside the page's (src/styles/site.css): its switch swaps only
+// its demo, and the header's switch never swaps the demo.
 import AgentSwitch from "../components/AgentSwitch.astro";
 import AgentText from "../components/AgentText.astro";
 import Cell from "../components/Cell.astro";
@@ -23,7 +27,10 @@ interface Props {
 }
 const { lang } = Astro.props;
 const site = siteUrl(Astro.site);
-const about = llmsParts(lang, { site, npm: readNpmCount(), workbench: readWorkbenchCount() }).about;
+const agent = llmsParts(lang, { site, npm: readNpmCount(), workbench: readWorkbenchCount() });
+const about = agent.about;
+// An opened experiment's reading: its own line of the lab part of llms.txt.
+const labLine = (id: string) => agent.lab.split("\n").find((l) => l.startsWith(`- ${id}: `)) ?? "";
 const npmPackage = products.find((p) => p.npm)?.npm ?? "@chrissgon/perfectui";
 // The component each experiment is built from: the cell's tag (design artboard A, Lab).
 const TAGS: Record<string, string> = {
@@ -59,30 +66,33 @@ const CODE: Record<string, string> = {
 <Base lang={lang} path="/lab" title={`${t(lang, "navLab")} · ${profile.name}`} description={t(lang, "homeDescription")}>
   <Cell class="page-title" tag="h1">
     <h1>{t(lang, "navLab")}</h1>
-    <span class="count">{lab.length}</span>
+    <span class="count human">{lab.length}</span>
   </Cell>
 
-  <Cell class="cells xp-row" aria-label={t(lang, "navLab")}>
-    {lab.map((x) => (
-      <div class="xp">
-        <span class="tag" aria-hidden="true">{TAGS[x.id]}</span>
-        <article class="xp-card" data-card={x.id}>
-          <a class="open-btn" href={`#${x.id}`} aria-controls={x.id} aria-expanded="false" data-open={x.id}>
-            <span class="xp-visual"><LabVisual id={x.id} height={160} /></span>
-            <span class="xp-head">
-              <span class="xp-name">{x.id}</span>
-              <time class="meta" datetime={x.date}>{x.date}</time>
-            </span>
-            <span class="xp-desc">{x.description[lang]}</span>
-          </a>
-          {x.source && (
-            <div class="xp-actions">
-              <a class="pui-btn pui-outline pui-surface mono" href={x.source}>{t(lang, "source")}</a>
-            </div>
-          )}
-        </article>
-      </div>
-    ))}
+  <Cell class="xp-list" aria-label={t(lang, "navLab")}>
+    <div class="human cells xp-row">
+      {lab.map((x) => (
+        <div class="xp">
+          <span class="tag" aria-hidden="true">{TAGS[x.id]}</span>
+          <article class="xp-card" data-card={x.id}>
+            <a class="open-btn" href={`#${x.id}`} aria-controls={x.id} aria-expanded="false" data-open={x.id}>
+              <span class="xp-visual"><LabVisual id={x.id} height={160} /></span>
+              <span class="xp-head">
+                <span class="xp-name">{x.id}</span>
+                <time class="meta" datetime={x.date}>{x.date}</time>
+              </span>
+              <span class="xp-desc">{x.description[lang]}</span>
+            </a>
+            {x.source && (
+              <div class="xp-actions">
+                <a class="pui-btn pui-outline pui-surface mono" href={x.source}>{t(lang, "source")}</a>
+              </div>
+            )}
+          </article>
+        </div>
+      ))}
+    </div>
+    <AgentText text={agent.lab} class="pad" />
   </Cell>
 
   {lab.map((x) => (
@@ -92,16 +102,17 @@ const CODE: Record<string, string> = {
         <span class="tag" aria-hidden="true">{x.id} · open</span>
         <div class="head-row">
           <h2 id={`${x.id}-title`} class="xp-title mono">{x.id}</h2>
-          <a class="pui-btn pui-outline pui-surface" href="#" aria-label={t(lang, "close")} data-close>×</a>
+          <a class="pui-btn pui-outline pui-surface human" href="#" aria-label={t(lang, "close")} data-close>×</a>
         </div>
-        <p class="xp-lead">{x.description[lang]}</p>
+        <p class="xp-lead human">{x.description[lang]}</p>
+        <AgentText text={labLine(x.id)} />
         {x.id === "dot-portrait" && (
-          <div class="xp-portrait">
+          <div class="xp-portrait human">
             <Portrait alt={t(lang, "portraitAlt")} />
           </div>
         )}
         {x.id === "view-as-agent" && (
-          <div class="stack" data-agent-scope>
+          <div class="stack demo human" data-agent-scope>
             <AgentSwitch lang={lang} id="lab-view-as-agent" />
             <div class="xp-box human">
               <h3 class="xp-h3">{t(lang, "about")}</h3>
@@ -112,11 +123,11 @@ const CODE: Record<string, string> = {
             </div>
           </div>
         )}
-        {x.id === "mcp-live" && <McpDemo lang={lang} variant="lab" />}
-        {x.id === "perfectui-live" && <Showcase lang={lang} labelledby={`${x.id}-title`} prefix="lab" stacked />}
-        {x.id === "workbench-evals" && <EvalRuns lang={lang} />}
+        {x.id === "mcp-live" && <div class="human"><McpDemo lang={lang} variant="lab" /></div>}
+        {x.id === "perfectui-live" && <div class="human"><Showcase lang={lang} labelledby={`${x.id}-title`} prefix="lab" stacked /></div>}
+        {x.id === "workbench-evals" && <div class="human"><EvalRuns lang={lang} /></div>}
       </div>
-      <div class="xp-code">
+      <div class="xp-code human">
         <span class="tag" aria-hidden="true">code</span>
         <pre class="code" data-code={x.id}><code><CodeLines text={CODE[x.id] ?? ""} /></code></pre>
         {x.source && (
@@ -263,10 +274,11 @@ const CODE: Record<string, string> = {
   .xp-actions .pui-btn {
     font-size: 12px;
   }
+  /* The code column draws the line between the two and holds the panel's height, so when it is hidden (view as
+     agent) the running side takes the whole row, as tall as its reading, with no line left over. */
   .xp-open {
     display: none;
-    grid-template-columns: minmax(0, 1fr) 460px;
-    min-height: 440px;
+    grid-template-columns: minmax(0, 1fr) auto;
     outline: none;
   }
   :global(html:not(.js)) .xp-open:target,
@@ -289,7 +301,6 @@ const CODE: Record<string, string> = {
     gap: 20px;
     min-width: 0;
     padding: 48px var(--gutter) 40px;
-    border-right: 1px solid var(--pui-border);
   }
   .xp-title {
     font-size: 24px;
@@ -305,7 +316,10 @@ const CODE: Record<string, string> = {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    width: 460px;
     min-width: 0;
+    min-height: 440px;
+    border-left: 1px solid var(--pui-border);
     padding: 48px 24px 24px;
     background: var(--pui-bg-muted);
   }
@@ -331,10 +345,11 @@ const CODE: Record<string, string> = {
   .agent-box {
     display: none;
   }
-  [data-agent-scope]:has(.agent-toggle:checked) .agent-box {
+  /* The experiment's own scope: only its own switch opens its reading box. */
+  .demo:has(.agent-toggle:checked) .agent-box {
     display: flex;
   }
-  [data-agent-scope] > :global(.switch-label) {
+  .demo > :global(.switch-label) {
     align-self: flex-start;
   }
   .xp-h3 {
@@ -347,9 +362,11 @@ const CODE: Record<string, string> = {
     .xp-open {
       grid-template-columns: minmax(0, 1fr);
     }
-    .xp-run {
-      border-right: none;
-      border-bottom: 1px solid var(--pui-border);
+    .xp-code {
+      width: auto;
+      min-height: 0;
+      border-left: none;
+      border-top: 1px solid var(--pui-border);
     }
   }
   @media (max-width: 767px) {

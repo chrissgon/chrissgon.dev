@@ -2,16 +2,22 @@
 // Writing (SCREEN-3), design direction A: the title cell with the post count, then a sheet of cells, one per
 // post, newest first, each tagged with its date; the post's own cover is the largest element of its card; the
 // whole card links to LinkedIn. The profile link closes the list. Empty: the title and the profile link only.
+// "view as agent" (the header's switch): the list's cell shows the writing part of llms.txt; the count, the posts
+// and the profile link are human.
+import AgentText from "../components/AgentText.astro";
 import Cell from "../components/Cell.astro";
 import PostCard from "../components/PostCard.astro";
 import Base from "../layouts/Base.astro";
-import { posts, profile, t, type Lang } from "../data/index.ts";
+import { posts, profile, readNpmCount, readWorkbenchCount, t, type Lang } from "../data/index.ts";
 import { formatDate } from "../lib/format.ts";
+import { llmsParts } from "../lib/llms.ts";
+import { siteUrl } from "../lib/site.ts";
 
 interface Props {
   lang: Lang;
 }
 const { lang } = Astro.props;
+const agent = llmsParts(lang, { site: siteUrl(Astro.site), npm: readNpmCount(), workbench: readWorkbenchCount() });
 const linkedin = profile.profiles.find((p) => p.network === "LinkedIn");
 // Four columns from 1024 px, three from 768 px, two below.
 const POST_SIZES = "(min-width: 1024px) 288px, (min-width: 768px) calc(33vw - 48px), calc(50vw - 32px)";
@@ -20,35 +26,37 @@ const POST_SIZES = "(min-width: 1024px) 288px, (min-width: 768px) calc(33vw - 48
 <Base lang={lang} path="/writing" title={`${t(lang, "navWriting")} · ${profile.name}`} description={t(lang, "homeDescription")}>
   <Cell class="page-title" tag="h1">
     <h1>{t(lang, "navWriting")}</h1>
-    <span class="count">{posts.length}</span>
+    <span class="count human">{posts.length}</span>
   </Cell>
 
   {posts.length === 0 ? (
-    <Cell class="pad"><p>{t(lang, "noPosts")}</p></Cell>
+    <Cell class="pad"><p class="human">{t(lang, "noPosts")}</p><AgentText text={agent.writing} /></Cell>
   ) : (
-    <section class="cells sheet" aria-labelledby="writing-list">
+    <section class="cell sheet-cell" aria-labelledby="writing-list">
       <h2 id="writing-list" class="sr-only">{t(lang, "navWriting")}</h2>
-      {posts.map((p, i) => (
-        <div class="post reveal" style={`--i: ${i % 4}`}>
-          <span class="tag" aria-hidden="true">{formatDate(p.date, lang)}</span>
-          <PostCard post={p} lang={lang} date={false} eager={i === 0} sizes={POST_SIZES} />
-        </div>
-      ))}
+      <div class="cells sheet human">
+        {posts.map((p, i) => (
+          <div class="post reveal" style={`--i: ${i % 4}`}>
+            <span class="tag" aria-hidden="true">{formatDate(p.date, lang)}</span>
+            <PostCard post={p} lang={lang} date={false} eager={i === 0} sizes={POST_SIZES} />
+          </div>
+        ))}
+      </div>
+      <AgentText text={agent.writing} class="pad" />
     </section>
   )}
 
   {linkedin && (
-    <Cell class="pad profile-link">
+    <Cell class="pad profile-link human">
       <a class="pui-btn pui-outline pui-surface mono" href={linkedin.url} rel="me">{linkedin.network} {linkedin.handle}</a>
     </Cell>
   )}
 </Base>
 
 <style>
-  /* The sheet draws the bottom line under its last row, so a row with empty slots stays closed (.cells). */
+  /* The sheet's cell draws the bottom line under the last row, so a row with empty slots stays closed (.cells). */
   .sheet {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    border-bottom: 1px solid var(--pui-border);
   }
   .post {
     position: relative;

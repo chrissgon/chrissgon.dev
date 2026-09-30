@@ -2,21 +2,26 @@
 // Projects (SCREEN-2), design direction A: the title cell with the result count, the filter bar as a visible
 // pui-group-row of pui-chip buttons with counts (type, status, stack; one chip per group; groups combine; the
 // state in the URL query), and the ten projects as pui-card cells, ready first. Without JavaScript every card
-// shows and the filter bar stays hidden.
+// shows and the filter bar stays hidden. "view as agent" (the header's switch): the results cell shows the
+// projects part of llms.txt, every project whatever the filters; the count and the filter bar are human UI.
+import AgentText from "../components/AgentText.astro";
 import Cell from "../components/Cell.astro";
 import ProjectCard from "../components/ProjectCard.astro";
 import Base from "../layouts/Base.astro";
 import { PROJECT_STATUSES, PROJECT_TYPES } from "../data/schema.ts";
-import { profile, projects, t, type Lang } from "../data/index.ts";
+import { profile, projects, readNpmCount, readWorkbenchCount, t, type Lang } from "../data/index.ts";
 import { chipCount, EMPTY, stackValues, type Group } from "../lib/filters.ts";
 import { statusLabel, typeLabel } from "../lib/format.ts";
 import { jsonLd } from "../lib/jsonld.ts";
+import { llmsParts } from "../lib/llms.ts";
 import { siteUrl } from "../lib/site.ts";
 
 interface Props {
   lang: Lang;
 }
 const { lang } = Astro.props;
+const site = siteUrl(Astro.site);
+const agent = llmsParts(lang, { site, npm: readNpmCount(), workbench: readWorkbenchCount() });
 const ordered = [...projects].sort((a, b) => PROJECT_STATUSES.indexOf(a.status) - PROJECT_STATUSES.indexOf(b.status));
 const stacks = stackValues(projects);
 const groups: { group: Group; label: string; chips: { value: string; label: string; mono?: boolean }[] }[] = [
@@ -29,13 +34,13 @@ const OFF = "pui-chip pui-outline pui-surface";
 const ON = "pui-chip pui-solid pui-inverse";
 ---
 
-<Base lang={lang} path="/projects" title={`${t(lang, "navProjects")} · ${profile.name}`} description={t(lang, "homeDescription")} jsonld={jsonLd(siteUrl(Astro.site))}>
+<Base lang={lang} path="/projects" title={`${t(lang, "navProjects")} · ${profile.name}`} description={t(lang, "homeDescription")} jsonld={jsonLd(site)}>
   <Cell class="page-title" tag="h1 + [role=status]">
     <h1>{t(lang, "navProjects")}</h1>
-    <span class="count" role="status" data-result-count>{projects.length}</span>
+    <span class="count human" role="status" data-result-count>{projects.length}</span>
   </Cell>
 
-  <Cell class="pad filters js-only" tag=".pui-chip[aria-pressed]" aria-label={`${t(lang, "byType")}, ${t(lang, "byStatus")}, ${t(lang, "byStack")}`} data-filters data-allowed={JSON.stringify(allowed)}>
+  <Cell class="pad filters js-only human" tag=".pui-chip[aria-pressed]" aria-label={`${t(lang, "byType")}, ${t(lang, "byStatus")}, ${t(lang, "byStack")}`} data-filters data-allowed={JSON.stringify(allowed)}>
     <div class="filter-grid">
       <span></span>
       <div class="chip-row">
@@ -58,19 +63,22 @@ const ON = "pui-chip pui-solid pui-inverse";
 
   <Cell class="pad results" tag={`.pui-card · .pui-badge × ${projects.length}`} countTag>
     <h2 class="sr-only">{t(lang, "projectsTitle")}</h2>
-    <div class="pui-card empty" data-empty hidden>
-      <div class="pui-card-content">
-        <span class="empty-text">{t(lang, "noProjectMatch")}</span>
-        <div><button type="button" class={OFF} aria-pressed="false" data-all>{t(lang, "filterAll")} <span class="chip-n">{projects.length}</span></button></div>
+    <div class="human">
+      <div class="pui-card empty" data-empty hidden>
+        <div class="pui-card-content">
+          <span class="empty-text">{t(lang, "noProjectMatch")}</span>
+          <div><button type="button" class={OFF} aria-pressed="false" data-all>{t(lang, "filterAll")} <span class="chip-n">{projects.length}</span></button></div>
+        </div>
+      </div>
+      <div class="grid3">
+        {ordered.map((p) => (
+          <div class="card-slot" data-types={p.types.join(" ")} data-status={p.status} data-stack={JSON.stringify(p.stack)} style={`view-transition-name: project-${p.id}`}>
+            <ProjectCard project={p} lang={lang} />
+          </div>
+        ))}
       </div>
     </div>
-    <div class="grid3">
-      {ordered.map((p) => (
-        <div class="card-slot" data-types={p.types.join(" ")} data-status={p.status} data-stack={JSON.stringify(p.stack)} style={`view-transition-name: project-${p.id}`}>
-          <ProjectCard project={p} lang={lang} />
-        </div>
-      ))}
-    </div>
+    <AgentText text={agent.projects} />
   </Cell>
 </Base>
 

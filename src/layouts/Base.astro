@@ -2,7 +2,8 @@
 // Base layout, design direction A "Estrutura à mostra" as refined in Claude Design (personal-brand
 // claude-design/home-full.webp, 2026-09-30): head, Perfect UI, canonical, hreflang, JSON-LD, and the page frame
 // (a 1312 px column with 1px borders over the dot grid) holding the header (the domain, the mono navigation, the
-// "view as agent" switch on the home page and the EN / PT segmented control), the page's cells and the footer.
+// "view as agent" switch and the EN / PT segmented control), the page's cells and the footer. The body is every
+// page's "view as agent" scope: with the switch on, each region shows its part of llms.txt (src/styles/site.css).
 // Dark only (2026-09-29).
 // Preloads: Inter 400 and 800 (the hero's text, the LCP) are on the first screen; Inter 600 and JetBrains Mono
 // load when a rule uses them (ADR-0006).
@@ -25,11 +26,9 @@ interface Props {
   title: string;
   description: string;
   jsonld?: ReturnType<typeof JsonLdBuilder>;
-  /** The home page: "view as agent" swaps every region of the body. */
-  agentScope?: boolean;
 }
 
-const { lang, path, title, description, jsonld, agentScope = false } = Astro.props;
+const { lang, path, title, description, jsonld } = Astro.props;
 const site = siteUrl(Astro.site);
 const href = (l: Lang, p: string) => `${site}${localePath(l, p)}`;
 const ogImage = `${site}${ogImagePath(lang)}`;
@@ -80,18 +79,18 @@ const nav = [
     <meta name="twitter:image:alt" content={ogImageAlt(lang)} />
     {jsonld && <script type="application/ld+json" set:html={serializeJsonLd(assertPublishable(jsonld))} />}
   </head>
-  <body data-agent-scope={agentScope ? "" : undefined}>
+  <body data-agent-scope>
     <a class="skip pui-btn pui-solid pui-inverse" href="#main">{t(lang, "skipToContent")}</a>
     <div class="frame">
       <Cell as="header" class="nav">
-        <a class:list={["brand", { "brand-tight": agentScope }]} href={localePath(lang, "/")}>
+        <a class="brand" href={localePath(lang, "/")}>
           <svg class="brand-mark" aria-hidden="true" focusable="false" width="23.5" height="21" viewBox="0 0 23.5 21"><g transform="translate(2.5 2.5)"><path d="M13 0H6A6 6 0 0 0 0 6V10A6 6 0 0 0 6 16H13" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="square" stroke-linejoin="round" /><path d="M10 5.5h11v5h-11Z" fill="#07B6F0" /></g></svg><span class="brand-text">{profile.domain}</span>
         </a>
         <nav class="nav-links">
           {nav.map((n) => <a href={n.href} aria-current={n.path === path ? "page" : undefined}>{t(lang, n.key)}</a>)}
         </nav>
         <div class="nav-end">
-          {agentScope && <AgentSwitch lang={lang} id="view-as-agent" compact />}
+          <AgentSwitch lang={lang} id="agent-view" compact />
           <LangSwitch lang={lang} path={path} />
         </div>
       </Cell>
