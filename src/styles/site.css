@@ -78,8 +78,11 @@ samp,
 
 /* ---------- frame, cells, corner markers, tags ---------- */
 
+/* The frame keeps 8 px from each side of the viewport at every width, so the corner markers, which cross its
+   border by 6 px (.cm.tl, .cm.tr), stay inside the page. Flush with a viewport narrower than 1328 px they
+   stuck out by 5 px on the right and the page scrolled sideways (scripts/check-layout.ts). */
 .frame {
-  max-width: var(--frame);
+  width: min(var(--frame), 100% - 16px);
   min-height: 100vh;
   margin: 0 auto;
   display: flex;
@@ -575,9 +578,6 @@ html.js .reveal.in {
 @media (max-width: 767px) {
   :root {
     --gutter: 12px;
-  }
-  .frame {
-    margin: 0 8px;
   }
   .pad {
     padding: 32px var(--gutter);
