@@ -130,25 +130,29 @@ const TAB_OFF = "pui-outline pui-surface";
 
   {perfectui && aiWorkbench && (
     <Cell class="products" tag=".pui-card · .pui-card-header · .pui-chip" aria-label={t(lang, "products")} reveal>
-      <div class="sec-head"><span class="index">{index(2, t(lang, "products"))}</span></div>
-      <div class="products-grid">
-        <div class="product">
-          <h2 id="perfectui" class="h2">{perfectui.name}</h2>
-          <p class="sec-lead human">{perfectui.summary[lang]}</p>
-          <div class="human"><Showcase lang={lang} labelledby="perfectui" ids={["button", "switch", "card"]} selected="card" panel /></div>
-          <AgentText text={`## ${t(lang, "products")}\n\n${productLine(perfectui.name)}`} />
+      <div class="cells products-grid">
+        <div class="product-col">
+          <div class="sec-head"><span class="index">{index(2, t(lang, "products"))}</span></div>
+          <div class="product">
+            <h2 id="perfectui" class="h2">{perfectui.name}</h2>
+            <p class="sec-lead human">{perfectui.summary[lang]}</p>
+            <div class="human"><Showcase lang={lang} labelledby="perfectui" ids={["button", "switch", "card"]} selected="card" panel /></div>
+            <AgentText text={`## ${t(lang, "products")}\n\n${productLine(perfectui.name)}`} />
+          </div>
         </div>
-        <div class="product side">
-          <h2 id="ai-workbench" class="h2">{aiWorkbench.name}</h2>
-          <p class="sec-lead human">{aiWorkbench.summary[lang]}</p>
-          {workbench && skillsLabel && (
-            <div class="wb-stat human">
-              <span class="num">{formatNumber(workbench.skills, lang)}</span>
-              <span class="stat-label">{skillsLabel}</span>
-            </div>
-          )}
-          <div class="human"><a class="pui-btn pui-outline pui-surface" href={aiWorkbench.url}>{aiWorkbench.name}</a></div>
-          <AgentText text={productLine(aiWorkbench.name)} />
+        <div class="product-col">
+          <div class="product side">
+            <h2 id="ai-workbench" class="h2">{aiWorkbench.name}</h2>
+            <p class="sec-lead human">{aiWorkbench.summary[lang]}</p>
+            {workbench && skillsLabel && (
+              <div class="wb-stat human">
+                <span class="num">{formatNumber(workbench.skills, lang)}</span>
+                <span class="stat-label">{skillsLabel}</span>
+              </div>
+            )}
+            <div class="human"><a class="pui-btn pui-outline pui-surface" href={aiWorkbench.url}>{aiWorkbench.name}</a></div>
+            <AgentText text={productLine(aiWorkbench.name)} />
+          </div>
         </div>
       </div>
     </Cell>
@@ -415,9 +419,23 @@ const TAB_OFF = "pui-outline pui-surface";
     line-height: 1.65;
     color: var(--pui-text-muted);
   }
+  /* The two products are the two cells of a .cells grid that fills the whole section, so the line between them
+     is the first column's right line and runs from the section's top line to its bottom line (owner,
+     2026-09-30: it used to start under the index and stop short of the bottom). Each column spans the grid's
+     two rows as a subgrid: the index takes the first row of the Perfect UI column and both products start on
+     the second, so the two titles stay level. One column below 1024 px: the first column's bottom line is the
+     separator. */
   .products-grid {
-    display: grid;
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-rows: auto 1fr;
+  }
+  .product-col {
+    display: grid;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+  }
+  .product-col > .product {
+    grid-row: 2;
   }
   .product {
     display: flex;
@@ -429,7 +447,6 @@ const TAB_OFF = "pui-outline pui-surface";
   .product.side {
     position: relative;
     padding-inline: 48px var(--gutter);
-    border-left: 1px solid var(--pui-border);
   }
   .product > .human:has(.showcase-panel) {
     margin-top: 8px;
@@ -583,12 +600,20 @@ const TAB_OFF = "pui-outline pui-surface";
     grid-column: 1 / -1;
   }
   .numbers-cell > :global(.agent-text),
-  .lab-cell > :global(.agent-text),
   .product > :global(.agent-text) {
     padding: 32px var(--gutter);
   }
   .product > :global(.agent-text) {
     padding: 0;
+  }
+  /* With the switch on the lab's index is hidden (site.css) and its row of cells is gone: the head keeps only its
+     top space, with no line under it, and the reading starts there, as the products' does. */
+  :global([data-agent-scope]:has(.agent-toggle:checked)) .lab-cell .sec-head {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+  .lab-cell > :global(.agent-text) {
+    padding: 4px var(--gutter) 56px;
   }
 
   /* The timeline's dots light up in sequence when the section enters (400 ms in all). */
@@ -621,12 +646,15 @@ const TAB_OFF = "pui-outline pui-surface";
     }
     .products-grid {
       grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: none;
+    }
+    .product-col {
+      display: block;
+      grid-row: auto;
     }
     .product.side {
       padding-inline: var(--gutter);
       padding-top: 40px;
-      border-left: none;
-      border-top: 1px solid var(--pui-border);
     }
     .proofs {
       width: 360px;
