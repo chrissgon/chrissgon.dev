@@ -93,6 +93,10 @@ export const Post = z
     date: isoDate,
     lang: z.array(z.enum(LANGS)).min(1).max(2),
     cover: z.string().regex(/^posts\/[a-z0-9-]+\.(png|jpg|webp)$/),
+    /** Where the 9:16 crop of the cover is anchored, so the post's subject stays in view (src/lib/covers.ts):
+     * an edge, the centre (the default), or "entropy", the image service's crop around the most detailed region,
+     * for a subject away from every edge and from the centre. */
+    coverFocus: z.enum(["left", "center", "right", "entropy"]).optional(),
     /** Canonical link to the post on LinkedIn (site-content.md section 5). */
     url: https.refine((u) => /^https:\/\/(www\.|pt\.)?linkedin\.com\//.test(u), { message: "url must be on linkedin.com" }),
     /** Comments and reactions from the post's public JSON-LD (interactionStatistic), and the day they were read. */

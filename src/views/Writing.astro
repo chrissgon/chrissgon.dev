@@ -13,6 +13,8 @@ interface Props {
 }
 const { lang } = Astro.props;
 const linkedin = profile.profiles.find((p) => p.network === "LinkedIn");
+// Four columns from 1024 px, three from 768 px, two below.
+const POST_SIZES = "(min-width: 1024px) 288px, (min-width: 768px) calc(33vw - 48px), calc(50vw - 32px)";
 ---
 
 <Base lang={lang} path="/writing" title={`${t(lang, "navWriting")} · ${profile.name}`} description={t(lang, "homeDescription")}>
@@ -29,7 +31,7 @@ const linkedin = profile.profiles.find((p) => p.network === "LinkedIn");
       {posts.map((p, i) => (
         <div class="post reveal" style={`--i: ${i % 4}`}>
           <span class="tag" aria-hidden="true">{formatDate(p.date, lang)}</span>
-          <PostCard post={p} lang={lang} date={false} eager={i === 0} />
+          <PostCard post={p} lang={lang} date={false} eager={i === 0} sizes={POST_SIZES} />
         </div>
       ))}
     </section>
@@ -61,31 +63,36 @@ const linkedin = profile.profiles.find((p) => p.network === "LinkedIn");
   .post > :global(.post-card) {
     flex: 1;
   }
-  .post :global(.cover) {
-    height: 322px;
-  }
   .profile-link {
     padding-block: 40px;
   }
+  /* The first child of .sheet is the hidden h2, so the last post of a row of n is child n·k + 1. */
   @media (max-width: 1023px) {
     .sheet {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .post:nth-child(4n + 1) {
       border-right: 1px solid var(--pui-border);
     }
-    .post:nth-child(2n + 1) {
+    .post:nth-child(3n + 1) {
       border-right: none;
     }
   }
   @media (max-width: 767px) {
     .sheet {
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .post,
-    .post:nth-child(4n + 1) {
-      border-right: none;
+    .post:nth-child(4n + 1),
+    .post:nth-child(3n + 1) {
+      border-right: 1px solid var(--pui-border);
       padding: 36px var(--gutter) 20px;
+    }
+    .post:nth-child(2n + 1) {
+      border-right: none;
+    }
+    .post :global(.title) {
+      font-size: 14px;
     }
   }
 </style>
