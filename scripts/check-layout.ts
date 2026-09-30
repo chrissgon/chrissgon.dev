@@ -14,7 +14,8 @@
 // here as it does on a desktop with classic scrollbars.
 // States: /, /projects/, /writing/, /lab/ and their /pt/ pages, each as loaded and with the header's "view as
 // agent" switch on ("agent"); /lab/ and /pt/lab/ with each experiment opened (/lab/#<id>), as loaded and with the
-// header's switch on, and #view-as-agent opened with only the experiment's own switch on ("demo");
+// header's switch on, #view-as-agent opened with only the experiment's own switch on ("demo"), and
+// #perfectui-live with a long line typed into its playground's editor ("typed");
 // /projects/ and /pt/projects/ through the filters and back ("filters": a chip pressed, the switch on shows every
 // project in the reading, the switch off shows the same filtered cards and pressed chip, "All" shows them all).
 // / and /pt/ also with the "Pick the next post" section redrawn in the page from a fresh round ("pick closed": the
@@ -100,7 +101,17 @@ async function serve(root: string): Promise<{ server: Server; base: string }> {
 }
 
 // agent: which switch is turned on: none, the header's (the page's scope) or the lab experiment's (its own scope).
-interface State { page: string; path: string; hash: string; agent: "" | "page" | "demo"; filters?: boolean; pick?: "closed" | "new" }
+// typed: the perfectui-live playground's editor holds a long line typed by the visitor (TYPED).
+interface State {
+  page: string;
+  path: string;
+  hash: string;
+  agent: "" | "page" | "demo";
+  filters?: boolean;
+  pick?: "closed" | "new";
+  typed?: boolean;
+}
+const TYPED = `<a class="pui-btn pui-solid pui-theme" href="https://chrissgon.dev/a-long-path/${"segment-".repeat(12)}end">${"x".repeat(160)}</a> <p>${"word ".repeat(40)}</p>`;
 const PAGES = ["/", "/projects/", "/writing/", "/lab/"];
 const LAB_IDS = await (async () => {
   const html = await readFile(join(DIST, "lab", "index.html"), "utf8");
@@ -122,6 +133,7 @@ for (const prefix of ["", "/pt"]) {
         states.push({ page: `${path}#${id}`, path, hash: `#${id}`, agent: "" }, { page: `${path}#${id} agent`, path, hash: `#${id}`, agent: "page" });
       }
       if (LAB_IDS.includes("view-as-agent")) states.push({ page: `${path}#view-as-agent demo`, path, hash: "#view-as-agent", agent: "demo" });
+      if (LAB_IDS.includes("perfectui-live")) states.push({ page: `${path}#perfectui-live typed`, path, hash: "#perfectui-live", agent: "", typed: true });
     }
   }
 }
@@ -407,6 +419,16 @@ async function sweep(browser: Browser, base: string, s: State, width: number) {
     if (s.agent === "page") await toggle(".frame > header .agent-toggle");
     if (s.agent === "demo") await toggle("[data-agent-scope] [data-agent-scope] .agent-toggle");
     if (s.filters) flowOut.push(...(await filtersFlow(page)));
+    if (s.typed) {
+      try {
+        const editor = page.locator("#perfectui-live [role=tabpanel]:not([hidden]) textarea");
+        await editor.fill(TYPED, { timeout: 5000 });
+        // The preview renders 200 ms after the last keystroke.
+        await page.waitForTimeout(400);
+      } catch (e) {
+        flowOut.push(`cannot type in the playground: ${String(e).split("\n")[0]}`);
+      }
+    }
     // Reveal-on-scroll and the portrait size themselves after load; let them settle.
     await page.waitForTimeout(300);
     const m = await page.evaluate(() => {

@@ -109,6 +109,13 @@ export const provisional = {
   pickLast: { en: "Last round you picked {topic}.", pt: "Na última rodada, vocês escolheram {topic}." },
   pickWrote: { en: "I wrote it", pt: "Escrevi o post" },
   pickWriting: { en: "I'm writing it now.", pt: "Estou escrevendo agora." },
+  // The perfectui-live playground (the owner's request of 2026-09-30, "deixe que a pessoa possa escrever o
+  // código pra testar a lib"): the editor's accessible name, its keyboard hint, the Reset button and the
+  // preview's title.
+  playgroundEdit: { en: "Edit the markup", pt: "Edite o markup" },
+  playgroundHint: { en: "Tab indents. Esc, then Tab, leaves the editor.", pt: "Tab indenta. Esc e depois Tab sai do editor." },
+  playgroundReset: { en: "Reset", pt: "Restaurar" },
+  playgroundPreview: { en: "Preview of the markup", pt: "Prévia do markup" },
 };
 
 export default { ...approved, ...provisional };

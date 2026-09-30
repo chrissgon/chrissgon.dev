@@ -148,6 +148,14 @@ if (pick) {
   near.observe(pick);
 }
 
+// The lab's perfectui-live playground (src/scripts/playground.ts): a separate chunk, imported when the lab page
+// opens the experiment and dispatches "playground" on its showcase. Its import site is here too, for the same
+// reason: the pages share no extra helper chunk for it.
+document.addEventListener("playground", (e) => {
+  const root = e.target;
+  if (root instanceof HTMLElement) void import("./playground.ts").then((m) => m.mountPlayground(root));
+});
+
 // The background dots step aside from the pointer, like the portrait's (src/lib/griddots/). Only with a mouse or
 // pen, without reduced motion or Save-Data, and loaded once the page is idle after load: a separate chunk, so it
 // is no part of the first render. Without it the CSS grid is the whole picture.

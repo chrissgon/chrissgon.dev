@@ -7,10 +7,12 @@ import { describe, expect, it } from "vitest";
 import {
   checkDist,
   firstRenderUrls,
+  fontsCorsProblems,
   hasSvgMetadata,
   llmsTxtProblems,
   manifestHeaderProblems,
   manifestProblems,
+  netlifyHeader,
   pageWeight,
   pngSize,
   resolveUrl,
@@ -150,6 +152,24 @@ describe("check-dist (ADR-0009)", () => {
     ]);
     // This repository's config passes.
     expect(manifestHeaderProblems(readFileSync(new URL("../netlify.toml", import.meta.url), "utf8"))).toEqual([]);
+  });
+
+  it("wants netlify.toml to let the lab's sandboxed preview load the fonts (Access-Control-Allow-Origin *)", () => {
+    const block = (value: string) => `[[headers]]\n  for = "/_astro/fonts/*"\n  [headers.values]\n    ${value}\n`;
+    expect(fontsCorsProblems(block('Access-Control-Allow-Origin = "*"'))).toEqual([]);
+    expect(fontsCorsProblems(block('Access-Control-Allow-Origin = "https://chrissgon.dev"'))).toEqual([
+      'netlify: /_astro/fonts/* is served with Access-Control-Allow-Origin "https://chrissgon.dev", not "*"',
+    ]);
+    expect(fontsCorsProblems(block('Cache-Control = "max-age=0"'))).toEqual([
+      'netlify: /_astro/fonts/* is served with Access-Control-Allow-Origin unset, not "*"',
+    ]);
+    // A block for another path does not count.
+    expect(fontsCorsProblems('[[headers]]\n  for = "/_astro/*"\n  [headers.values]\n    Access-Control-Allow-Origin = "*"\n')).toEqual([
+      'netlify: netlify.toml has no [[headers]] block for "/_astro/fonts/*"',
+    ]);
+    expect(netlifyHeader(block('Access-Control-Allow-Origin = "*"'), "/_astro/fonts/*", "access-control-allow-origin")).toBe("*");
+    // This repository's config passes.
+    expect(fontsCorsProblems(readFileSync(new URL("../netlify.toml", import.meta.url), "utf8"))).toEqual([]);
   });
 
   it("allows one canvas per page and fails on two, ignoring noscript", () => {

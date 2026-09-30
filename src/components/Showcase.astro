@@ -3,7 +3,11 @@
 // side and its markup on the other. Both come from the same string (src/lib/showcase.ts), so the code shown is
 // the component's own. Without JavaScript the selected tab shows. `panel`: the home page's form (Claude Design),
 // a pui-card whose header holds the tabs as chips, with the markup beside the live component.
-import { readNpmCount, readWorkbenchCount, type Lang } from "../data/index.ts";
+// `playground` (the lab's perfectui-live): the page loads src/scripts/playground.ts when the experiment opens,
+// and it turns each tab's markup into an editor (from the <template> below) and its live component into a
+// sandboxed preview of what the visitor types. Without JavaScript the template stays inert and the tabs read as
+// they do everywhere else.
+import { readNpmCount, readWorkbenchCount, t, type Lang } from "../data/index.ts";
 import CodeLines from "./CodeLines.astro";
 import { showcase, type ShowcaseId } from "../lib/showcase.ts";
 import { siteUrl } from "../lib/site.ts";
@@ -21,8 +25,10 @@ interface Props {
   /** The tab shown first (default: the first one). */
   selected?: ShowcaseId;
   panel?: boolean;
+  /** Each tab's markup becomes editable, with a live preview (the lab's perfectui-live). */
+  playground?: boolean;
 }
-const { lang, labelledby, prefix = "pui", stacked = false, ids, selected, panel = false } = Astro.props;
+const { lang, labelledby, prefix = "pui", stacked = false, ids, selected, panel = false, playground = false } = Astro.props;
 const all = showcase(lang, siteUrl(Astro.site), resolveStats(lang, { npm: readNpmCount(), workbench: readWorkbenchCount() }));
 const items = ids ? ids.flatMap((id) => all.filter((c) => c.id === id)) : all;
 const first = Math.max(0, items.findIndex((c) => c.id === selected));
@@ -60,7 +66,18 @@ const OFF = "pui-outline pui-surface";
   </div>
 ) : (
 
-<div class:list={["showcase", { stacked }]} data-tabs>
+<div class:list={["showcase", { stacked }]} data-tabs data-playground={playground ? "" : undefined} data-preview-title={playground ? t(lang, "playgroundPreview") : undefined}>
+  {playground && (
+    <template data-editor>
+      <div class="editor">
+        <textarea class="pui-input code editor-text" aria-label={t(lang, "playgroundEdit")} spellcheck="false" autocapitalize="off" autocomplete="off" wrap="soft"></textarea>
+        <div class="editor-bar">
+          <span class="editor-hint" data-editor-hint>{t(lang, "playgroundHint")}</span>
+          <button type="button" class="pui-btn pui-outline pui-surface mono" data-editor-reset>{t(lang, "playgroundReset")}</button>
+        </div>
+      </div>
+    </template>
+  )}
   <div class="pui-group-row" role="tablist" aria-labelledby={labelledby}>
     {items.map((c, i) => (
       <button

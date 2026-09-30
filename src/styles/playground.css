@@ -1,0 +1,58 @@
+/* The lab's perfectui-live playground (src/scripts/playground.ts imports this file, so it loads with the lazy
+   chunk and never on a first render). The editor takes the printed markup's place and wraps like all code on the
+   site (never a sideways scroll), growing with its text; the preview fills the live box's width. The selectors
+   start at the showcase's [data-playground] so they outweigh the component's scoped rules. */
+[data-playground] .editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+[data-playground] .editor-text {
+  display: block;
+  width: 100%;
+  min-height: calc(6lh + 22px);
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--pui-text);
+  background: var(--pui-bg);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-x: hidden;
+  tab-size: 2;
+  /* The mono font's ligatures would draw "<!--" and "-->" as arrows while the visitor types them. */
+  font-variant-ligatures: none;
+  resize: vertical;
+}
+@supports (field-sizing: content) {
+  [data-playground] .editor-text {
+    field-sizing: content;
+  }
+}
+[data-playground] .editor-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+[data-playground] .editor-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--pui-text-muted);
+}
+[data-playground] .editor-bar .pui-btn {
+  font-size: 12px;
+}
+[data-playground] .live[hidden] {
+  display: none;
+}
+[data-playground] .showcase-live:has(> .preview) {
+  padding: 36px 0 0;
+}
+[data-playground] .showcase-live > .preview {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: var(--pui-bg);
+}

@@ -1,7 +1,7 @@
 # The project's checks and a secret scan, on every push to main and every pull request (ADR-0009).
 # The same checks run in the pre-commit hook (.githooks/pre-commit), except `lighthouse`, which needs Chrome
 # and about a minute (run it locally with `npm run lighthouse` after a build), and the layout sweep
-# (`npm run check:layout`, a browser and about 30 s). Actions are pinned to a commit
+# (`npm run check:layout`, a browser and about 30 s) and the playground check (`npm run check:playground`). Actions are pinned to a commit
 # (a tag can be moved); Dependabot proposes updates. Read-only permissions.
 name: checks
 
@@ -59,6 +59,9 @@ jobs:
       # Chrome preinstalled on the runner image, so no browser download.
       - name: Layout (no horizontal scroll from 320 to 1920 px)
         run: npm run check:layout -- --channel chrome --jobs 4
+      # The lab's perfectui-live playground: lazy chunk, editor, sandboxed preview, Reset, script isolation.
+      - name: Playground (editor and sandboxed preview)
+        run: npm run check:playground -- --channel chrome
 
   # Lighthouse 13.5.0 (pinned in package.json) on the built site served locally, mobile profile: one warm-up
   # run per page, discarded (a fresh runner's first run on / scored 55 to 95 while the next ones scored 98 to

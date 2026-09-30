@@ -24,6 +24,7 @@
     "check:portrait": "tsx scripts/check-portrait.ts",
     "check:layout": "tsx scripts/check-layout.ts",
     "check:griddots": "tsx scripts/check-griddots.ts",
+    "check:playground": "tsx scripts/check-playground.ts",
     "og:image": "tsx scripts/og-image.ts"
   },
   "dependencies": {
