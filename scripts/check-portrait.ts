@@ -14,6 +14,8 @@
 //   - no console error and no page error
 //   - without JavaScript the fallback image loads and the canvas takes no room
 //   - the pointer pushes dots away, and once it leaves the canvas shows the poster again, pixel for pixel
+//   - scrolled 40 px and a third of the portrait's box, the bright pixels stay within 3% of the unscrolled
+//     frame; scrolled past the box, the dots are back on the grid (Save-Data, no clip)
 //   - with clips (synthetic): a video is requested after load and the dots change over time
 //   - with clips at CPU x8 (DevTools throttling): no long task (> 50 ms) while the clip plays; before the
 //     banded repaint (src/lib/portrait/bands.ts) each video frame repainted every dot in one task
@@ -154,6 +156,45 @@ async function pointer(browser: Browser, base: string, path: string, label: stri
   await s.close();
 }
 
+/** Bright pixels of the portrait canvas (opaque and light): the dots of the face that fade on the way back to the grid. */
+const bright = (page: Page) =>
+  page.evaluate(() => {
+    const cv = document.querySelector<HTMLCanvasElement>("[data-portrait] canvas");
+    if (!cv || !cv.width || !cv.height) return 0;
+    const d = cv.getContext("2d")!.getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i]! > 128 && d[i - 3]! + d[i - 2]! + d[i - 1]! > 384) n++;
+    return n;
+  });
+
+/**
+ * The portrait stays whole while most of it is on screen (grid.ts scrollBack): 40 px down and a third of the
+ * portrait's box down, the bright pixels stay within 3% of the unscrolled frame; with the box scrolled past,
+ * the dots are back on the grid. Save-Data, so no clip changes the frame between the two readings.
+ */
+async function scrolled(browser: Browser, base: string, path: string, label: string) {
+  const s = await open(browser, base + path, { saveData: true });
+  await sleep(1500);
+  const rest = await bright(s.page);
+  const box = await s.page.evaluate(() => {
+    const r = document.querySelector("[data-portrait]")!.parentElement!.parentElement!.getBoundingClientRect();
+    return { top: r.top + scrollY, height: r.height };
+  });
+  const at = async (y: number) => {
+    await s.page.evaluate((y) => scrollTo(0, y), y);
+    await sleep(900);
+    return bright(s.page);
+  };
+  const near = (n: number) => rest > 1000 && Math.abs(n - rest) <= rest * 0.03;
+  const pct = (n: number) => `${rest} -> ${n} (${((100 * n) / Math.max(1, rest) - 100).toFixed(1)}%)`;
+  const a = await at(40), b = await at(Math.round(box.top + box.height / 3)), c = await at(Math.round(box.top + box.height));
+  check(`${label} scroll: the portrait stays whole 40 px down`, near(a), pct(a));
+  check(`${label} scroll: the portrait stays whole a third of its box down`, near(b), pct(b));
+  check(`${label} scroll: back on the grid once its box has scrolled past`, c < rest * 0.05, pct(c));
+  check(`${label} scroll: no console errors`, s.errors.length === 0, s.errors.join(" | "));
+  await s.close();
+}
+
 /** Longest main-thread task while a clip plays, with the CPU slowed `rate` times (DevTools throttling). */
 async function clipTasks(browser: Browser, base: string, path: string, label: string, rate = 8) {
   const ctx = await browser.newContext({ viewport: { width: 412, height: 823 }, deviceScaleFactor: 1.75, isMobile: true, hasTouch: true });
@@ -237,6 +278,7 @@ try {
     tasks.push(() => poster(browser, base, path, label, { saveData: true }, "Save-Data"));
     tasks.push(() => noJs(browser, base, path, label));
     tasks.push(() => narrow(browser, base, path, label));
+    tasks.push(() => scrolled(browser, base, path, label));
     // With the real clips the default visit plays the loop, so the poster-exact check runs where no clip
     // plays and the pointer still moves dots: Save-Data (gating.ts).
     tasks.push(() => (REAL_CLIPS ? pointer(browser, base, path, `${label} Save-Data`, { saveData: true }) : pointer(browser, base, path, label)));

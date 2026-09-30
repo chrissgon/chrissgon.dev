@@ -16,6 +16,13 @@ export const tone: ToneOptions = { equalize: false, gamma: 1.4, floor: 3 };
  */
 export const intro = false;
 
+/**
+ * Poster cells per page grid cell (28 px): 4 gives 7 px dots, a portrait of 770 x 917 px (5 gave 5.6 px and
+ * 616 x 734). Raised on 2026-09-30 when the hero's divider went and the portrait column widened, so the face
+ * and the typing hands read larger. Must be a whole number: halo cells group SUB x SUB poster cells.
+ */
+export const subdiv = 4;
+
 /** Face centre as 0..1 of the poster, read off the poster preview (between the eyes and the mouth). */
 export const face = { x: 0.59, y: 0.35 };
 

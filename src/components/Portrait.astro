@@ -7,7 +7,7 @@
 // around it and the fallback image. The visual design comes later.
 import poster from "../assets/portrait/portrait.json";
 import { findClips } from "../lib/portrait/clips.ts";
-import { face, fallbackName, intro, publicDir, tone } from "../lib/portrait/config.ts";
+import { face, fallbackName, intro, publicDir, subdiv, tone } from "../lib/portrait/config.ts";
 import type { PortraitOptions } from "../lib/portrait/types.ts";
 
 interface Props {
@@ -16,10 +16,10 @@ interface Props {
 
 const { alt } = Astro.props;
 const clips = findClips();
-const options: PortraitOptions = { poster, ...tone, face, intro, loop: clips.loop, greet: clips.greet };
+const options: PortraitOptions = { poster, ...tone, face, subdiv, intro, loop: clips.loop, greet: clips.greet };
 // JSON inside <script>: "<" is escaped so no text can close the element.
 const json = JSON.stringify(options).replace(/</g, "\\u003c");
-const cell = 28 / 5;
+const cell = 28 / subdiv;
 const width = Math.round(poster.cols * cell), height = Math.round(poster.rows * cell);
 ---
 

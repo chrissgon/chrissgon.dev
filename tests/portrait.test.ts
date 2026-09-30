@@ -8,7 +8,7 @@ import { findClips } from "../src/lib/portrait/clips.ts";
 import { fills, parseColor, STEPS, type RGB } from "../src/lib/portrait/colors.ts";
 import { clipType, plan, readEnvironment } from "../src/lib/portrait/gating.ts";
 import {
-  blur, cellX, gridCell, haloRadius, haloStrength, homeX, introDelays, layout, pointerPush, scrollBack,
+  BACK_FROM, BACK_TO, blur, cellX, gridCell, haloRadius, haloStrength, homeX, introDelays, layout, pointerPush, scrollBack,
 } from "../src/lib/portrait/grid.ts";
 import {
   autoContrastBounds, band, decodePoster, dotRadius, equalizeTable, levelTable, luma, lumaHistogram, toneToLevel,
@@ -138,10 +138,13 @@ describe("portrait grid and halo maths", () => {
     for (const v of d) expect(v).toBeGreaterThanOrEqual(0), expect(v).toBeLessThanOrEqual(580);
   });
 
-  it("returns to the grid as the page scrolls past the slot", () => {
+  it("returns to the grid only once most of the slot has scrolled away", () => {
     expect(scrollBack(0, 300, 734)).toBe(0);
-    expect(scrollBack(240, 300, 734)).toBe(0);
-    expect(scrollBack(240 + 734 * 0.3, 300, 734)).toBeCloseTo(0.5, 6);
+    // A slot that starts above the page's top (the hero clips its top) stays whole for the first scroll.
+    expect(scrollBack(40, -70, 917)).toBe(0);
+    expect(scrollBack(300 + 734 * BACK_FROM, 300, 734)).toBe(0);
+    expect(scrollBack(300 + 734 * ((BACK_FROM + BACK_TO) / 2), 300, 734)).toBeCloseTo(0.5, 6);
+    expect(scrollBack(300 + 734 * BACK_TO, 300, 734)).toBe(1);
     expect(scrollBack(5000, 300, 734)).toBe(1);
   });
 

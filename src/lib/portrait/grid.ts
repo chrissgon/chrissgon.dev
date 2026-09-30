@@ -126,9 +126,18 @@ export function introDelays(xs: ArrayLike<number>, ys: ArrayLike<number>, fx: nu
   return out;
 }
 
-/** How far the portrait has gone back to the grid by scrolling (0 in place, 1 all grid), eased. */
+/** Share of the slot above the viewport's top where the return to the grid starts, and where it ends. */
+export const BACK_FROM = 0.55, BACK_TO = 0.95;
+
+/**
+ * How far the portrait has gone back to the grid by scrolling (0 in place, 1 all grid), eased. The portrait
+ * stays whole while most of it is on screen: the return starts once BACK_FROM of the slot has scrolled above
+ * the viewport and ends at BACK_TO, when little of it is left. (Until 2026-09-30 it started with the first
+ * pixel of scroll, and 150 px down the face had lost about a third of its bright dots.)
+ */
 export function scrollBack(scrollY: number, slotTop: number, slotHeight: number): number {
-  return easeInOut(clamp01((scrollY - Math.max(0, slotTop - 60)) / Math.max(1, slotHeight * 0.6)));
+  const gone = (scrollY - slotTop) / Math.max(1, slotHeight);
+  return easeInOut(clamp01((gone - BACK_FROM) / (BACK_TO - BACK_FROM)));
 }
 
 /** The pointer pushes dots within PUSH_R px, by up to PUSH_PX px. */
