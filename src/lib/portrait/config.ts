@@ -1,11 +1,12 @@
-// The site's portrait settings. The tone values are the ones that made src/assets/portrait/portrait.json
-// (personal-brand state.md, chosen poster parameters): portrait.py --crop 200,40,640,760 --cols 110
-// --erase 364,330,28,36 --erase 668,322,32,34 --erase 255,330,90,110 --equalize --gamma 1.9 --floor 5.
-// Video frames use the same tone so the poster and the first video frame match. When the clips are encoded,
-// the poster is remade from the loop's first frame (scripts/encode-portrait.sh) and these values must follow.
+// The site's portrait settings. The poster (src/assets/portrait/portrait.json) is the first frame of the loop
+// clip, made by scripts/encode-portrait.sh with the same crop as the clips (source box 288,2,600,714 of the
+// 1280x720 loop, inside its square picture) and this tone: portrait.py --crop 288,2,600,714 --cols 110
+// --gamma 1.4 --floor 3, autocontrast (no --equalize, which flattened the face into one bright patch in this
+// darker scene). No accessory is erased: the clip's frames show none. Video frames use the same tone so the
+// poster and the first video frame match; when the clips are encoded again these values must follow.
 import type { ToneOptions } from "./types.ts";
 
-export const tone: ToneOptions = { equalize: true, gamma: 1.9, floor: 5 };
+export const tone: ToneOptions = { equalize: false, gamma: 1.4, floor: 3 };
 
 /**
  * The intro (dots flying from the grid into the portrait) is off: in the hero it would run during page load,
@@ -16,7 +17,7 @@ export const tone: ToneOptions = { equalize: true, gamma: 1.9, floor: 5 };
 export const intro = false;
 
 /** Face centre as 0..1 of the poster, read off the poster preview (between the eyes and the mouth). */
-export const face = { x: 0.42, y: 0.33 };
+export const face = { x: 0.59, y: 0.35 };
 
 /** Where the clips and the no-JS fallback are served from, and their file names (encode-portrait.sh writes them). */
 export const publicDir = "portrait";
