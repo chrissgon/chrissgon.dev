@@ -1,8 +1,9 @@
 // Check the built site in dist/ (ADR-0007, ADR-0009; design: "check-dist"). Fails the build when:
 //   - a page does not load the Perfect UI stylesheet (a CSS with the `.pui-btn` rule), or the home page
 //     does not use a `pui-btn` class (AC-1);
-//   - any Tailwind trace is found: a file named after it, the word in a text file, `--tw-` variables, or a
-//     Tailwind utility class in the markup (AC-1);
+//   - any Tailwind trace is found: a file named after it, the word in code (a stylesheet, a script, or a
+//     page's <style> and <script> blocks other than JSON-LD; a project's text may name Tailwind as its stack),
+//     `--tw-` variables, or a Tailwind utility class in the markup (AC-1);
 //   - a page has more than one <canvas>;
 //   - the first render of a home page (EN and PT) weighs more than 150 KB: the HTML, the stylesheets,
 //     scripts and their static imports, preloads, eager images, and every font the loaded CSS declares (an
@@ -13,9 +14,11 @@
 //     twitter:image, or one of them points to a file that is not in dist/; og:image is not an absolute URL on
 //     the page's origin, not a PNG of the declared og:image:width and og:image:height, or has no alt; the
 //     manifest lacks a name, short_name, start_url or icons, or an icon is not in dist/;
-//   - an SVG file, or an inline <svg> of a page, carries a <metadata> element.
+//   - an SVG file, or an inline <svg> of a page, carries a <metadata> element;
+//   - the Netlify config (netlify.toml) does not serve /site.webmanifest as application/manifest+json
+//     (Netlify's default for .webmanifest is application/octet-stream).
 //
-// Usage: tsx scripts/check-dist.ts [--dist <dir>] [--budget-kb <n>] [--json]
+// Usage: tsx scripts/check-dist.ts [--dist <dir>] [--budget-kb <n>] [--netlify-toml <file>] [--json]
 // Findings go to stdout (one per line; with --json, a JSON report); the weight report goes to stderr.
 // Exit 0 clean, 1 findings, 2 usage error.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -144,6 +147,41 @@ const TW_UTILITY = [
   /^(flex|grid|items|justify|content|self|place-items|place-content)-(row|col|row-reverse|col-reverse|wrap|nowrap|center|start|end|between|around|evenly|stretch|baseline|1|auto|initial|none)$/,
   /^(rounded|shadow)(-(none|xs|sm|md|lg|xl|2xl|3xl|full|inner|[trblse]{1,2}(-(sm|md|lg|xl|2xl|3xl|full))?))?$/,
 ];
+
+/**
+ * The word "tailwind" in code: a stylesheet or a script, or an HTML or SVG file's <style> and <script> blocks
+ * (JSON-LD excluded). Text that people or agents read (a page's content, llms.txt, JSON data) may name Tailwind as
+ * the stack of a project; the file name, `--tw-` and utility-class rules still catch the framework itself.
+ */
+export function tailwindWordIn(path: string, content: string): boolean {
+  const ext = extname(path).toLowerCase();
+  if (ext === ".css" || ext === ".js" || ext === ".mjs") return /tailwind/i.test(content);
+  if (ext !== ".html" && ext !== ".svg") return false;
+  const styles = [...content.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]!);
+  const scripts = [...content.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+    .filter((m) => !/type\s*=\s*["']?application\/ld\+json/i.test(m[1]!))
+    .map((m) => m[2]!);
+  return [...styles, ...scripts].some((c) => /tailwind/i.test(c));
+}
+
+/**
+ * The Netlify config must serve the web app manifest as application/manifest+json: a [[headers]] block for
+ * "/site.webmanifest" whose values set Content-Type to it. A minimal reader of the file's [[headers]] blocks.
+ */
+export function manifestHeaderProblems(toml: string): string[] {
+  // Each [[headers]] block runs until the next table header other than its own [headers.values].
+  const blocks = toml
+    .split(/^[ \t]*\[\[headers\]\][ \t]*$/m)
+    .slice(1)
+    .map((b) => b.split(/^[ \t]*\[(?!headers\.values\])/m)[0]!);
+  const block = blocks.find((b) => /^[ \t]*for[ \t]*=[ \t]*["']\/site\.webmanifest["'][ \t]*$/m.test(b));
+  if (!block) return ['netlify: netlify.toml has no [[headers]] block for "/site.webmanifest"'];
+  const values = block.split(/^[ \t]*\[headers\.values\][ \t]*$/m)[1];
+  const type = values && /^[ \t]*["']?content-type["']?[ \t]*=[ \t]*["']([^"']*)["'][ \t]*$/im.exec(values)?.[1];
+  return type === "application/manifest+json"
+    ? []
+    : [`netlify: /site.webmanifest is served as ${type || "Netlify's default (application/octet-stream)"}, not application/manifest+json`];
+}
 
 /** Tailwind utility classes among the class tokens of an HTML document. */
 export function tailwindClasses(html: string): string[] {
@@ -278,7 +316,7 @@ export function checkDist(dist: string, budgetKb = BUDGET_KB): Report {
     if (/tailwind/i.test(f)) findings.push(`tailwind: file ${f}`);
     else if (TEXT_EXT.has(extname(f).toLowerCase())) {
       const content = text(f);
-      if (/tailwind/i.test(content)) findings.push(`tailwind: the word "tailwind" in ${f}`);
+      if (tailwindWordIn(f, content)) findings.push(`tailwind: the word "tailwind" in ${f}`);
       if (/--tw-[a-z]/.test(content)) findings.push(`tailwind: --tw- variables in ${f}`);
       if ((f.endsWith(".svg") || f.endsWith(".html")) && hasSvgMetadata(f, content)) findings.push(`svg: ${f} carries a <metadata> element`);
     }
@@ -342,7 +380,7 @@ export function formatWeight(w: Weight): string {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const argv = process.argv.slice(2);
   if (argv.includes("--help")) {
-    console.log("Usage: tsx scripts/check-dist.ts [--dist <dir>] [--budget-kb <n>] [--json]");
+    console.log("Usage: tsx scripts/check-dist.ts [--dist <dir>] [--budget-kb <n>] [--netlify-toml <file>] [--json]");
     process.exit(0);
   }
   const opt = (name: string) => {
@@ -355,6 +393,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(2);
   }
   const report = checkDist(resolve(opt("--dist") ?? "dist"), budget);
+  const toml = resolve(opt("--netlify-toml") ?? "netlify.toml");
+  report.findings.push(...(existsSync(toml) ? manifestHeaderProblems(readFileSync(toml, "utf8")) : [`netlify: ${toml} is missing`]));
   for (const w of report.weights) console.error(formatWeight(w));
   if (argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
   else for (const f of report.findings) console.log(f);

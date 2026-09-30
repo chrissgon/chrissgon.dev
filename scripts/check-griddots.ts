@@ -7,7 +7,8 @@
 //
 // Checks, one PASS or FAIL line each on stdout, exit 1 on any failure:
 //   - on /, /projects/, /writing/, /lab/ and their /pt/ pages, at 1440 px with a mouse (pixel ratio 2; also 1
-//     and 1.5 on two of them), at the top and lower down: the layer loads after load and sits behind the
+//     and 1.5 on two of them), at the top and lower down (at 1920 px when a page has no bare stretch of grid
+//     lower down at 1440 px, as the projects page with complete rows of cards): the layer loads after load and sits behind the
 //     content (the body is a stacking context, the layer has z-index -1 and takes no pointer event); the
 //     pointer over an empty stretch of the grid moves the dots near it (the pixels differ from the plain CSS
 //     grid); dots at the edge of the push radius, drawn by the canvas but not moved, light the same pixels as
@@ -235,9 +236,13 @@ function edgeDot(x: number, y: number, scrollY: number): { x: number; y: number 
   return { x: -1, y: -1 };
 }
 
-async function pointerScenario(browser: Browser, base: string, path: string, where: "top" | "lower", dpr = 2) {
-  const label = `${path} ${where}${dpr === 2 ? "" : ` at pixel ratio ${dpr}`}`;
-  const o = await open(browser, base + path, { deviceScaleFactor: dpr });
+/** A wider window for a page whose lower half, at 1440 px, is a full grid of cards with no bare stretch as wide as
+ *  the push radius (the projects page once its last row of cards is complete): the grid beside the frame is bare. */
+const WIDE = { width: 1920, height: 1080 };
+
+async function pointerScenario(browser: Browser, base: string, path: string, where: "top" | "lower", dpr = 2, wider = false): Promise<void> {
+  const label = `${path} ${where}${dpr === 2 ? "" : ` at pixel ratio ${dpr}`}${wider ? ` at ${WIDE.width} px` : ""}`;
+  const o = await open(browser, base + path, { deviceScaleFactor: dpr, ...(wider ? { viewport: WIDE } : {}) });
   const { page } = o;
   try {
     await layerUp(page);
@@ -256,6 +261,10 @@ async function pointerScenario(browser: Browser, base: string, path: string, whe
         await sleep(700); // sections entering on scroll settle
         if ((spot = await emptySpot(page, 120))) break;
       }
+    if (!spot && where === "lower" && !wider) {
+      await o.close();
+      return pointerScenario(browser, base, path, where, dpr, true);
+    }
     if (!spot) { check(`${label}: an empty stretch of grid to test on`, false, "none found"); return; }
     const sy = await page.evaluate(() => scrollY);
     const R = spot.r, box = { x: spot.x - R, y: spot.y - R, w: 2 * R, h: 2 * R };

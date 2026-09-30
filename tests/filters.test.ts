@@ -9,13 +9,14 @@ const allowed = { type: [...PROJECT_TYPES], status: [...PROJECT_STATUSES], stack
 const shown = (state: typeof EMPTY) => projects.filter((p) => matches(p, state)).map((p) => p.id);
 
 describe("project filters", () => {
-  it("shows the ten projects with All and the brief's counts per chip", () => {
-    expect(shown(EMPTY)).toHaveLength(10);
+  it("shows the twelve projects with All and the brief's counts per chip", () => {
+    expect(shown(EMPTY)).toHaveLength(12);
     const count = (g: "type" | "status" | "stack", v: string) => chipCount(projects, EMPTY, g, v);
-    expect([count("type", "ai-agents"), count("type", "web-ui"), count("type", "docs-architecture")]).toEqual([5, 4, 3]);
-    expect([count("status", "ready"), count("status", "in-progress")]).toEqual([6, 4]);
+    expect([count("type", "ai-agents"), count("type", "web-ui"), count("type", "docs-architecture")]).toEqual([5, 6, 3]);
+    expect([count("status", "ready"), count("status", "in-progress")]).toEqual([8, 4]);
     expect(Object.fromEntries(allowed.stack.map((s) => [s, count("stack", s)]))).toEqual({
-      Go: 2, TypeScript: 2, JavaScript: 1, CSS: 1, "Vue (Nuxt)": 1, Python: 1, Shell: 1, Markdown: 1,
+      TypeScript: 4, JavaScript: 2, "Vue (Nuxt)": 2, Go: 2, CSS: 1, Python: 1, Shell: 1, Markdown: 1,
+      "Node.js": 1, MongoDB: 1, React: 1, Redux: 1, Tailwind: 1, "Perfect UI": 1,
     });
   });
 
@@ -31,7 +32,7 @@ describe("project filters", () => {
     const none = { ...EMPTY, type: "docs-architecture", stack: "Python" };
     expect(shown(none)).toEqual([]);
     expect(isEmpty(none)).toBe(false);
-    expect(shown(EMPTY)).toHaveLength(10);
+    expect(shown(EMPTY)).toHaveLength(12);
   });
 
   it("switches a chip off when pressed again, one chip per group", () => {
@@ -52,16 +53,22 @@ describe("project filters", () => {
   it("builds the home page's single row: statuses first, then stacks, with counts from the data", () => {
     const row = rowChips(projects, EMPTY, PROJECT_STATUSES);
     expect(row.map((c) => [c.group, c.value, c.count])).toEqual([
-      ["status", "ready", 6],
+      ["status", "ready", 8],
       ["status", "in-progress", 4],
-      ["stack", "TypeScript", 2],
+      ["stack", "TypeScript", 4],
+      ["stack", "JavaScript", 2],
+      ["stack", "Vue (Nuxt)", 2],
       ["stack", "Go", 2],
-      ["stack", "JavaScript", 1],
       ["stack", "CSS", 1],
-      ["stack", "Vue (Nuxt)", 1],
       ["stack", "Python", 1],
       ["stack", "Shell", 1],
       ["stack", "Markdown", 1],
+      ["stack", "Node.js", 1],
+      ["stack", "MongoDB", 1],
+      ["stack", "React", 1],
+      ["stack", "Redux", 1],
+      ["stack", "Tailwind", 1],
+      ["stack", "Perfect UI", 1],
     ]);
     // The "All" chip is the sum of the statuses: every project has exactly one.
     expect(row.filter((c) => c.group === "status").reduce((n, c) => n + c.count, 0)).toBe(projects.length);

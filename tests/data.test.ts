@@ -16,7 +16,7 @@ describe("data module", () => {
   it("validates every entity on import", () => {
     expect(profile.name).toBe("Christopher Gonçalves");
     expect(products.map((p) => p.id)).toEqual(["perfectui", "ai-workbench"]);
-    expect(projects.filter((p) => p.status === "ready")).toHaveLength(6);
+    expect(projects.filter((p) => p.status === "ready")).toHaveLength(8);
     expect(projects.filter((p) => p.status === "in-progress")).toHaveLength(4);
     expect(posts).toHaveLength(8);
     expect(trajectory.entries.length).toBeGreaterThan(0);
@@ -96,6 +96,8 @@ describe("data module", () => {
     expect(byId["perfectui"]).toEqual({ kind: "file", src: "projects/perfectui.webp" });
     expect(byId["goddd"]).toEqual({ kind: "file", src: "projects/goddd.png" });
     expect(byId["doc-git-patterns"]).toEqual({ kind: "file", src: "projects/doc-git-patterns.png" });
+    expect(byId["meuespresso"]).toEqual({ kind: "file", src: "projects/meuespresso.png" });
+    expect(byId["rickandmorty"]).toEqual({ kind: "file", src: "projects/rickandmorty.png" });
     expect(byId["ai-workbench"]).toEqual({ kind: "generated" });
     expect(byId["doc-github-workflow"]).toEqual({ kind: "generated" });
   });

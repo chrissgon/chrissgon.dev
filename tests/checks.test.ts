@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { AddressInfo } from "node:net";
@@ -9,11 +9,13 @@ import {
   firstRenderUrls,
   hasSvgMetadata,
   llmsTxtProblems,
+  manifestHeaderProblems,
   manifestProblems,
   pageWeight,
   pngSize,
   resolveUrl,
   tailwindClasses,
+  tailwindWordIn,
 } from "../scripts/check-dist.ts";
 import {
   benchmarkOf,
@@ -97,13 +99,15 @@ describe("check-dist (ADR-0009)", () => {
       dist({
         "_astro/tailwind.css": "a{}",
         "_astro/x.css": ".a{--tw-ring-color:red}",
-        "projects/index.html": page('<div class="flex items-center p-4 md:grid pui-card portrait">made with Tailwind</div>'),
+        "_astro/y.js": "/*! tailwindcss v3 */",
+        "projects/index.html": page('<div class="flex items-center p-4 md:grid pui-card portrait">x</div><style>/* tailwind */</style>'),
       }),
     );
     expect(r.findings).toEqual(
       expect.arrayContaining([
         "tailwind: file _astro/tailwind.css",
         "tailwind: --tw- variables in _astro/x.css",
+        'tailwind: the word "tailwind" in _astro/y.js',
         'tailwind: the word "tailwind" in projects/index.html',
         'tailwind: class "items-center" in projects/index.html',
         'tailwind: class "p-4" in projects/index.html',
@@ -118,6 +122,34 @@ describe("check-dist (ADR-0009)", () => {
       "shadow",
       "w-1/2",
     ]);
+  });
+
+  it("lets a project's text name Tailwind as its stack, in the page, llms.txt and JSON-LD", () => {
+    const stack = '<p class="meta">Web &amp; UI · TypeScript, React, Redux, Tailwind, Perfect UI</p><div data-stack=\'["Tailwind"]\'></div>';
+    const ld = '<script type="application/ld+json">{"description":"built with Tailwind"}</script>';
+    expect(checkDist(dist({ "projects/index.html": page(stack + ld), "llms.txt": `${LLMS}- rickandmorty: Tailwind\n` })).findings).toEqual([]);
+    expect(tailwindWordIn("a.svg", "<svg><style>.tailwind{}</style></svg>")).toBe(true);
+    expect(tailwindWordIn("a.html", "<p>Tailwind</p><script>let x = 1</script>")).toBe(false);
+    expect(tailwindWordIn("a.json", '{"stack":["Tailwind"]}')).toBe(false);
+  });
+
+  it("wants netlify.toml to serve the manifest as application/manifest+json", () => {
+    const block = (type: string) =>
+      `[build]\n  publish = "dist"\n\n[[headers]]\n  for = "/site.webmanifest"\n  [headers.values]\n    Content-Type = "${type}"\n\n[[redirects]]\n  from = "/a"\n  to = "/"\n`;
+    expect(manifestHeaderProblems(block("application/manifest+json"))).toEqual([]);
+    expect(manifestHeaderProblems(block("application/json"))).toEqual([
+      "netlify: /site.webmanifest is served as application/json, not application/manifest+json",
+    ]);
+    expect(manifestHeaderProblems('[[headers]]\n  for = "/*"\n  [headers.values]\n    X-Frame-Options = "DENY"\n')).toEqual([
+      'netlify: netlify.toml has no [[headers]] block for "/site.webmanifest"',
+    ]);
+    // A Content-Type of another block does not count for the manifest.
+    const split = '[[headers]]\n  for = "/site.webmanifest"\n  [headers.values]\n    Cache-Control = "max-age=0"\n\n[[headers]]\n  for = "/x"\n  [headers.values]\n    Content-Type = "application/manifest+json"\n';
+    expect(manifestHeaderProblems(split)).toEqual([
+      "netlify: /site.webmanifest is served as Netlify's default (application/octet-stream), not application/manifest+json",
+    ]);
+    // This repository's config passes.
+    expect(manifestHeaderProblems(readFileSync(new URL("../netlify.toml", import.meta.url), "utf8"))).toEqual([]);
   });
 
   it("allows one canvas per page and fails on two, ignoring noscript", () => {

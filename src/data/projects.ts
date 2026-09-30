@@ -1,4 +1,4 @@
-// Source: site-content.md section 4 (4.1 ready, 4.2 in progress), approved on 2026-09-30. Texts are verbatim.
+// Source: site-content.md section 4 (4.1 ready, 4.2 in progress, 4.3 revisions back after their merge), approved on 2026-09-30. Texts are verbatim.
 import products from "./products.ts";
 
 const [perfectui, workbench] = products;
@@ -81,6 +81,39 @@ export default [
     // The gitflow diagram of the README (gitflow.png in chrissgon/doc-git-patterns), metadata stripped.
     image: { kind: "file", src: "projects/doc-git-patterns.png" },
     links: [{ label: "GitHub", url: "https://github.com/chrissgon/doc-git-patterns" }],
+  },
+  // Section 4.3: revisited projects, back on the site once their revision pull request was merged
+  // (chrissgon/meuespresso#1, chrissgon/rickandmorty#1). Stacks from each repository's languages and package.json.
+  {
+    id: "meuespresso",
+    name: "meuespresso",
+    types: ["web-ui"],
+    status: "ready",
+    stack: ["JavaScript", "Vue (Nuxt)", "TypeScript", "Node.js", "MongoDB"],
+    summary: {
+      en: "A coffee e-commerce app with a catalogue, search, cart and account, installable as a PWA, built with Nuxt, a Node.js API and MongoDB.",
+      pt: "Um e-commerce de café com catálogo, busca, carrinho e conta, instalável como PWA, feito com Nuxt, uma API em Node.js e MongoDB.",
+    },
+    // The app's screenshot (app/public/thumb.png in chrissgon/meuespresso at 51eb6c4), 1200 x 630, no metadata.
+    image: { kind: "file", src: "projects/meuespresso.png" },
+    links: [{ label: "GitHub", url: "https://github.com/chrissgon/meuespresso" }],
+  },
+  {
+    id: "rickandmorty",
+    name: "rickandmorty",
+    types: ["web-ui"],
+    status: "ready",
+    stack: ["TypeScript", "React", "Redux", "Tailwind", "Perfect UI"],
+    summary: {
+      en: "A Rick and Morty guide with characters, episodes and locations from the public API, search and favorites, built with React, Redux, Tailwind and Perfect UI.",
+      pt: "Um guia de Rick and Morty com personagens, episódios e locais da API pública, busca e favoritos, feito com React, Redux, Tailwind e Perfect UI.",
+    },
+    // The app's screenshot (public/thumb.png in chrissgon/rickandmorty at e34c254, retaken in #2), 1200 x 630.
+    image: { kind: "file", src: "projects/rickandmorty.png" },
+    links: [
+      { label: "chrissgon-rickandmorty.vercel.app", url: "https://chrissgon-rickandmorty.vercel.app/" },
+      { label: "GitHub", url: "https://github.com/chrissgon/rickandmorty" },
+    ],
   },
   {
     id: "perfectui-for-agents",
