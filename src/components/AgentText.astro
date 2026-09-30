@@ -1,0 +1,10 @@
+---
+// The llms.txt reading of one region, shown instead of the region when "view as agent" is on (CSS only, see
+// src/styles/site.css). The text is the same part of llms.txt the agent reads (src/lib/llms.ts, llmsParts).
+interface Props {
+  text: string;
+}
+const { text } = Astro.props;
+---
+
+<pre class="agent-text" set:text={text.trimEnd()} />

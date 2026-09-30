@@ -1,0 +1,60 @@
+---
+// A lab experiment as a compact Perfect UI card: its dot visual, the name in mono, the date, the approved
+// description and the source link. The visual and the name open the experiment at /lab#<slug> (FLOW-7).
+import LabVisual from "./LabVisual.astro";
+import { t, type Lang, type lab } from "../data/index.ts";
+import { localePath } from "../lib/format.ts";
+
+interface Props {
+  item: (typeof lab)[number];
+  lang: Lang;
+}
+const { item: x, lang } = Astro.props;
+---
+
+<article class="pui-card col lab-card">
+  <a class="lab-open" href={`${localePath(lang, "/lab")}#${x.id}`}>
+    <LabVisual id={x.id} />
+    <span class="pui-card-content">
+      <span class="lab-name">{x.id}</span>
+      <time class="meta" datetime={x.date}>{x.date}</time>
+      <span class="lab-desc">{x.description[lang]}</span>
+    </span>
+  </a>
+  {x.source && (
+    <div class="lab-actions">
+      <a class="pui-btn pui-outline pui-surface mono" href={x.source}>{t(lang, "source")}</a>
+    </div>
+  )}
+</article>
+
+<style>
+  .lab-open {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    color: var(--pui-text);
+    text-decoration: none;
+  }
+  .lab-open:hover .lab-name {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .lab-open .pui-card-content {
+    gap: 8px;
+  }
+  .lab-name {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .lab-desc {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .lab-actions {
+    display: flex;
+    gap: 4px;
+    padding: 0 16px 16px;
+  }
+</style>

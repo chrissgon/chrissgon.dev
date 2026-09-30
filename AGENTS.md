@@ -1,6 +1,6 @@
 # chrissgon.dev
 
-Christopher Gonçalves's personal site: static Astro pages in EN (at the root) and PT (under /pt/), plus `llms.txt` and schema.org JSON-LD for AI agents, all generated from one typed data module. Status: foundation, without the visual design (see `README.md`).
+Christopher Gonçalves's personal site: static Astro pages in EN (at the root) and PT (under /pt/), plus `llms.txt` and schema.org JSON-LD for AI agents, all generated from one typed data module. Status: design direction A "Estrutura à mostra" (see `README.md`).
 
 ## Architecture
 
@@ -13,6 +13,7 @@ The design and its decision records are kept locally by the owner, outside this 
 - Read-only MCP server: `netlify/functions/mcp.mts` at `/api/mcp` (route and rate limit in its `config`), tools in `src/mcp/server.ts`, reading only `src/data/`. Every tool stays read-only with a strict input schema; `tests/mcp.test.ts` covers the protocol, each tool, unknown data (EDGE-1) and injected instructions (EDGE-3). Local run: `netlify dev --offline --framework '#static' --dir dist` after `npm run build` (`astro dev` does not serve functions).
 - Netlify builds and publishes (`netlify.toml`); this repository's CI never deploys.
 - The portrait island (`src/components/Portrait.astro`) mounts `src/lib/portrait/` on a canvas: pure parts (`levels.ts`, `grid.ts`, `gating.ts`, `colors.ts`) are unit-tested, `mount.ts` holds the DOM. Clips are offered only when their files exist in `public/portrait/` at build time.
+- Design direction A: `src/styles/site.css` (frame, cells, corner markers, the view-as-agent rules) plus one component per repeated piece in `src/components/` (`Cell`, `AgentSwitch`, `AgentText`, `Showcase`, `CopyField`, cards). Colours are Perfect UI's dark tokens only, one blue element per viewport, no gradients or shadows (the radial-gradient images are dot patterns). "view as agent" is CSS only (`[data-agent-scope]:has(.agent-toggle:checked)`); each region's reading is its part of llms.txt (`llmsParts` in `src/lib/llms.ts`). Small enhancements live in `src/scripts/site.ts` (tabs, copy, reveal on scroll, count-up), and everything reads and works without JavaScript.
 - Fonts come from Astro's Fonts API (`fonts` in `astro.config.mjs`, `<Font>` in `src/layouts/Base.astro`); never add a third-party font link.
 
 ## Commands

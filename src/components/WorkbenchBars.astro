@@ -1,0 +1,48 @@
+---
+// A generated visual of the ai-workbench counts read at build: one bar of white dots per skill prefix, its height
+// proportional to the prefix's skill count. Decorative: the counts are also in the page's text.
+import type { WorkbenchCount } from "../data/schema.ts";
+
+interface Props {
+  count: WorkbenchCount;
+  /** Height of the tallest bar, in px. */
+  height: number;
+  /** Show the prefix under each bar. */
+  names?: boolean;
+}
+const { count, height, names = false } = Astro.props;
+const entries = Object.entries(count.prefixes ?? {});
+const max = Math.max(1, ...entries.map(([, n]) => n));
+---
+
+<div class="bars" aria-hidden="true" style={`--h: ${height}px`}>
+  {entries.map(([prefix, n]) => (
+    <div class="bar">
+      <div class="dw" style={`height: ${Math.max(7, Math.round((n / max) * height / 7) * 7)}px`}></div>
+      {names && <span>{prefix}</span>}
+    </div>
+  ))}
+</div>
+
+<style>
+  .bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    width: 100%;
+    min-height: var(--h);
+  }
+  .bar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .bar span {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--pui-text-muted);
+    text-align: center;
+  }
+</style>

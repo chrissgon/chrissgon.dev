@@ -34,3 +34,17 @@ export function countBy<T>(items: T[], keys: (item: T) => string[]): [string, nu
   for (const item of items) for (const k of keys(item)) counts.set(k, (counts.get(k) ?? 0) + 1);
   return [...counts];
 }
+
+/** A post date as the writing page shows it: "Sep 29, 2026" in EN, "29 set. 2026" in PT (site-writing.md). */
+export function formatDate(iso: string, lang: Lang): string {
+  const date = new Date(`${iso}T12:00:00Z`);
+  if (lang === "en") return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(date);
+  const parts = new Intl.DateTimeFormat("pt-BR", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("day")} ${get("month")} ${get("year")}`;
+}
+
+/** "5 comments", "1 comment" with the page's labels. */
+export function countLabel(n: number, lang: Lang, one: "comment" | "reaction", many: "comments" | "reactions"): string {
+  return `${formatNumber(n, lang)} ${t(lang, n === 1 ? one : many)}`;
+}

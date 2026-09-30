@@ -1,0 +1,141 @@
+---
+// The generated visual of a lab card, made of the brand's dots (site-lab.md): dot-portrait, the portrait's
+// still dot frame; view-as-agent, half dots and half text lines; mcp-live, rows of dots like a response arriving;
+// perfectui-live, a button and a switch outlined in dots; workbench-evals, dot bars of the checked scores with and
+// without the skill. Decorative (hidden from assistive technology).
+import { lab } from "../data/index.ts";
+import { fallbackName, publicDir } from "../lib/portrait/config.ts";
+
+interface Props {
+  id: string;
+  height?: number;
+}
+const { id, height = 140 } = Astro.props;
+const runs = lab.find((x) => x.id === "workbench-evals")?.runs ?? [];
+const bar = (score: number) => `${Math.max(7, Math.round((score * (height - 36)) / 7) * 7)}px`;
+---
+
+<div class="lv" aria-hidden="true" style={`height: ${height}px`}>
+  {id === "dot-portrait" && <img src={`/${publicDir}/${fallbackName}`} alt="" loading="lazy" decoding="async" width="280" height="333" />}
+  {id === "view-as-agent" && (
+    <div class="lv-agent">
+      <div class="dw lv-grow"></div>
+      <div class="lv-lines">
+        {[90, 70, 80, 55, 75, 60, 85, 45].map((w, i) => <div style={`width: ${w}%`} class:list={[i % 2 ? "dim" : "lit"]}></div>)}
+      </div>
+    </div>
+  )}
+  {id === "mcp-live" && (
+    <div class="lv-rows">
+      {[100, 63, 84, 42].map((w) => <div class="dw lv-grow" style={`width: ${w}%`}></div>)}
+      {[70, 28, 50].map((w) => <div class="dg lv-grow" style={`width: ${w}%`}></div>)}
+    </div>
+  )}
+  {id === "perfectui-live" && (
+    <div class="lv-pui">
+      <div class="lv-btn"></div>
+      <div class="lv-switch"><div class="dw"></div></div>
+    </div>
+  )}
+  {id === "workbench-evals" && (
+    <div class="lv-bars">
+      {runs.map((r, i) => (
+        <>
+          {i > 0 && <div class="lv-gap"></div>}
+          <div class="dw" style={`height: ${bar(r.withSkill)}`}></div>
+          <div class="dg" style={`height: ${bar(r.withoutSkill)}`}></div>
+        </>
+      ))}
+    </div>
+  )}
+</div>
+
+<style>
+  .lv {
+    position: relative;
+    border-bottom: 1px solid var(--pui-border);
+    background: var(--pui-bg);
+    overflow: hidden;
+  }
+  .lv img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 45% 25%;
+  }
+  .lv-agent {
+    display: flex;
+    height: 100%;
+  }
+  .lv-grow {
+    flex: 1;
+  }
+  .lv-lines {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px 12px;
+  }
+  .lv-lines div {
+    height: 2px;
+  }
+  .lit {
+    background: var(--pui-text-muted);
+  }
+  .dim {
+    background: var(--pui-border);
+  }
+  .lv-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px 14px;
+  }
+  .lv-rows div {
+    height: 7px;
+    flex: none;
+  }
+  .lv-pui {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+  }
+  .lv-btn {
+    width: 84px;
+    height: 36px;
+    border: 2px dotted var(--pui-text);
+    border-radius: 6px;
+  }
+  .lv-switch {
+    width: 48px;
+    height: 24px;
+    border: 2px dotted var(--pui-text-muted);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+  }
+  .lv-switch div {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+  }
+  .lv-bars {
+    display: flex;
+    height: 100%;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 16px 16px;
+  }
+  .lv-bars div {
+    width: 26px;
+  }
+  .lv-bars .lv-gap {
+    width: 12px;
+  }
+</style>

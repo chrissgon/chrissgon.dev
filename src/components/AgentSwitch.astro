@@ -1,0 +1,17 @@
+---
+// view-as-agent (lab experiment and the switch inside the home label): a real Perfect UI switch. When it is on,
+// every region of its scope (the nearest [data-agent-scope]) shows its llms.txt reading instead of its human
+// form. The swap is pure CSS (:has), so it works without JavaScript; the rules live in src/styles/site.css:
+//   [data-agent-scope]:has(.agent-toggle:checked) .agent-text { display: block }
+//   [data-agent-scope]:has(.agent-toggle:checked) .human { display: none }
+// Its size comes from Perfect UI's own --pui-font-size, never a transform.
+import { t, type Lang } from "../data/index.ts";
+
+interface Props {
+  lang: Lang;
+  id: string;
+}
+const { lang, id } = Astro.props;
+---
+
+<label class="switch-label" for={id}><input type="checkbox" class="pui-switch agent-toggle" id={id} /><span>{t(lang, "viewAsAgent")}</span></label>

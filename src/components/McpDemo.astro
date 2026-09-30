@@ -1,51 +1,203 @@
 ---
-// mcp-live (lab): runs `tools/list` on this site's read-only MCP server and prints the answer in mono.
-// Minimal and unstyled until the lab's visual design. Without JavaScript the button stays hidden and the
-// address and the tool names built from the server's list remain. On an error or a 429 the page prints the
-// HTTP status and that same list (design: AgentsCard).
+// mcp-live: calls this site's read-only MCP server (/api/mcp) from the page and prints the answer line by line
+// in mono, within 800 ms (at once with reduced motion). `card`: the home page's "For agents" card, with
+// `tools/list`. `lab`: the opened lab experiment, with one button per call (tools/list and each tool). On a 429
+// or a network error it says so (site-lab.md), and the address stays on the page to copy. Without JavaScript
+// the buttons stay hidden and the tool names read from the server's list remain.
+import CopyField from "./CopyField.astro";
+import { t, type Lang } from "../data/index.ts";
 import { MCP_PATH, MCP_TOOLS } from "../mcp/tools.ts";
 import { siteUrl } from "../lib/site.ts";
 
+interface Props {
+  lang: Lang;
+  variant: "card" | "lab";
+}
+const { lang, variant } = Astro.props;
 const endpoint = `${siteUrl(Astro.site)}${MCP_PATH}`;
-const fallback = JSON.stringify(MCP_TOOLS.map((name) => ({ name, readOnlyHint: true })), null, 2);
+const calls = variant === "lab" ? ["tools/list", ...MCP_TOOLS] : ["tools/list"];
+const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
 ---
 
-<div data-mcp-demo data-fallback={fallback}>
-  <p><code>{endpoint}</code></p>
-  <button type="button" class="pui-btn" data-mcp-run hidden>tools/list</button>
-  <pre aria-live="polite" data-mcp-out><code>{MCP_TOOLS.join("\n")}</code></pre>
+<div class:list={["mcp", `mcp-${variant}`]} data-mcp data-lang={lang} data-down={t(lang, "mcpDown")} data-limit={t(lang, "mcpRateLimit")}>
+  <div class="mcp-controls">
+    {variant === "card" && <span class="mcp-connect">{t(lang, "connectAgent")}</span>}
+    <CopyField lang={lang} text={endpoint} />
+    <div class="mcp-calls">
+      <div class:list={[{ "pui-group-row": variant === "lab" }, "mcp-buttons"]} role="group" aria-label="MCP">
+        {calls.map((c, i) => (
+          <button
+            type="button"
+            class:list={["pui-btn mono", variant === "lab" && i === 0 ? "pui-solid pui-inverse" : "pui-outline pui-surface"]}
+            data-mcp-call={c}
+            aria-pressed={variant === "lab" ? (i === 0 ? "true" : "false") : undefined}
+            hidden
+          >
+            {c === "tools/list" ? t(lang, "toolsList") : c}
+          </button>
+        ))}
+      </div>
+      {variant === "card" && <a href={llms}>{t(lang, "readLlms")}</a>}
+    </div>
+  </div>
+  <div class="mcp-out" aria-live="polite">
+    <pre class="code muted" data-mcp-out>{MCP_TOOLS.join("\n")}</pre>
+  </div>
 </div>
 
 <script>
   const PATH = "/api/mcp";
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  type Tool = { name: string; annotations?: { readOnlyHint?: boolean } };
 
-  for (const root of document.querySelectorAll<HTMLElement>("[data-mcp-demo]")) {
-    const button = root.querySelector<HTMLButtonElement>("[data-mcp-run]");
-    const out = root.querySelector<HTMLElement>("[data-mcp-out]");
-    if (!button || !out) continue;
-    button.hidden = false;
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-      let text: string;
-      try {
-        const res = await fetch(PATH, {
-          method: "POST",
-          headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
-          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const body = (await res.json()) as { result?: { tools?: { name: string; annotations?: { readOnlyHint?: boolean } }[] } };
-        const tools = body.result?.tools ?? [];
-        text = JSON.stringify(
-          tools.map((t) => ({ name: t.name, readOnlyHint: t.annotations?.readOnlyHint === true })),
-          null,
-          2,
-        );
-      } catch (err) {
-        text = `${err instanceof Error ? err.message : "error"}\n${root.dataset.fallback ?? ""}`;
-      }
-      out.textContent = text;
-      button.disabled = false;
+  function request(call: string, lang: string) {
+    return call === "tools/list"
+      ? { jsonrpc: "2.0", id: 1, method: "tools/list" }
+      : { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: call, arguments: call === "list_posts" ? { lang, limit: 3 } : { lang } } };
+  }
+
+  async function run(call: string, lang: string): Promise<{ lines: string[]; status: number }> {
+    const body = request(call, lang);
+    const res = await fetch(PATH, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+      body: JSON.stringify(body),
     });
+    if (!res.ok) return { lines: [], status: res.status };
+    const json = (await res.json()) as { result?: { tools?: Tool[]; structuredContent?: unknown }; error?: { message?: string } };
+    const lines = [`→ ${JSON.stringify(body)}`];
+    if (json.error) lines.push(`← ${json.error.message ?? "error"}`);
+    else if (call === "tools/list") {
+      const tools = json.result?.tools ?? [];
+      const width = Math.max(0, ...tools.map((x) => x.name.length)) + 2;
+      for (const x of tools) lines.push(`← ${x.name.padEnd(width)}readOnlyHint: ${x.annotations?.readOnlyHint === true}`);
+    } else {
+      const text = JSON.stringify(json.result?.structuredContent ?? json.result, null, 2).split("\n");
+      lines.push(...text.map((l, i) => (i === 0 ? `← ${l}` : `  ${l}`)));
+    }
+    return { lines, status: res.status };
+  }
+
+  for (const root of document.querySelectorAll<HTMLElement>("[data-mcp]")) {
+    const out = root.querySelector<HTMLElement>("[data-mcp-out]");
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>("[data-mcp-call]")];
+    if (!out) continue;
+    const lang = root.dataset.lang ?? "en";
+    let turn = 0;
+    for (const button of buttons) {
+      button.hidden = false;
+      button.addEventListener("click", async () => {
+        const mine = ++turn;
+        for (const b of buttons) {
+          if (!b.hasAttribute("aria-pressed")) continue;
+          const on = b === button;
+          b.setAttribute("aria-pressed", String(on));
+          b.classList.toggle("pui-solid", on);
+          b.classList.toggle("pui-inverse", on);
+          b.classList.toggle("pui-outline", !on);
+          b.classList.toggle("pui-surface", !on);
+        }
+        out.textContent = "";
+        out.classList.remove("muted");
+        let result: { lines: string[]; status: number };
+        try {
+          result = await run(button.dataset.mcpCall ?? "tools/list", lang);
+        } catch {
+          result = { lines: [], status: 0 };
+        }
+        if (mine !== turn) return;
+        if (!result.lines.length) {
+          out.textContent = result.status === 429 ? (root.dataset.limit ?? "429") : (root.dataset.down ?? "error");
+          return;
+        }
+        if (reduced) {
+          out.textContent = result.lines.join("\n");
+          return;
+        }
+        const each = Math.min(80, 800 / result.lines.length);
+        result.lines.forEach((line, i) =>
+          setTimeout(() => {
+            if (mine === turn) out.textContent += (i ? "\n" : "") + line;
+          }, i * each),
+        );
+      });
+    }
   }
 </script>
+
+<style>
+  .mcp {
+    min-width: 0;
+  }
+  .mcp-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+  .mcp-connect {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .mcp-calls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+  }
+  .mcp-buttons:not(.pui-group-row) {
+    display: flex;
+    gap: 8px;
+  }
+  .mcp-buttons.pui-group-row {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .mcp-out {
+    min-height: 150px;
+    max-height: 380px;
+    overflow: auto;
+    padding: 16px;
+    background: var(--pui-bg);
+  }
+  .mcp-out .code.muted {
+    color: var(--pui-text-muted);
+  }
+  .mcp-out .code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  [data-mcp-call][hidden] {
+    display: none;
+  }
+  .mcp-card {
+    display: grid;
+    grid-template-columns: 440px minmax(0, 1fr);
+  }
+  .mcp-card .mcp-controls {
+    padding: 16px;
+    border-right: 1px solid var(--pui-border);
+  }
+  .mcp-lab {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .mcp-lab .mcp-out {
+    border: 1px solid var(--pui-border);
+    border-radius: calc(var(--pui-radius) * 1.5);
+  }
+  .mcp-lab .copy-field,
+  .mcp-lab :global(.copy-field) {
+    max-width: 460px;
+  }
+  @media (max-width: 767px) {
+    .mcp-card {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .mcp-card .mcp-controls {
+      border-right: none;
+      border-bottom: 1px solid var(--pui-border);
+    }
+  }
+</style>

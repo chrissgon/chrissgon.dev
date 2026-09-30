@@ -19,7 +19,7 @@ export function resolveStats(
 ): ShownStat[] {
   return list.flatMap((s): ShownStat[] => {
     const label = s.label[lang];
-    if (s.value !== null) return [{ id: s.id, value: s.value, label }];
+    if (s.value !== null) return [{ id: s.id, value: typeof s.value === "string" ? s.value : s.value[lang], label }];
     if (s.id === "npm-downloads" && read.npm) {
       return [{ id: s.id, value: formatNumber(read.npm.downloads, lang), label, period: { start: read.npm.start, end: read.npm.end } }];
     }

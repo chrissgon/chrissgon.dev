@@ -4,5 +4,11 @@
       "phrase": "dentro de uma política",
       "reason": "Social agent project (site-content.md 4.2, PT): a reply policy for comments, not politics"
     }
+  ],
+  "localizacao": [
+    {
+      "phrase": "Tente o endereço no seu próprio cliente MCP",
+      "reason": "mcp-live error message (site-lab.md, PT): the MCP server's address, not a location"
+    }
   ]
 }

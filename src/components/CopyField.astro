@@ -1,0 +1,29 @@
+---
+// A text to copy: selectable mono text and a Copy button (hidden without JavaScript). Copied: the button says
+// "Copied" for 2 s and the status region announces it; copy failed: the text is selected and the status says
+// "Press Ctrl+C to copy" (site-home.md states; src/scripts/site.ts).
+import { t, type Lang } from "../data/index.ts";
+
+interface Props {
+  lang: Lang;
+  text: string;
+}
+const { lang, text } = Astro.props;
+---
+
+<div class="copy-field" data-copy-root>
+  <div class="field">
+    <code data-copy-text>{text}</code>
+    <button type="button" class="pui-btn pui-outline pui-surface" data-copy="[data-copy-text]" data-copied={t(lang, "copied")} data-fallback={t(lang, "copyFallback")} hidden>{t(lang, "copy")}</button>
+  </div>
+  <span class="status" role="status" data-copy-status></span>
+</div>
+
+<style>
+  .copy-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+</style>

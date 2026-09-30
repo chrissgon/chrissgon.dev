@@ -1,12 +1,15 @@
 ---
-// Base layout (design: "Layout base"): head, Perfect UI, canonical, hreflang, JSON-LD, skip link,
-// navigation and language switch. Dark only (decision of 2026-09-29). No custom styling yet: the visual
-// design comes later; the only rules here apply the self-hosted fonts (ADR-0006).
-// Preloads: Inter 400 (body text) and 800 (the h1, the LCP) are on the first screen; Inter 600 and
-// JetBrains Mono are not, so they load only when a rule uses them.
+// Base layout, design direction A "Estrutura à mostra": head, Perfect UI, canonical, hreflang, JSON-LD, and the
+// page frame (a 1200 px column with 1px borders over the dot grid) holding the announcement bar (the newest
+// post), the navigation with the EN / PT switch, the page's cells and the footer. Dark only (2026-09-29).
+// Preloads: Inter 400 and 800 (the hero's text, the LCP) are on the first screen; Inter 600 and JetBrains Mono
+// load when a rule uses them (ADR-0006).
 import "@chrissgon/perfectui/perfectui.css";
+import "../styles/site.css";
 import { Font } from "astro:assets";
-import { profile, t, type Lang } from "../data/index.ts";
+import Cell from "../components/Cell.astro";
+import LangSwitch from "../components/LangSwitch.astro";
+import { posts, postTitle, profile, t, type Lang } from "../data/index.ts";
 import { LOCALE, localePath } from "../lib/format.ts";
 import { assertPublishable, serializeJsonLd, type jsonLd as JsonLdBuilder } from "../lib/jsonld.ts";
 import { siteUrl } from "../lib/site.ts";
@@ -18,17 +21,20 @@ interface Props {
   title: string;
   description: string;
   jsonld?: ReturnType<typeof JsonLdBuilder>;
+  /** The home page: "view as agent" swaps every region of the body. */
+  agentScope?: boolean;
 }
 
-const { lang, path, title, description, jsonld } = Astro.props;
+const { lang, path, title, description, jsonld, agentScope = false } = Astro.props;
 const site = siteUrl(Astro.site);
-const other: Lang = lang === "en" ? "pt" : "en";
 const href = (l: Lang, p: string) => `${site}${localePath(l, p)}`;
 const nav = [
-  { key: "navProjects", path: "/projects" },
-  { key: "navWriting", path: "/writing" },
-  { key: "navLab", path: "/lab" },
+  { key: "navProjects", href: localePath(lang, "/projects"), path: "/projects" },
+  { key: "navWriting", href: localePath(lang, "/writing"), path: "/writing" },
+  { key: "navLab", href: localePath(lang, "/lab"), path: "/lab" },
+  { key: "navAgents", href: `${localePath(lang, "/")}#for-agents`, path: "#for-agents" },
 ] as const;
+const newest = posts[0];
 ---
 
 <!doctype html>
@@ -38,6 +44,7 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <script is:inline>document.documentElement.classList.add("js");</script>
     <Font cssVariable="--font-sans" preload={[{ weight: "400" }, { weight: "800" }]} />
     <Font cssVariable="--font-mono" />
     <link rel="canonical" href={href(lang, path)} />
@@ -48,39 +55,41 @@ const nav = [
     <link rel="sitemap" href="/sitemap-index.xml" />
     {jsonld && <script type="application/ld+json" set:html={serializeJsonLd(assertPublishable(jsonld))} />}
   </head>
-  <body>
-    <a href="#main">{t(lang, "skipToContent")}</a>
-    <header>
-      <nav>
-        <a href={localePath(lang, "/")}>{profile.name}</a>
-        {nav.map((n) => <a href={localePath(lang, n.path)} aria-current={n.path === path ? "page" : undefined}>{t(lang, n.key)}</a>)}
-        <a href={lang === "en" ? "/llms.txt" : "/pt/llms.txt"}>{t(lang, "navAgents")}</a>
-        <a href={localePath(other, path)} hreflang={LOCALE[other]} lang={LOCALE[other]}>{t(lang, "otherLang")}</a>
-      </nav>
-    </header>
-    <main id="main">
-      <slot />
-    </main>
-    <footer>
-      <h2>{t(lang, "profiles")}</h2>
-      <ul>
-        {profile.profiles.map((p) => <li><a href={p.url} rel="me">{p.network}: {p.handle}</a></li>)}
-      </ul>
-    </footer>
+  <body data-agent-scope={agentScope ? "" : undefined}>
+    <a class="skip pui-btn pui-solid pui-inverse" href="#main">{t(lang, "skipToContent")}</a>
+    <div class="frame">
+      {newest && (
+        <Cell as="div" class="ann">
+          <span class="tag" aria-hidden="true">.pui-badge</span>
+          <span class="ann-post">
+            <span class="pui-badge pui-outline pui-surface mono">{newest.date}</span>
+            <a href={newest.url} lang={newest.title[lang] ? undefined : LOCALE[newest.lang[0]!]}>{postTitle(newest, lang)}</a>
+          </span>
+        </Cell>
+      )}
+      <Cell as="nav" class="nav">
+        <div class="nav-bar">
+          <a class="brand" href={localePath(lang, "/")}>{profile.handle}</a>
+          <LangSwitch lang={lang} path={path} />
+        </div>
+        <div class="nav-links">
+          {nav.map((n) => <a href={n.href} aria-current={n.path === path ? "page" : undefined}>{t(lang, n.key)}</a>)}
+          <LangSwitch lang={lang} path={path} />
+        </div>
+      </Cell>
+      <main id="main" tabindex="-1">
+        <slot />
+      </main>
+      <Cell as="footer" class="site-footer">
+        <h2 class="sr-only">{t(lang, "profiles")}</h2>
+        <ul class="profiles">
+          {profile.profiles.map((p) => <li><a href={p.url} rel="me">{p.network} {p.handle}</a></li>)}
+        </ul>
+        <LangSwitch lang={lang} path={path} />
+      </Cell>
+    </div>
+    <script>
+      import "../scripts/site.ts";
+    </script>
   </body>
 </html>
-
-<style is:global>
-  html {
-    font-family: var(--font-sans);
-  }
-  h1 {
-    font-weight: 800;
-  }
-  code,
-  kbd,
-  pre,
-  samp {
-    font-family: var(--font-mono);
-  }
-</style>

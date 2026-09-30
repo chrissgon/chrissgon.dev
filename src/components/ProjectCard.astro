@@ -1,0 +1,66 @@
+---
+// A project as a Perfect UI card (site-projects.md): its image, or the card the site generates, the name in mono,
+// the status badge (outline surface when ready, outline muted in progress: no state colours), type and stack, the
+// approved text and its links. A project in progress has no link (site-content.md 4.2).
+import { Image } from "astro:assets";
+import ProjectVisual from "./ProjectVisual.astro";
+import type { Lang } from "../data/index.ts";
+import type { Project } from "../data/schema.ts";
+import { statusLabel, typeLabel } from "../lib/format.ts";
+import { image } from "../lib/images.ts";
+
+interface Props {
+  project: Project;
+  lang: Lang;
+  /** The home page's short row of projects in progress. */
+  compact?: boolean;
+}
+const { project: p, lang, compact = false } = Astro.props;
+const meta = p.types.map((x) => typeLabel(x, lang)).join(" · ") + (p.stack.length ? ` · ${p.stack.join(", ")}` : "");
+---
+
+<article class:list={["pui-card col project", { compact }]} data-project={p.id}>
+  {p.image.kind === "file" ? (
+    <Image
+      src={image(p.image.src)}
+      alt=""
+      widths={[400, 800]}
+      sizes="(max-width: 767px) 100vw, 380px"
+      class="card-media"
+      style={p.id === "perfectui-doc" ? "object-position: top" : undefined}
+      loading="lazy"
+      decoding="async"
+    />
+  ) : (
+    <ProjectVisual id={p.id} lang={lang} compact={compact} />
+  )}
+  <div class="pui-card-content grow">
+    <div class="card-title-row">
+      <h3 class="card-name">{p.name}</h3>
+      <span class:list={["pui-badge pui-outline", p.status === "ready" ? "pui-surface" : "pui-muted"]}>{statusLabel(p.status, lang)}</span>
+    </div>
+    <span class="meta">{meta}</span>
+    <p class:list={["summary", { muted: p.status !== "ready" }]}>{p.summary[lang]}</p>
+    {p.links.length > 0 && (
+      <div class="links">
+        {p.links.map((l) => <a href={l.url}>{l.label}</a>)}
+      </div>
+    )}
+  </div>
+</article>
+
+<style>
+  .project h3 {
+    letter-spacing: 0;
+    line-height: 1.3;
+  }
+  .summary {
+    line-height: 1.6;
+  }
+  .compact h3 {
+    font-size: 14px;
+  }
+  .compact .summary {
+    line-height: 1.5;
+  }
+</style>

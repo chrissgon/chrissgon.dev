@@ -23,7 +23,7 @@ export default [
     name: "perfectui.dev",
     types: ["web-ui"],
     status: "ready",
-    stack: ["TypeScript", "Vue", "Nuxt"],
+    stack: ["TypeScript", "Vue (Nuxt)"],
     summary: {
       en: "The documentation site of Perfect UI, built with Nuxt and Perfect UI itself.",
       pt: "O site de documentação da Perfect UI, feito com Nuxt e com a própria Perfect UI.",
