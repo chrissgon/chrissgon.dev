@@ -1,5 +1,5 @@
-// Source: site-content.md section 7, approved on 2026-09-30. No experiment is built in this repository
-// yet, so none has a `source` link.
+// Source: site-content.md section 7, approved on 2026-09-30. An experiment gets a `source` link once it is
+// built in this repository and runs on the lab page (mcp-live: netlify/functions/mcp.mts and McpDemo.astro).
 export default [
   {
     id: "dot-portrait",
@@ -21,6 +21,7 @@ export default [
       en: "Call this site's read-only MCP server from the page.",
       pt: "Chame o servidor MCP de leitura deste site pela própria página.",
     },
+    source: "https://github.com/chrissgon/chrissgon.dev/blob/main/netlify/functions/mcp.mts",
   },
   {
     id: "perfectui-live",

@@ -29,6 +29,14 @@ describe("llms.txt (REQ-3)", () => {
     expect(pt).toContain(`${site}/pt/projects/`);
   });
 
+  it("announces the read-only MCP server with the approved label, in both languages (REQ-4)", () => {
+    expect(en).toContain("\n## For agents\n");
+    expect(en).toContain(`- [Connect your agent to this site](${site}/api/mcp): MCP, Streamable HTTP, POST (get_profile, list_products, list_posts)`);
+    expect(pt).toContain("\n## Para agentes\n");
+    expect(pt).toContain(`- [Conecte seu agente a este site](${site}/api/mcp)`);
+    expect(en).toMatch(/- mcp-live: .*\(Code: https:\/\/github\.com\/chrissgon\/chrissgon\.dev\/blob\/main\/netlify\/functions\/mcp\.mts\)/);
+  });
+
   it("shows the npm count only when there is one", () => {
     expect(en).toContain("1,014 downloads from 2026-08-30 to 2026-09-28");
     expect(llmsText("en", { site, npm: null })).not.toContain("downloads");

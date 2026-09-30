@@ -2,7 +2,7 @@
 
 Christopher Gonçalves's personal site. Static pages for people (EN at `/`, PT at `/pt/`) and a surface for AI agents (`/llms.txt`, `/pt/llms.txt`, schema.org JSON-LD, sitemap), all generated from one typed data module. Built with [Astro](https://astro.build) and [Perfect UI](https://perfectui.dev), no Tailwind.
 
-Status: foundation. The pages render the data without a visual design yet; the design, the dot portrait, the read-only MCP server and the Lighthouse checks come in later pull requests.
+Status: foundation. The pages render the data without a visual design yet; the design, the dot portrait and the Lighthouse checks come in later pull requests. The read-only MCP server answers at `/api/mcp` (see below).
 
 ## Commands
 
@@ -16,6 +16,7 @@ Node 22.12 or newer (`.nvmrc`), npm.
 | Test | `npm test` |
 | Build | `npm run build` |
 | Secret scan | `npm run secrets` |
+| MCP server locally | `npm run build`, then `netlify dev --offline --framework '#static' --dir dist` (the site and `/api/mcp` on port 8888) |
 
 `npm run build` runs, in order: `scripts/fetch-npm.ts` (npm downloads, with a committed snapshot as fallback), the sensitive-topics check of `src/data/`, `astro build`, and the same check over `dist/`.
 
@@ -35,6 +36,18 @@ Everything the site says lives in `src/data/` and is validated with zod on impor
 | `labels.ts` | interface labels in EN and PT |
 
 To add a post: add its cover to `src/assets/posts/`, add an entry at the top of `src/data/posts.json`, open a pull request.
+
+## MCP server
+
+A read-only [MCP](https://modelcontextprotocol.io) server at `/api/mcp`: a Netlify Function (`netlify/functions/mcp.mts`) with the tools in `src/mcp/server.ts`. Stateless Streamable HTTP with JSON responses; POST only (anything else gets 405).
+
+| Tool | Input | Returns |
+|------|-------|---------|
+| `get_profile` | `lang` (`"en"` default, or `"pt"`) | name, handle, job title, label, About, profiles |
+| `list_products` | `lang` | products with summary, license, languages and last month's npm downloads |
+| `list_posts` | `limit` 1 to 50 (default 10), `lang` | posts, newest first |
+
+Every tool is read-only and reads only `src/data/`; inputs are strict, so an unknown field or an out-of-range value is rejected, and a tool that does not exist answers `Tool <name> not found`. Netlify blocks more than 30 requests per 60 s per IP with a 429 (`config.rateLimit` in the function). Try it: `npx -y @modelcontextprotocol/inspector@2.8.0 --cli http://localhost:8888/api/mcp --transport http --method tools/list`.
 
 ## Sensitive-topics check
 
