@@ -1,6 +1,6 @@
 ---
 // A post as a Perfect UI card linking to LinkedIn (site-writing.md, refined in Claude Design): the post's own
-// cover as a 9:16 portrait (owner, 2026-09-30), cropped at build around the post's `coverFocus`; the date
+// cover as a 4:5 portrait (owner, 2026-09-30), cropped at build around the post's `coverFocus`; the date
 // (optional); the language badges with reactions and comments read from the post's public page; the title in the
 // post's language. `compact`: the home page's row, with a smaller title. The cover's alt is empty because the
 // title is the link's text right below it.
@@ -24,7 +24,7 @@ interface Props {
 const { post: p, lang, date = true, eager = false, compact = false, sizes } = Astro.props;
 const titleLang = p.title[lang] ? undefined : LOCALE[p.lang[0]!];
 const src = image(p.cover);
-// Never ask for more than the largest 9:16 crop the source holds (src/lib/covers.ts). The fallback `src` is the
+// Never ask for more than the largest 4:5 crop the source holds (src/lib/covers.ts). The fallback `src` is the
 // smallest file; browsers pick from the srcset.
 const widths = coverWidths(largestCrop(src).width);
 const size = coverSize(widths[0]!);
@@ -62,7 +62,7 @@ const size = coverSize(widths[0]!);
     display: block;
     width: 100%;
     height: auto;
-    aspect-ratio: 9 / 16;
+    aspect-ratio: 4 / 5;
     object-fit: cover;
     border-bottom: 1px solid var(--pui-border);
     background: var(--pui-bg-emphasis);
