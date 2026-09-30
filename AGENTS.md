@@ -54,5 +54,5 @@ The design and its decision records are kept locally by the owner, outside this 
 
 ## Working rules
 
-- `main` is protected: every change goes through a branch and a pull request, merged by squash only when the required checks (`secrets`, `build`, and `lighthouse` once it is added to the ruleset) are green. No force push, no rule changes, no bypass.
+- `main` is protected: every change goes through a branch and a pull request, merged by squash only when the required checks `secrets`, `build` and `lighthouse` are green. No force push, no rule changes, no bypass.
 - Nothing is published outside GitHub from this repository by an agent: Netlify and DNS changes are the owner's.

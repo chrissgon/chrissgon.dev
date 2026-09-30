@@ -128,6 +128,16 @@ describe("check-dist (ADR-0009)", () => {
     expect(checkDist(root).findings).toEqual(["weight: index.html loads https://cdn.example.com/x.js from another origin before the first render"]);
   });
 
+  it("counts the fonts declared in an inline style once, with the preloaded ones", () => {
+    const style = "<style>@font-face{src:url(/_astro/inter.woff2)}@font-face{src:url('/_astro/mono.woff2') format('woff2')}</style>";
+    const root = dist({
+      "index.html": page("", `${style}<link rel="preload" href="/_astro/inter.woff2" as="font">`),
+      "_astro/mono.woff2": Buffer.alloc(10_000),
+    });
+    const w = pageWeight(root, "index.html");
+    expect(w.resources.map((r) => r.path).sort()).toEqual(["_astro/inter.woff2", "_astro/mono.woff2", "_astro/site.css", "index.html"]);
+  });
+
   it("reports a referenced file that is not in dist/", () => {
     expect(checkDist(dist({ "index.html": page('<script type="module" src="/_astro/gone.js"></script>') })).findings).toEqual([
       "weight: index.html references _astro/gone.js, which is not in dist/",

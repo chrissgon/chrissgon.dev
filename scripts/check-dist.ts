@@ -106,7 +106,10 @@ export function pageWeight(dist: string, page: string, read: (p: string) => Buff
   const seen = new Set([page]);
   const external: string[] = [];
   const missing: string[] = [];
-  const queue = firstRenderUrls(html.toString("utf8")).map((u) => [u, page] as const);
+  const doc = html.toString("utf8");
+  // Fonts declared in inline <style> blocks (the Fonts API writes its @font-face rules there) count too.
+  const inlineCss = [...renderedHtml(doc).matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]!).join("\n");
+  const queue = [...firstRenderUrls(doc), ...nestedUrls("inline.css", inlineCss)].map((u) => [u, page] as const);
   while (queue.length) {
     const [url, from] = queue.shift()!;
     const path = resolveUrl(url, from);
