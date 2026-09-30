@@ -20,7 +20,7 @@ const workbench = id === "ai-workbench" ? readWorkbenchCount() : null;
   {workbench ? (
     <div class="pv-workbench">
       <span class="pv-num">{formatNumber(workbench.skills, lang)}</span>
-      <WorkbenchBars count={workbench} height={133} />
+      <WorkbenchBars count={workbench} height={98} />
     </div>
   ) : (
     <div class="pv-pipe">
@@ -32,7 +32,7 @@ const workbench = id === "ai-workbench" ? readWorkbenchCount() : null;
 <style>
   .pv {
     position: relative;
-    height: 216px;
+    height: 162px;
     border-bottom: 1px solid var(--pui-border);
     background: var(--pui-bg);
     overflow: hidden;
