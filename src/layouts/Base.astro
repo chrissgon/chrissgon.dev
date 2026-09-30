@@ -5,7 +5,7 @@
 import "@chrissgon/perfectui/perfectui.css";
 import { profile, t, type Lang } from "../data/index.ts";
 import { LOCALE, localePath } from "../lib/format.ts";
-import { serializeJsonLd } from "../lib/jsonld.ts";
+import { assertPublishable, serializeJsonLd, type jsonLd as JsonLdBuilder } from "../lib/jsonld.ts";
 import { siteUrl } from "../lib/site.ts";
 
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
   path: string;
   title: string;
   description: string;
-  jsonld?: object;
+  jsonld?: ReturnType<typeof JsonLdBuilder>;
 }
 
 const { lang, path, title, description, jsonld } = Astro.props;
@@ -41,7 +41,7 @@ const nav = [
     <link rel="alternate" hreflang="x-default" href={href("en", path)} />
     <link rel="alternate" type="text/plain" href={lang === "en" ? "/llms.txt" : "/pt/llms.txt"} title="llms.txt" />
     <link rel="sitemap" href="/sitemap-index.xml" />
-    {jsonld && <script type="application/ld+json" set:html={serializeJsonLd(jsonld)} />}
+    {jsonld && <script type="application/ld+json" set:html={serializeJsonLd(assertPublishable(jsonld))} />}
   </head>
   <body>
     <a href="#main">{t(lang, "skipToContent")}</a>

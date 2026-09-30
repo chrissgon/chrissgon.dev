@@ -42,5 +42,12 @@ export function forbiddenFields(doc: ReturnType<typeof jsonLd>): string[] {
   );
 }
 
+/** Throw the build error `jsonld: forbidden field <field>` when a Person carries a forbidden field (EDGE-1). */
+export function assertPublishable<T extends ReturnType<typeof jsonLd>>(doc: T): T {
+  const problems = forbiddenFields(doc);
+  if (problems.length) throw new Error(problems.join("\n"));
+  return doc;
+}
+
 /** Serialize for a <script type="application/ld+json">, escaping "<" so no tag can close the script. */
 export const serializeJsonLd = (doc: object) => JSON.stringify(doc).replace(/</g, "\\u003c");

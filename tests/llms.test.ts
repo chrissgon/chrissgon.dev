@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { posts, sensitiveTopics } from "../src/data/index.ts";
 import { localePath } from "../src/lib/format.ts";
-import { forbiddenFields, jsonLd } from "../src/lib/jsonld.ts";
+import { assertPublishable, forbiddenFields, jsonLd } from "../src/lib/jsonld.ts";
 import { llmsText } from "../src/lib/llms.ts";
 import { matchTopics, withLocalExcludes } from "../src/lib/sensitive.ts";
 import exclude from "../src/data/sensitive-exclude.json" with { type: "json" };
@@ -58,6 +58,12 @@ describe("JSON-LD (REQ-5)", () => {
   it("flags a forbidden Person field", () => {
     const bad = { ...doc, "@graph": [{ ...doc["@graph"][0]!, worksFor: "x" }] } as unknown as typeof doc;
     expect(forbiddenFields(bad)).toEqual(["jsonld: forbidden field worksFor"]);
+  });
+
+  it("stops the build on a forbidden Person field and passes a clean document", () => {
+    const bad = { ...doc, "@graph": [{ ...doc["@graph"][0]!, birthDate: "x" }] } as unknown as typeof doc;
+    expect(() => assertPublishable(bad)).toThrow("jsonld: forbidden field birthDate");
+    expect(assertPublishable(doc)).toBe(doc);
   });
 });
 
