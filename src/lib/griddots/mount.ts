@@ -12,7 +12,7 @@
 // its halo) are left to it (GridDotOwner), and so are dots under an opaque box (a card, a field), which would
 // otherwise slide out from under it.
 
-import { PUSH_R, SETTLE_PX, pointerPush, springStep } from "../portrait/push.ts";
+import { BG_PUSH_PX, BG_PUSH_R, SETTLE_PX, pointerPush, springStep } from "../portrait/push.ts";
 import type { GridDotOwner } from "../portrait/types.ts";
 import {
   canvasBox, devicePlace, dotAt, dotKey, dotsAcross, forDotsNear, holds, withAlpha, type Box,
@@ -151,7 +151,7 @@ export function mountGridDots(): GridDotsController {
     last = now;
     const p = ptr ? { x: ptr.x + scrollX - lx, y: ptr.y + scrollY - ly } : null;
     if (p) {
-      forDotsNear(p.x, p.y, PUSH_R, NX, NY, (i, j) => {
+      forDotsNear(p.x, p.y, BG_PUSH_R, NX, NY, (i, j) => {
         const key = dotKey(i, j);
         if (dots.has(key) || blocked.has(key)) return;
         if (movable(i, j)) dots.set(key, { i, j, ox: 0, oy: 0 });
@@ -160,7 +160,7 @@ export function mountGridDots(): GridDotsController {
     }
     let busy = false;
     for (const [key, d] of dots) {
-      const [tx, ty] = p ? pointerPush(dotAt(d.i) - p.x, dotAt(d.j) - p.y) : [0, 0];
+      const [tx, ty] = p ? pointerPush(dotAt(d.i) - p.x, dotAt(d.j) - p.y, BG_PUSH_R, BG_PUSH_PX) : [0, 0];
       d.ox += (tx - d.ox) * k;
       d.oy += (ty - d.oy) * k;
       if (Math.abs(tx - d.ox) > SETTLE_PX || Math.abs(ty - d.oy) > SETTLE_PX) busy = true;

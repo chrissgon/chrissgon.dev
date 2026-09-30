@@ -5,6 +5,10 @@
 /** The pointer pushes dots within PUSH_R px, by up to PUSH_PX px. */
 export const PUSH_R = 80, PUSH_PX = 26;
 
+/** The page's background dots sit 28 px apart, five times the portrait's, so the same push barely moved them:
+ *  they get a wider radius (5 grid cells) and a stronger push (the owner asked for a bigger effect, 2026-09-30). */
+export const BG_PUSH_R = 140, BG_PUSH_PX = 48;
+
 /** Time constant of the spring that eases a dot toward its target, in ms. */
 export const SPRING_MS = 105;
 

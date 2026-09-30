@@ -4,7 +4,7 @@ import {
   canvasBox, devicePlace, dotAt, dotKey, dotRange, dotsAcross, forDotsNear, GRID_PX, holds, keyI, keyJ, nearestDot, withAlpha,
 } from "../src/lib/griddots/geometry.ts";
 import { layout, pointerPush as portraitPush, PUSH_R as portraitR } from "../src/lib/portrait/grid.ts";
-import { MAX_STEP_MS, pointerPush, PUSH_PX, PUSH_R, SPRING_MS, springStep } from "../src/lib/portrait/push.ts";
+import { BG_PUSH_PX, BG_PUSH_R, MAX_STEP_MS, pointerPush, PUSH_PX, PUSH_R, SPRING_MS, springStep } from "../src/lib/portrait/push.ts";
 
 describe("background dots: where the grid dots are", () => {
   it("puts dot i at 28i + 14 px, the centre of the CSS grid's tile", () => {
@@ -133,6 +133,16 @@ describe("background dots: the portrait's push and spring", () => {
     expect(portraitPush).toBe(pointerPush);
     expect(portraitR).toBe(PUSH_R);
     expect([PUSH_R, PUSH_PX, SPRING_MS]).toEqual([80, 26, 105]);
+  });
+
+  it("pushes the background's sparser dots harder and wider than the portrait's", () => {
+    expect([BG_PUSH_R, BG_PUSH_PX]).toEqual([140, 48]);
+    // The nearest grid dot (28 px away) moves more than a grid cell; one three cells away still moves visibly.
+    expect(pointerPush(28, 0, BG_PUSH_R, BG_PUSH_PX)[0]).toBeGreaterThan(28);
+    expect(pointerPush(84, 0, BG_PUSH_R, BG_PUSH_PX)[0]).toBeGreaterThan(5);
+    expect(pointerPush(BG_PUSH_R, 0, BG_PUSH_R, BG_PUSH_PX)).toEqual([0, 0]);
+    // With the portrait's push the same dots barely moved.
+    expect(pointerPush(56, 0)[0]).toBeLessThan(3);
   });
 
   it("pushes a dot away from the pointer, most near it and not at all past the radius", () => {
