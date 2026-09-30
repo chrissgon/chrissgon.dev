@@ -2,7 +2,7 @@
 // readings (parts of llms.txt), the perfectui-live showcase and the label blocks.
 import { describe, expect, it } from "vitest";
 import { approved, provisional } from "../src/data/labels.ts";
-import { countLabel, formatDate, splitFigure, splitProducts } from "../src/lib/format.ts";
+import { countLabel, formatDate, formatPeriod, splitFigure, splitProducts } from "../src/lib/format.ts";
 import { products, profile } from "../src/data/index.ts";
 import { COUNT_MS, STAGGER_MS, easeOut, frame, parseFigure, progressAt } from "../src/lib/countup.ts";
 import { LLMS_PARTS, llmsParts, llmsText } from "../src/lib/llms.ts";
@@ -213,5 +213,19 @@ describe("Claude Design home", () => {
       const f = parseFigure(text, lang)!;
       expect(frame(f, 1)).toBe(text);
     }
+  });
+});
+
+describe("trajectory periods", () => {
+  const focus = { en: "x", pt: "x" };
+  it("labels a range, a single year, a start and an ongoing entry", () => {
+    expect(formatPeriod({ from: 2021, to: 2024, role: null, focus }, "en")).toBe("2021 – 2024");
+    expect(formatPeriod({ from: 2021, to: 2021, role: null, focus }, "en")).toBe("2021");
+    expect(formatPeriod({ to: 2020, role: null, focus }, "pt")).toMatch(/2020$/);
+    expect(formatPeriod({ from: 2023, to: null, role: null, focus }, "pt")).toBe("2023 – hoje");
+  });
+  it("shows only Now when an entry has neither a start nor an end", () => {
+    expect(formatPeriod({ to: null, role: null, focus }, "en")).toBe("Now");
+    expect(formatPeriod({ to: null, role: null, focus }, "pt")).toBe("Hoje");
   });
 });

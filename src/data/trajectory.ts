@@ -46,13 +46,12 @@ export default {
       },
     },
     {
-      from: 2023,
+      // Only "Now", with the two products (owner, 2026-09-30).
       to: null,
       role: null,
-      // The PT column of the source says "idem": the same text.
       focus: {
-        en: "\"How to create your own Bootstrap\" (2023), Perfect UI 1.0 and ai-workbench (2026).",
-        pt: "\"How to create your own Bootstrap\" (2023), Perfect UI 1.0 and ai-workbench (2026).",
+        en: "Perfect UI 1.0 and ai-workbench.",
+        pt: "Perfect UI 1.0 e ai-workbench.",
       },
     },
   ],
