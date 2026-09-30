@@ -1,0 +1,76 @@
+---
+// The portrait island (ADR-0008, design "Retrato"): a <canvas> that draws the poster in dots at once and
+// plays the clips after the page's load event, and a <noscript> WebP of the same dots for no JavaScript.
+// The poster is inlined, so the first render needs no second request. Clips are offered only when their
+// files exist in public/portrait/ at build time (scripts/encode-portrait.sh writes them); without them the
+// page never requests a video. Styles here are only what the island needs: the slot, the halo margin
+// around it and the fallback image. The visual design comes later.
+import poster from "../assets/portrait/portrait.json";
+import { findClips } from "../lib/portrait/clips.ts";
+import { face, fallbackName, publicDir, tone } from "../lib/portrait/config.ts";
+import type { PortraitOptions } from "../lib/portrait/types.ts";
+
+interface Props {
+  alt: string;
+}
+
+const { alt } = Astro.props;
+const clips = findClips();
+const options: PortraitOptions = { poster, ...tone, face, loop: clips.loop, greet: clips.greet };
+// JSON inside <script>: "<" is escaped so no text can close the element.
+const json = JSON.stringify(options).replace(/</g, "\\u003c");
+const cell = 28 / 5;
+const width = Math.round(poster.cols * cell), height = Math.round(poster.rows * cell);
+---
+
+<div class="portrait-band">
+  <div class="portrait" data-portrait style={`--portrait-w: ${width}px; --portrait-h: ${height}px`}>
+    <canvas data-alt={alt} width="0" height="0"></canvas>
+    <noscript><img src={`/${publicDir}/${fallbackName}`} width={width} height={height} alt={alt} /></noscript>
+    <script type="application/json" data-portrait-options set:html={json} />
+  </div>
+</div>
+
+<script>
+  import { mountPortrait, type PortraitOptions } from "../lib/portrait/index.ts";
+
+  for (const slot of document.querySelectorAll<HTMLElement>("[data-portrait]")) {
+    const canvas = slot.querySelector("canvas"), data = slot.querySelector("[data-portrait-options]");
+    if (!canvas || !data?.textContent) continue;
+    // Labelled only when the script runs; without JavaScript the <noscript> image carries the same alt.
+    canvas.setAttribute("role", "img");
+    canvas.setAttribute("aria-label", canvas.dataset.alt ?? "");
+    mountPortrait(canvas, JSON.parse(data.textContent) as PortraitOptions);
+  }
+</script>
+
+<style>
+  /* The canvas overflows the slot by the halo on every side; the band clips it sideways only, so the page
+     never scrolls horizontally. */
+  .portrait-band {
+    overflow-x: clip;
+  }
+  .portrait {
+    --halo: 168px;
+    position: relative;
+    max-width: var(--portrait-w);
+    height: var(--portrait-h);
+  }
+  canvas {
+    position: absolute;
+    top: calc(-1 * var(--halo));
+    left: calc(-1 * var(--halo));
+    width: calc(100% + 2 * var(--halo));
+    height: calc(100% + 2 * var(--halo));
+    display: block;
+    pointer-events: none;
+  }
+  img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 42% top;
+  }
+</style>

@@ -2,7 +2,7 @@
 
 Christopher Gonçalves's personal site. Static pages for people (EN at `/`, PT at `/pt/`) and a surface for AI agents (`/llms.txt`, `/pt/llms.txt`, schema.org JSON-LD, sitemap), all generated from one typed data module. Built with [Astro](https://astro.build) and [Perfect UI](https://perfectui.dev), no Tailwind.
 
-Status: foundation. The pages render the data without a visual design yet; the design and the dot portrait come in later pull requests. The read-only MCP server answers at `/api/mcp` (see below).
+Status: foundation. The pages render the data without a visual design yet; the home hero carries the dot portrait (poster only until the clips exist) and the fonts are self-hosted. The design comes in later pull requests. The read-only MCP server answers at `/api/mcp` (see below).
 
 ## Commands
 
@@ -18,6 +18,7 @@ Node 22.12 or newer (`.nvmrc`), npm.
 | Lighthouse | `npm run lighthouse` (after a build; needs Chrome) |
 | Secret scan | `npm run secrets` |
 | MCP server locally | `npm run build`, then `netlify dev --offline --framework '#static' --dir dist` (the site and `/api/mcp` on port 8888) |
+| Portrait check (after a build) | `npm run check:portrait` (add `-- --with-synthetic-clips` to check the video path; needs ffmpeg) |
 
 `npm run build` runs, in order: `scripts/fetch-npm.ts` (npm downloads) and `scripts/fetch-workbench.ts` (the ai-workbench skill, agent and adapter counts, from one unauthenticated GET of its git tree on the GitHub API), each with a committed snapshot as fallback and a warning when the API is unreachable; the sensitive-topics check of `src/data/`; `scripts/check-images.ts`; `astro build`; then the sensitive-topics check and `scripts/check-dist.ts` over `dist/`.
 
@@ -58,6 +59,23 @@ A read-only [MCP](https://modelcontextprotocol.io) server at `/api/mcp`: a Netli
 | `list_posts` | `limit` 1 to 50 (default 10), `lang` | posts, newest first |
 
 Every tool is read-only and reads only `src/data/`; inputs are strict, so an unknown field or an out-of-range value is rejected, and a tool that does not exist answers `Tool <name> not found`. Netlify blocks more than 30 requests per 60 s per IP with a 429 (`config.rateLimit` in the function). Try it: `npx -y @modelcontextprotocol/inspector@2.8.0 --cli http://localhost:8888/api/mcp --transport http --method tools/list`.
+
+## Portrait
+
+The home hero shows a portrait drawn in dots on one `<canvas>` (`src/components/Portrait.astro`, renderer in `src/lib/portrait/`, no dependencies). The dot grid `src/assets/portrait/portrait.json` is inlined in the page, so the first render needs no request; the clips load after the page's `load` event. With reduced motion or Save-Data the poster stays still and no video is requested; without JavaScript, `public/portrait/portrait-fallback.webp` shows the same dots. Only derived files are committed: the dot grid, the fallback and the encoded clips, never a source photo or source video.
+
+The clips (`public/portrait/portrait-{loop,greet}.{webm,mp4}`) are offered only when their files exist at build time. To make them from the generated videos (kept outside this repository):
+
+```sh
+scripts/encode-portrait.sh --in <folder with loop.mp4 and greet.mp4> --first-frame /tmp/first.png   # choose the crop box on it
+scripts/encode-portrait.sh --in <folder> --crop X,Y,W --poster-script <path to portrait.py>
+```
+
+The script crops, denoises and scales to twice the dot grid, encodes VP9 and H.264 in parallel, remakes the poster from the loop's first frame (with `--poster-script`), and checks that each format pair is 150 KB or less and that the loop wrap and the joins between clips are no larger than the largest step inside the clips. `--help` lists every option; `--self-test` runs it on synthetic clips. The tone of the poster (`--gamma`, `--floor`, `--equalize`) must match `src/lib/portrait/config.ts`. `scripts/portrait-fallback.py` redraws the no-JavaScript WebP from the dot grid (`uv run -q --with pillow scripts/portrait-fallback.py`).
+
+## Fonts
+
+Inter (400, 600, 800) and JetBrains Mono (400, 600) are self-hosted through Astro's Fonts API with the Fontsource provider, `latin` subset, WOFF2 (`astro.config.mjs`); the build downloads them into `/_astro/fonts/`. Only Inter 400 and 800, used by the first screen, are preloaded (`src/layouts/Base.astro`). No font is loaded from a third party.
 
 ## Sensitive-topics check
 

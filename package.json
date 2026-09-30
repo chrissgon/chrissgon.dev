@@ -19,7 +19,8 @@
     "typecheck": "astro check && tsc --noEmit",
     "test": "vitest run",
     "lighthouse": "tsx scripts/lighthouse.ts",
-    "secrets": "python3 scripts/secret-scan/secret_scan.py"
+    "secrets": "python3 scripts/secret-scan/secret_scan.py",
+    "check:portrait": "tsx scripts/check-portrait.ts"
   },
   "dependencies": {
     "@astrojs/sitemap": "3.7.4",
@@ -33,6 +34,7 @@
     "@netlify/functions": "6.0.0",
     "@types/node": "22.20.4",
     "lighthouse": "13.5.0",
+    "playwright": "1.63.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "5.0.2"
