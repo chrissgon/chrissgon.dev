@@ -2,7 +2,10 @@
 // whole words or phrases, case-insensitive, after removing the topic's `exclude` phrases from the text.
 // Private terms (names that must never appear, kept out of git) are reported by number, never by text.
 import { existsSync, readFileSync } from "node:fs";
-import type { SensitiveExclude, SensitiveTopics } from "../data/schema.ts";
+import type { SensitiveTopics } from "../data/schema.ts";
+import { matchTopics, wholeWord } from "./topics.ts";
+
+export { matchTopics, withLocalExcludes } from "./topics.ts";
 
 export interface Finding {
   file: string;
@@ -11,33 +14,6 @@ export interface Finding {
   topic: string;
   /** The keyword for a topic; "#<n>" (1-based) for a private term. */
   match: string;
-}
-
-const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const wholeWord = (phrase: string) => new RegExp(`(?<![\\p{L}\\p{N}_])${escape(phrase)}(?![\\p{L}\\p{N}_])`, "iu");
-
-/** The public list with this site's own `exclude` additions; an addition for an unknown topic is an error. */
-export function withLocalExcludes(topics: SensitiveTopics, local: SensitiveExclude): SensitiveTopics {
-  const merged = structuredClone(topics);
-  for (const [topic, entries] of Object.entries(local)) {
-    const t = merged.topics[topic];
-    if (!t) throw new Error(`sensitive-exclude.json: unknown topic ${topic}`);
-    t.exclude.push(...entries.map((e) => e.phrase));
-  }
-  return merged;
-}
-
-/** Topics and keywords found in one piece of text. */
-export function matchTopics(text: string, topics: SensitiveTopics): { topic: string; keyword: string }[] {
-  const hits: { topic: string; keyword: string }[] = [];
-  for (const [topic, t] of Object.entries(topics.topics)) {
-    let low = text.toLowerCase();
-    for (const phrase of t.exclude) low = low.split(phrase.toLowerCase()).join(" ");
-    for (const keyword of t.keywords) {
-      if (wholeWord(keyword.toLowerCase()).test(low)) hits.push({ topic, keyword });
-    }
-  }
-  return hits;
 }
 
 /** Line-by-line scan of a text; line numbers are 1-based. */

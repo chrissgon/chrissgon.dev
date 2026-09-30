@@ -94,6 +94,21 @@ export const provisional = {
   sectionIndex: { en: "Index", pt: "Índice" },
   projectsTitle: { en: "Shipped and in progress", pt: "Entregues e em construção" },
   writingTitle: { en: "Posts on LinkedIn", pt: "Posts no LinkedIn" },
+  // "Pick the next post" (src/lib/pick.ts): the EN texts are the published ones of the profile README
+  // (chrissgon/chrissgon, scripts/readme.py, approved by the owner on 2026-09-29 and 2026-09-30); the README
+  // has no PT, so the PT texts are proposals awaiting the owner. {pillar}, {date} and {topic} are filled in.
+  pickIndex: { en: "GitHub", pt: "GitHub" },
+  pickTitle: { en: "Pick the next post", pt: "Escolha o próximo post" },
+  pickLead: {
+    en: "This week's slot is {pillar}. Pick the topic I write next: one pick per GitHub account, which you can change until the round closes on {date}.",
+    pt: "O post desta semana é do pilar {pillar}. Escolha o tema que eu escrevo a seguir: uma escolha por conta do GitHub, que você pode trocar até a rodada fechar em {date}.",
+  },
+  pickButton: { en: "Pick", pt: "Escolher" },
+  pickClosed: { en: "The next round opens on a Monday.", pt: "A próxima rodada abre numa segunda-feira." },
+  pickClosedLast: { en: "Until then, the last result is below.", pt: "Até lá, o último resultado fica abaixo." },
+  pickLast: { en: "Last round you picked {topic}.", pt: "Na última rodada, vocês escolheram {topic}." },
+  pickWrote: { en: "I wrote it", pt: "Escrevi o post" },
+  pickWriting: { en: "I'm writing it now.", pt: "Estou escrevendo agora." },
 };
 
 export default { ...approved, ...provisional };

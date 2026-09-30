@@ -11,8 +11,10 @@ import McpDemo from "../components/McpDemo.astro";
 import Portrait from "../components/Portrait.astro";
 import PostCard from "../components/PostCard.astro";
 import ProjectCard from "../components/ProjectCard.astro";
+import PickNext from "../components/PickNext.astro";
 import Showcase from "../components/Showcase.astro";
 import Base from "../layouts/Base.astro";
+import { readPickView } from "../data/pick.ts";
 import { lab, posts, products, profile, projects, readNpmCount, readWorkbenchCount, t, trajectory, type Lang } from "../data/index.ts";
 import { PROJECT_STATUSES, PROJECT_TYPES } from "../data/schema.ts";
 import { EMPTY, rowChips, stackValues } from "../lib/filters.ts";
@@ -34,7 +36,9 @@ const workbench = readWorkbenchCount();
 const ORDER = ["perfectui-size", "npm-downloads", "live-coding", "workbench-skills"];
 const shownStats = resolveStats(lang, { npm, workbench }).sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 const skillsLabel = shownStats.find((s) => s.id === "workbench-skills")?.label;
-const agent = llmsParts(lang, { site, npm, workbench });
+// The "Pick the next post" round as the build reads it; the page refreshes it on its own (PickNext.astro).
+const pick = readPickView();
+const agent = llmsParts(lang, { site, npm, workbench, pick });
 const productLine = (name: string) => agent.products.split("\n").find((l) => l.startsWith(`- [${name}]`)) ?? "";
 const [perfectui, aiWorkbench] = products;
 const latest = posts.slice(0, 4);
@@ -198,6 +202,8 @@ const TAB_OFF = "pui-outline pui-surface";
     <AgentText text={agent.writing} />
   </Cell>
 
+  <PickNext lang={lang} view={pick} index={index(5, t(lang, "pickIndex"))} title={t(lang, "pickTitle")} agent={agent.pick} />
+
   <Cell class="split traj-cell" id={lang === "en" ? "trajectory" : "trajetoria"} aria-labelledby="trajectory-title" reveal>
     <div class="pad traj">
       <span class="tag" aria-hidden="true">.pui-timeline</span>
@@ -231,7 +237,7 @@ const TAB_OFF = "pui-outline pui-surface";
   </Cell>
 
   <Cell class="lab-cell" id="lab" tag="a.pui-btn.pui-outline.pui-surface" aria-labelledby="lab-title" reveal>
-    <div class="sec-head"><h2 id="lab-title" class="index">{index(5, t(lang, "navLab"))}</h2></div>
+    <div class="sec-head"><h2 id="lab-title" class="index">{index(6, t(lang, "navLab"))}</h2></div>
     <div class="human cells lab-row">
       {lab.map((x) => <div class="lab-col"><LabCard item={x} lang={lang} /></div>)}
     </div>
@@ -240,7 +246,7 @@ const TAB_OFF = "pui-outline pui-surface";
 
   <Cell class="agents-cell" id="for-agents" tag="code[role=textbox] · .pui-btn · .pui-btn.pui-link" aria-labelledby="agents-title" reveal>
     <div class="agents-head">
-      <span class="index">{index(6, t(lang, "navAgents"))}</span>
+      <span class="index">{index(7, t(lang, "navAgents"))}</span>
       <h2 id="agents-title" class="h2">{t(lang, "connectAgent")}</h2>
     </div>
     <div class="human agents-demo"><McpDemo lang={lang} variant="row" /></div>

@@ -132,6 +132,22 @@ const seen = new IntersectionObserver(
 );
 for (const el of document.querySelectorAll<HTMLElement>(".reveal")) seen.observe(el);
 
+// "Pick the next post" (home page): once the section comes near, a lazy chunk reads the profile's round again
+// (rounds change every Monday; deploys are manual). Nothing of it loads with the first render. It lives here, not
+// in the home page's script, so the dynamic-import helper stays in this one chunk.
+const pick = document.querySelector<HTMLElement>("[data-pick]");
+if (pick) {
+  const near = new IntersectionObserver(
+    (entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      near.disconnect();
+      void import("./pick-refresh.ts").then((m) => m.refreshPick(pick), () => {});
+    },
+    { rootMargin: "600px 0px" },
+  );
+  near.observe(pick);
+}
+
 // The background dots step aside from the pointer, like the portrait's (src/lib/griddots/). Only with a mouse or
 // pen, without reduced motion or Save-Data, and loaded once the page is idle after load: a separate chunk, so it
 // is no part of the first render. Without it the CSS grid is the whole picture.

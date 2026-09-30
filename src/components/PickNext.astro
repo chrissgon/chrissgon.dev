@@ -1,0 +1,118 @@
+---
+// "Pick the next post" (src/lib/pick.ts): the open round of the owner's GitHub profile, its three topics and, for
+// each, a link to the same pre-filled issue the profile README uses (a new tab on github.com). Rendered at build
+// from src/data/pick.ts; when the section comes near, src/scripts/pick-refresh.ts (a lazy chunk, outside the first
+// render) reads the profile's pick.json again and redraws this markup, the same elements with the same classes,
+// when the round has changed. Only the owner's topics are shown, never the text of an issue.
+import AgentText from "./AgentText.astro";
+import Cell from "./Cell.astro";
+import { viewKey, viewTexts, type PickView } from "../lib/pick.ts";
+import type { Lang } from "../data/schema.ts";
+
+interface Props {
+  lang: Lang;
+  view: PickView;
+  index: string;
+  title: string;
+  /** The section's reading for "view as agent" (its part of llms.txt). */
+  agent: string;
+}
+const { lang, view, index, title, agent } = Astro.props;
+const x = viewTexts(view, lang);
+---
+
+<Cell class="pad" id="pick" tag="ol · a.pui-btn.pui-outline" aria-labelledby="pick-title" reveal data-pick={viewKey(view)} data-round={view.round}>
+  <span class="index">{index}</span>
+  <h2 id="pick-title" class="h2">{title}</h2>
+  <div class="human pick" data-pick-body>
+    {view.state === "open" && x.lead ? (
+      <>
+      <p class="pick-lead">{x.lead[0]}<strong>{x.pillar}</strong>{x.lead[1]}</p>
+      <ol class="pick-list">
+        {view.options.map((o) => (
+          <li>
+            <span class="pick-letter mono">{o.letter}</span>
+            <span class="pick-topic">{o.topic}</span>
+            <a class="pui-btn pui-outline pui-surface" href={o.url} target="_blank" rel="noopener" aria-label={`${x.button} ${o.letter}: ${o.topic}`}>{x.button}</a>
+          </li>
+        ))}
+      </ol>
+      </>
+    ) : (
+      <p class="pick-lead">{x.closed}</p>
+    )}
+    {view.last && x.last && (
+      <p class="pick-last">
+        {x.last[0]}<strong>{view.last.topic}</strong>{x.last[1]}{" "}
+        {view.last.url ? <><a href={view.last.url}>{x.wrote}</a>.</> : x.writing}
+      </p>
+    )}
+  </div>
+  <AgentText text={agent} />
+</Cell>
+
+<style is:global>
+  /* Global, so the rows the page redraws (without Astro's scoping attributes) get the same styles; :where(#pick)
+     keeps each rule at a class's weight, so the "view as agent" rules (site.css) still hide the .human part. */
+  :where(#pick) .h2 {
+    margin-bottom: 24px;
+  }
+  :where(#pick) .pick {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 880px;
+  }
+  :where(#pick) .pick-lead {
+    max-width: 640px;
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--pui-text-muted);
+  }
+  :where(#pick) .pick-lead strong {
+    color: var(--pui-text);
+  }
+  /* One row per topic: the letter, the topic and its link, with a line between rows. Below 600 px the link goes
+     under the topic. */
+  :where(#pick) .pick-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--pui-border);
+  }
+  :where(#pick) .pick-list li {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px 20px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--pui-border);
+  }
+  :where(#pick) .pick-letter {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--pui-border);
+    font-size: 13px;
+  }
+  :where(#pick) .pick-topic {
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  :where(#pick) .pick-last {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--pui-text-muted);
+  }
+  @media (max-width: 599px) {
+    :where(#pick) .pick-list li {
+      grid-template-columns: 32px minmax(0, 1fr);
+      align-items: start;
+    }
+    :where(#pick) .pick-list .pui-btn {
+      grid-column: 2;
+      justify-self: start;
+    }
+  }
+</style>

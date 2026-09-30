@@ -56,7 +56,7 @@ Everything the site says lives in `src/data/` and is validated with zod on impor
 
 To add a post: add its cover to `src/assets/posts/` (without EXIF, GPS or other metadata; a test checks), add an entry at the top of `src/data/posts.json` with its LinkedIn `url`, open a pull request.
 
-The npm count and the ai-workbench counts are read at build; their fallbacks are `src/data/npm-snapshot.json` and `src/data/workbench-snapshot.json` (`npm run data:npm -- --update-snapshot`, `npm run data:workbench -- --update-snapshot`). A snapshot older than 35 days is not shown.
+The npm count and the ai-workbench counts are read at build; their fallbacks are `src/data/npm-snapshot.json` and `src/data/workbench-snapshot.json` (`npm run data:npm -- --update-snapshot`, `npm run data:workbench -- --update-snapshot`). A snapshot older than 35 days is not shown. The "Pick the next post" round is read at build from the owner's GitHub profile, with `src/data/pick-snapshot.json` as its fallback (`npm run data:pick -- --update-snapshot`), and refreshed in the page once the section comes near.
 
 ## MCP server
 

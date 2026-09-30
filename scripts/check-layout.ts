@@ -17,6 +17,11 @@
 // header's switch on, and #view-as-agent opened with only the experiment's own switch on ("demo");
 // /projects/ and /pt/projects/ through the filters and back ("filters": a chip pressed, the switch on shows every
 // project in the reading, the switch off shows the same filtered cards and pressed chip, "All" shows them all).
+// / and /pt/ also with the "Pick the next post" section redrawn in the page from a fresh round ("pick closed": the
+// round closed with a winner and its post; "pick new": a new round with three topics), each as loaded and with the
+// header's switch on: the section is redrawn, its links open the pre-filled issues in a new tab and the reading
+// follows. Every state answers the section's request to GitHub itself (scripts/pick-fixture.ts), with the build's
+// round unless it is a pick state, so the check needs no network.
 // Widths: 320 360 375 390 414 600 768 820 1024 1100 1186 1280 1366 1440 1920.
 // The switches are turned on the way a user does (Playwright's check(), which fails when the switch is covered
 // or off screen), and every state checks the header: its symbol and domain, navigation links, switch and EN / PT
@@ -45,6 +50,8 @@ import { readFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import { chromium, type Browser, type Page } from "playwright";
+import { FIXTURE_POST, closedPick, newPick, routePick } from "./pick-fixture.ts";
+import { issueUrl } from "../src/lib/pick.ts";
 
 const argv = process.argv.slice(2);
 if (argv.includes("--help")) {
@@ -93,7 +100,7 @@ async function serve(root: string): Promise<{ server: Server; base: string }> {
 }
 
 // agent: which switch is turned on: none, the header's (the page's scope) or the lab experiment's (its own scope).
-interface State { page: string; path: string; hash: string; agent: "" | "page" | "demo"; filters?: boolean }
+interface State { page: string; path: string; hash: string; agent: "" | "page" | "demo"; filters?: boolean; pick?: "closed" | "new" }
 const PAGES = ["/", "/projects/", "/writing/", "/lab/"];
 const LAB_IDS = await (async () => {
   const html = await readFile(join(DIST, "lab", "index.html"), "utf8");
@@ -105,6 +112,11 @@ for (const prefix of ["", "/pt"]) {
     const path = prefix + p;
     states.push({ page: path, path, hash: "", agent: "" }, { page: `${path} agent`, path, hash: "", agent: "page" });
     if (p === "/projects/") states.push({ page: `${path} filters`, path, hash: "", agent: "", filters: true });
+    if (p === "/") {
+      for (const pick of ["closed", "new"] as const) {
+        states.push({ page: `${path} pick ${pick}`, path, hash: "", agent: "", pick }, { page: `${path} pick ${pick} agent`, path, hash: "", agent: "page", pick });
+      }
+    }
     if (p === "/lab/") {
       for (const id of LAB_IDS) {
         states.push({ page: `${path}#${id}`, path, hash: `#${id}`, agent: "" }, { page: `${path}#${id} agent`, path, hash: `#${id}`, agent: "page" });
@@ -333,6 +345,40 @@ async function filtersFlow(page: Page): Promise<string[]> {
   return out;
 }
 
+// "Pick the next post": bring the section near so the page reads the fresh round (answered by routePick), wait for
+// the redraw and check what it shows.
+async function pickFlow(page: Page, kind: "closed" | "new"): Promise<string[]> {
+  const out: string[] = [];
+  const key = await page.getAttribute("#pick", "data-pick");
+  await page.locator("#pick").scrollIntoViewIfNeeded();
+  try {
+    await page.waitForFunction((k) => document.querySelector("#pick")?.getAttribute("data-pick") !== k, key, { timeout: 5000 });
+  } catch {
+    return ["pick: the section was not redrawn from the fresh round"];
+  }
+  const got = await page.evaluate(() => {
+    const s = document.querySelector("#pick")!;
+    return {
+      links: [...s.querySelectorAll(".pick-list a")].map((a) => [a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel"), a.className].join(" ")),
+      topics: [...s.querySelectorAll(".pick-topic")].map((t) => t.textContent),
+      last: s.querySelector(".pick-last a")?.getAttribute("href") ?? null,
+      reading: s.querySelector(".agent-text")?.textContent ?? "",
+    };
+  });
+  if (kind === "closed") {
+    if (got.links.length) out.push(`pick closed: ${got.links.length} pick links still shown`);
+    if (got.last !== FIXTURE_POST) out.push(`pick closed: the last round's post link is ${got.last}`);
+    if (got.reading.includes("issues/new") || !got.reading.includes(FIXTURE_POST)) out.push("pick closed: the reading does not follow the redraw");
+  } else {
+    const want = (["A", "B", "C"] as const).map((l) => `${issueUrl(l)} _blank noopener pui-btn pui-outline pui-surface`);
+    if (got.links.join("|") !== want.join("|")) out.push(`pick new: links ${JSON.stringify(got.links)}`);
+    if (got.topics.join("|") !== Object.values(newPick().options).join("|")) out.push(`pick new: topics ${JSON.stringify(got.topics)}`);
+    if (got.last !== null) out.push("pick new: a post link shows for a round without a post");
+    if (!got.topics.every((t) => t && got.reading.includes(t))) out.push("pick new: the reading does not follow the redraw");
+  }
+  return out;
+}
+
 interface Result { page: string; width: number; ok: boolean; info: string }
 const results: Result[] = [];
 const scrollbars = new Set<number>();
@@ -343,11 +389,13 @@ const agentHeadings = new Set<string>();
 async function sweep(browser: Browser, base: string, s: State, width: number) {
   const ctx = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: "reduce" });
   try {
+    await routePick(ctx, s.pick === "closed" ? closedPick() : s.pick === "new" ? newPick() : undefined);
     const page = await ctx.newPage();
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(String(e)));
     await page.goto(base + s.path + s.hash, { waitUntil: "load" });
     const flowOut: string[] = [];
+    if (s.pick) flowOut.push(...(await pickFlow(page, s.pick)));
     // Turned on as a user does: check() clicks the switch and fails when something covers it.
     const toggle = async (sel: string) => {
       try {

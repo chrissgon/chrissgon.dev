@@ -77,8 +77,8 @@ export const Project = z
     image: ProjectImage,
     links: z.array(z.strictObject({ label: text, url: https })),
   })
-  .refine((p) => p.status === "ready" || p.links.length === 0, {
-    message: "a project in progress has no link until it exists (site-content.md 4.2)",
+  .refine((p) => p.status === "ready" || p.links.every((l) => /^https:\/\/github\.com\/chrissgon\/[\w.-]+$/.test(l.url)), {
+    message: "a project in progress links only to its public repository, once it exists (site-content.md 4.2)",
   })
   .refine((p) => p.status === "in-progress" || (p.links.length > 0 && p.stack.length > 0), {
     message: "a ready project needs a link and a stack",
