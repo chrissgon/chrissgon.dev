@@ -62,7 +62,7 @@ const CODE: Record<string, string> = {
     <span class="count">{lab.length}</span>
   </Cell>
 
-  <Cell class="xp-row" aria-label={t(lang, "navLab")}>
+  <Cell class="cells xp-row" aria-label={t(lang, "navLab")}>
     {lab.map((x) => (
       <div class="xp">
         <span class="tag" aria-hidden="true">{TAGS[x.id]}</span>
@@ -203,10 +203,6 @@ const CODE: Record<string, string> = {
     display: flex;
     flex-direction: column;
     padding: 40px 24px 24px;
-    border-right: 1px solid var(--pui-border);
-  }
-  .xp:last-of-type {
-    border-right: none;
   }
   .xp-card {
     display: flex;
@@ -348,9 +344,6 @@ const CODE: Record<string, string> = {
     .xp-row {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
-    .xp {
-      border-bottom: 1px solid var(--pui-border);
-    }
     .xp-open {
       grid-template-columns: minmax(0, 1fr);
     }
@@ -364,7 +357,6 @@ const CODE: Record<string, string> = {
       grid-template-columns: minmax(0, 1fr);
     }
     .xp {
-      border-right: none;
       padding: 36px var(--gutter) 20px;
     }
     .xp-portrait {

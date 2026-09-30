@@ -26,7 +26,7 @@ const POST_SIZES = "(min-width: 1024px) 288px, (min-width: 768px) calc(33vw - 48
   {posts.length === 0 ? (
     <Cell class="pad"><p>{t(lang, "noPosts")}</p></Cell>
   ) : (
-    <section class="sheet" aria-labelledby="writing-list">
+    <section class="cells sheet" aria-labelledby="writing-list">
       <h2 id="writing-list" class="sr-only">{t(lang, "navWriting")}</h2>
       {posts.map((p, i) => (
         <div class="post reveal" style={`--i: ${i % 4}`}>
@@ -45,20 +45,16 @@ const POST_SIZES = "(min-width: 1024px) 288px, (min-width: 768px) calc(33vw - 48
 </Base>
 
 <style>
+  /* The sheet draws the bottom line under its last row, so a row with empty slots stays closed (.cells). */
   .sheet {
-    display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-bottom: 1px solid var(--pui-border);
   }
   .post {
     position: relative;
     display: flex;
     padding: 40px 20px 24px;
-    border-right: 1px solid var(--pui-border);
-    border-bottom: 1px solid var(--pui-border);
     transition-delay: calc(var(--i) * 60ms);
-  }
-  .post:nth-child(4n + 1) {
-    border-right: none;
   }
   .post > :global(.post-card) {
     flex: 1;
@@ -66,30 +62,17 @@ const POST_SIZES = "(min-width: 1024px) 288px, (min-width: 768px) calc(33vw - 48
   .profile-link {
     padding-block: 40px;
   }
-  /* The first child of .sheet is the hidden h2, so the last post of a row of n is child n·k + 1. */
   @media (max-width: 1023px) {
     .sheet {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    .post:nth-child(4n + 1) {
-      border-right: 1px solid var(--pui-border);
-    }
-    .post:nth-child(3n + 1) {
-      border-right: none;
     }
   }
   @media (max-width: 767px) {
     .sheet {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    .post,
-    .post:nth-child(4n + 1),
-    .post:nth-child(3n + 1) {
-      border-right: 1px solid var(--pui-border);
+    .post {
       padding: 36px var(--gutter) 20px;
-    }
-    .post:nth-child(2n + 1) {
-      border-right: none;
     }
     .post :global(.title) {
       font-size: 14px;
