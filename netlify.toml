@@ -18,6 +18,13 @@
   # The npm count written by the build (ADR-0003); without it the function falls back to the snapshot.
   included_files = ["src/data/generated/npm.json"]
 
+# The web app manifest's media type: Netlify serves .webmanifest as application/octet-stream by default.
+# scripts/check-dist.ts fails the build when this block is missing or names another type.
+[[headers]]
+  for = "/site.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+
 # Old routes of the previous site (ADR-0010). /projects exists again, so only /carrer is redirected.
 [[redirects]]
   from = "/carrer"
