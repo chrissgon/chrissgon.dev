@@ -25,6 +25,15 @@
   [headers.values]
     Content-Type = "application/manifest+json"
 
+# The site's fonts (Astro's Fonts API, /_astro/fonts/) for the lab's perfectui-live preview: a sandboxed iframe
+# (src/scripts/playground.ts) has an opaque origin, and fonts always load through CORS, so without this header the
+# preview falls back to system fonts. The files are public and hold nothing else; no credentials are allowed.
+# scripts/check-dist.ts fails the build when this block is missing or names another value.
+[[headers]]
+  for = "/_astro/fonts/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+
 # Old routes of the previous site (ADR-0010). /projects exists again, so only /carrer is redirected.
 [[redirects]]
   from = "/carrer"

@@ -16,7 +16,8 @@
 //     manifest lacks a name, short_name, start_url or icons, or an icon is not in dist/;
 //   - an SVG file, or an inline <svg> of a page, carries a <metadata> element;
 //   - the Netlify config (netlify.toml) does not serve /site.webmanifest as application/manifest+json
-//     (Netlify's default for .webmanifest is application/octet-stream).
+//     (Netlify's default for .webmanifest is application/octet-stream), or does not send
+//     Access-Control-Allow-Origin "*" for /_astro/fonts/* (the lab's sandboxed preview loads the fonts).
 //
 // Usage: tsx scripts/check-dist.ts [--dist <dir>] [--budget-kb <n>] [--netlify-toml <file>] [--json]
 // Findings go to stdout (one per line; with --json, a JSON report); the weight report goes to stderr.
@@ -165,22 +166,42 @@ export function tailwindWordIn(path: string, content: string): boolean {
 }
 
 /**
- * The Netlify config must serve the web app manifest as application/manifest+json: a [[headers]] block for
- * "/site.webmanifest" whose values set Content-Type to it. A minimal reader of the file's [[headers]] blocks.
+ * The value netlify.toml gives a header for a path: null when no [[headers]] block is `for` that path, "" when
+ * the block does not set the header. A minimal reader of the file's [[headers]] blocks.
  */
-export function manifestHeaderProblems(toml: string): string[] {
+export function netlifyHeader(toml: string, path: string, header: string): string | null {
   // Each [[headers]] block runs until the next table header other than its own [headers.values].
   const blocks = toml
     .split(/^[ \t]*\[\[headers\]\][ \t]*$/m)
     .slice(1)
     .map((b) => b.split(/^[ \t]*\[(?!headers\.values\])/m)[0]!);
-  const block = blocks.find((b) => /^[ \t]*for[ \t]*=[ \t]*["']\/site\.webmanifest["'][ \t]*$/m.test(b));
-  if (!block) return ['netlify: netlify.toml has no [[headers]] block for "/site.webmanifest"'];
+  const re = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  const block = blocks.find((b) => new RegExp(`^[ \\t]*for[ \\t]*=[ \\t]*["']${re(path)}["'][ \\t]*$`, "m").test(b));
+  if (!block) return null;
   const values = block.split(/^[ \t]*\[headers\.values\][ \t]*$/m)[1];
-  const type = values && /^[ \t]*["']?content-type["']?[ \t]*=[ \t]*["']([^"']*)["'][ \t]*$/im.exec(values)?.[1];
+  return (values && new RegExp(`^[ \\t]*["']?${re(header)}["']?[ \\t]*=[ \\t]*["']([^"']*)["'][ \\t]*$`, "im").exec(values)?.[1]) || "";
+}
+
+/**
+ * The Netlify config must serve the web app manifest as application/manifest+json: a [[headers]] block for
+ * "/site.webmanifest" whose values set Content-Type to it.
+ */
+export function manifestHeaderProblems(toml: string): string[] {
+  const type = netlifyHeader(toml, "/site.webmanifest", "content-type");
+  if (type === null) return ['netlify: netlify.toml has no [[headers]] block for "/site.webmanifest"'];
   return type === "application/manifest+json"
     ? []
     : [`netlify: /site.webmanifest is served as ${type || "Netlify's default (application/octet-stream)"}, not application/manifest+json`];
+}
+
+/**
+ * The lab's perfectui-live preview is a sandboxed iframe with an opaque origin (src/scripts/playground.ts), and
+ * fonts load through CORS: netlify.toml must send Access-Control-Allow-Origin "*" for "/_astro/fonts/*".
+ */
+export function fontsCorsProblems(toml: string): string[] {
+  const allow = netlifyHeader(toml, "/_astro/fonts/*", "access-control-allow-origin");
+  if (allow === null) return ['netlify: netlify.toml has no [[headers]] block for "/_astro/fonts/*"'];
+  return allow === "*" ? [] : [`netlify: /_astro/fonts/* is served with Access-Control-Allow-Origin ${allow ? `"${allow}"` : "unset"}, not "*"`];
 }
 
 /** Tailwind utility classes among the class tokens of an HTML document. */
@@ -394,7 +415,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   const report = checkDist(resolve(opt("--dist") ?? "dist"), budget);
   const toml = resolve(opt("--netlify-toml") ?? "netlify.toml");
-  report.findings.push(...(existsSync(toml) ? manifestHeaderProblems(readFileSync(toml, "utf8")) : [`netlify: ${toml} is missing`]));
+  if (existsSync(toml)) {
+    const text = readFileSync(toml, "utf8");
+    report.findings.push(...manifestHeaderProblems(text), ...fontsCorsProblems(text));
+  } else {
+    report.findings.push(`netlify: ${toml} is missing`);
+  }
   for (const w of report.weights) console.error(formatWeight(w));
   if (argv.includes("--json")) console.log(JSON.stringify(report, null, 2));
   else for (const f of report.findings) console.log(f);

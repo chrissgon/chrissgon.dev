@@ -7,6 +7,9 @@
 // experiment shows its own line of it; the count, the cards, the running experiment and its code are human. The
 // view-as-agent experiment is a scope of its own inside the page's (src/styles/site.css): its switch swaps only
 // its demo, and the header's switch never swaps the demo.
+// perfectui-live is a playground: opening it dispatches "playground", on which src/scripts/site.ts imports
+// src/scripts/playground.ts (a lazy chunk, never on the first render) to make each tab's markup editable with a
+// sandboxed live preview.
 import AgentSwitch from "../components/AgentSwitch.astro";
 import AgentText from "../components/AgentText.astro";
 import Cell from "../components/Cell.astro";
@@ -124,7 +127,7 @@ const CODE: Record<string, string> = {
           </div>
         )}
         {x.id === "mcp-live" && <div class="human"><McpDemo lang={lang} variant="lab" /></div>}
-        {x.id === "perfectui-live" && <div class="human"><Showcase lang={lang} labelledby={`${x.id}-title`} prefix="lab" stacked /></div>}
+        {x.id === "perfectui-live" && <div class="human"><Showcase lang={lang} labelledby={`${x.id}-title`} prefix="lab" stacked playground /></div>}
         {x.id === "workbench-evals" && <div class="human"><EvalRuns lang={lang} /></div>}
       </div>
       <div class="xp-code human">
@@ -157,6 +160,9 @@ const CODE: Record<string, string> = {
       if (on) last = a;
     }
     const panel = panels.find((p) => p.dataset.panel === id);
+    const playground = panel?.querySelector<HTMLElement>("[data-playground]");
+    // src/scripts/site.ts imports the playground's chunk on this event.
+    playground?.dispatchEvent(new CustomEvent("playground", { bubbles: true }));
     if (panel && focus) {
       panel.focus({ preventScroll: true });
       panel.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
