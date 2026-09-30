@@ -15,13 +15,17 @@ export default {
       "Criador da Perfect UI e do ai-workbench",
     ],
   },
-  // Only the approved third paragraph is here: site-content.md points to the first two paragraphs of
-  // the approved "About" without quoting them. They are an open item (README).
+  // Paragraphs 1 and 2: the approved "About", verbatim from site-content.md 3.3. Paragraph 3: the approved
+  // addition on the 600+ hours and the motto (same section). The closing "Say hi in the comments" stays out.
   about: {
     en: [
+      "I build tech that serves people, and I talk about how I build it. I grew up in a favela in São Paulo's north zone and met my first computer at 6 or 7. I haven't stopped learning since.",
+      "Today I'm a senior software engineer with 6+ years shipping production frontends, and I still get as excited as I did on day one.",
       "I've done 600+ hours of live coding with an audience, and I live by one idea: teaching with what I learn, learning from what I teach.",
     ],
     pt: [
+      "Eu construo tecnologia que serve as pessoas, e conto como construo. Cresci numa favela da zona norte de São Paulo e conheci meu primeiro computador aos 6 ou 7 anos. De lá para cá, nunca parei de aprender.",
+      "Hoje sou engenheiro de software sênior, com mais de 6 anos entregando frontends em produção, e continuo empolgado como no primeiro dia.",
       "Já fiz mais de 600 horas de live coding com público, e vivo por uma ideia: ensinando com o que aprendo, aprendendo com o que ensino.",
     ],
   },

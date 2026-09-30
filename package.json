@@ -10,12 +10,15 @@
   "scripts": {
     "dev": "astro dev",
     "data:npm": "tsx scripts/fetch-npm.ts",
+    "data:workbench": "tsx scripts/fetch-workbench.ts",
     "check:data": "tsx scripts/check-sensitive.ts --data",
-    "check:dist": "tsx scripts/check-sensitive.ts --dist",
-    "build": "npm run data:npm && npm run check:data && astro build && npm run check:dist",
+    "check:images": "tsx scripts/check-images.ts",
+    "check:dist": "tsx scripts/check-sensitive.ts --dist && tsx scripts/check-dist.ts",
+    "build": "npm run data:npm && npm run data:workbench && npm run check:data && npm run check:images && astro build && npm run check:dist",
     "preview": "astro preview",
     "typecheck": "astro check && tsc --noEmit",
     "test": "vitest run",
+    "lighthouse": "tsx scripts/lighthouse.ts",
     "secrets": "python3 scripts/secret-scan/secret_scan.py"
   },
   "dependencies": {
@@ -29,6 +32,7 @@
     "@astrojs/check": "0.9.10",
     "@netlify/functions": "6.0.0",
     "@types/node": "22.20.4",
+    "lighthouse": "13.5.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "5.0.2"

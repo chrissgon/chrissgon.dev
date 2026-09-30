@@ -1,5 +1,6 @@
 # The project's checks and a secret scan, on every push to main and every pull request (ADR-0009).
-# The same checks run in the pre-commit hook (.githooks/pre-commit). Actions are pinned to a commit
+# The same checks run in the pre-commit hook (.githooks/pre-commit), except `lighthouse`, which needs Chrome
+# and about a minute (run it locally with `npm run lighthouse` after a build). Actions are pinned to a commit
 # (a tag can be moved); Dependabot proposes updates. Read-only permissions.
 name: checks
 
@@ -53,3 +54,35 @@ jobs:
         env:
           # Optional repository secret, one term per line (ADR-0002). Empty on forks: the check says so.
           SENSITIVE_PRIVATE_TERMS: ${{ secrets.SENSITIVE_PRIVATE_TERMS }}
+
+  # Lighthouse 13.5.0 (pinned in package.json) on the built site served locally, mobile profile, median of
+  # 3 runs per page: performance >= 90 and agentic-browsing = 100 on / and /pt/ (ADR-0009, AC-7 gate, AC-8).
+  # Uses the Google Chrome preinstalled on the runner image.
+  lighthouse:
+    name: lighthouse
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build
+        run: npm run build
+        env:
+          SENSITIVE_PRIVATE_TERMS: ${{ secrets.SENSITIVE_PRIVATE_TERMS }}
+      - name: Lighthouse (performance >= 90 mobile, agentic-browsing = 100)
+        run: npm run lighthouse -- --runs 3
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lighthouse-report
+          path: lighthouse-report/
+          retention-days: 14
+          if-no-files-found: ignore

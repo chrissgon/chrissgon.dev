@@ -2,7 +2,8 @@
 import { Image } from "astro:assets";
 import Base from "../layouts/Base.astro";
 import { PROJECT_STATUSES } from "../data/schema.ts";
-import { profile, projects, t, type Lang } from "../data/index.ts";
+import { profile, projects, readWorkbenchCount, t, type Lang } from "../data/index.ts";
+import { projectCardSvg } from "../lib/cards.ts";
 import { countBy, statusLabel, typeLabel } from "../lib/format.ts";
 import { image } from "../lib/images.ts";
 import { jsonLd } from "../lib/jsonld.ts";
@@ -12,6 +13,7 @@ interface Props {
   lang: Lang;
 }
 const { lang } = Astro.props;
+const workbench = readWorkbenchCount();
 // Filters (site-content.md 4): counts per type, status and stack. Interactive filtering comes with the design.
 const byType = countBy(projects, (p) => p.types.map((x) => typeLabel(x, lang)));
 const byStatus = countBy(projects, (p) => [statusLabel(p.status, lang)]);
@@ -39,8 +41,7 @@ const byStack = countBy(projects, (p) => p.stack);
           <li id={p.id}>
             <h3>{p.name}</h3>
             {p.image?.kind === "file" && <Image src={image(p.image.src)} alt="" width={320} />}
-            {p.image?.kind === "generated" && <p><small>{t(lang, "imageGenerated")}</small></p>}
-            {p.image?.kind === "pending" && <p><small>{t(lang, "imagePending")}</small></p>}
+            {p.image?.kind === "generated" && <Fragment set:html={projectCardSvg(p, lang, workbench)} />}
             <p>{p.summary[lang]}</p>
             <p><small>{p.types.map((x) => typeLabel(x, lang)).join(" · ")}{p.stack.length > 0 && <> · {p.stack.join(", ")}</>}</small></p>
             {p.links.length > 0 && <p>{p.links.map((l) => <a href={l.url}>{l.label}</a>)}</p>}

@@ -4,55 +4,63 @@
     "title": { "pt": "Perfect UI 1.0 está no ar.", "en": "Perfect UI 1.0 is out." },
     "date": "2026-09-29",
     "lang": ["pt", "en"],
-    "cover": "posts/perfectui-1-0-launch.jpg"
+    "cover": "posts/perfectui-1-0-launch.jpg",
+    "url": "https://pt.linkedin.com/posts/chrissgon_perfect-ui-10-est%C3%A1-no-ar-perfect-ui-10-activity-7510677333259964416-xJQ7"
   },
   {
     "id": "perfectui-1-0-teaser",
     "title": { "pt": "Amanhã sai o Perfect UI 1.0.", "en": "Perfect UI 1.0 ships tomorrow." },
     "date": "2026-09-28",
     "lang": ["pt", "en"],
-    "cover": "posts/perfectui-1-0-teaser.jpg"
+    "cover": "posts/perfectui-1-0-teaser.jpg",
+    "url": "https://pt.linkedin.com/posts/chrissgon_amanh%C3%A3-sai-o-perfect-ui-10-perfect-ui-activity-7510310057717334016-jHho"
   },
   {
     "id": "devnagringa-summit",
     "title": { "pt": "Sabe aquele frio na barriga por estar ao lado de referências?" },
     "date": "2025-11-24",
     "lang": ["pt"],
-    "cover": "posts/devnagringa-summit.jpg"
+    "cover": "posts/devnagringa-summit.jpg",
+    "url": "https://pt.linkedin.com/posts/chrissgon_devnagringasummit-devnagringa-coders-activity-7398749686079299588-0T6D"
   },
   {
     "id": "rick-and-morty-guide",
     "title": { "en": "A definitive guide to Rick and Morty, using React, Redux, React Router and Perfect UI." },
     "date": "2024-04-02",
     "lang": ["en"],
-    "cover": "posts/rick-and-morty-guide.jpg"
+    "cover": "posts/rick-and-morty-guide.jpg",
+    "url": "https://www.linkedin.com/posts/chrissgon_rickandmorty-react-redux-activity-7180867678318780416-Fdln"
   },
   {
     "id": "own-bootstrap-part-2",
     "title": { "en": "How to create your own Bootstrap: Part 2" },
     "date": "2023-07-05",
     "lang": ["en"],
-    "cover": "posts/own-bootstrap-part-2.jpg"
+    "cover": "posts/own-bootstrap-part-2.jpg",
+    "url": "https://www.linkedin.com/posts/chrissgon_how-to-create-your-own-bootstrap-part-2-activity-7082357473440899073-PYRt"
   },
   {
     "id": "own-bootstrap-part-1",
     "title": { "en": "How to create your own Bootstrap: Part 1" },
     "date": "2023-06-28",
     "lang": ["en"],
-    "cover": "posts/own-bootstrap-part-1.jpg"
+    "cover": "posts/own-bootstrap-part-1.jpg",
+    "url": "https://www.linkedin.com/posts/chrissgon_how-to-create-your-own-bootstrap-part-1-activity-7079820769987280896-Pi6K"
   },
   {
     "id": "gomanga",
     "title": { "pt": "Explorando o mundo dos mangás com Golang!" },
     "date": "2023-06-08",
     "lang": ["pt"],
-    "cover": "posts/gomanga.png"
+    "cover": "posts/gomanga.png",
+    "url": "https://pt.linkedin.com/posts/chrissgon_github-chrissgongomanga-a-powerful-manga-activity-7072557890481397761-qwyE"
   },
   {
     "id": "pokedex",
     "title": { "en": "I created my Pokédex" },
     "date": "2022-11-04",
     "lang": ["en"],
-    "cover": "posts/pokedex.jpg"
+    "cover": "posts/pokedex.jpg",
+    "url": "https://pt.linkedin.com/posts/chrissgon_pokedex-pokemon-nuxt-activity-6994304183386443776-Jfyl"
   }
 ]

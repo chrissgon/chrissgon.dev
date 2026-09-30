@@ -1,6 +1,6 @@
 // /llms.txt and /pt/llms.txt, generated from the data module (ADR-0001; https://llmstxt.org/).
-import { lab, posts, postTitle, products, profile, projects, t, trajectory, type Lang } from "../data/index.ts";
-import type { NpmCount } from "../data/schema.ts";
+import { lab, posts, postTitle, products, profile, projects, stats, t, trajectory, type Lang } from "../data/index.ts";
+import type { NpmCount, WorkbenchCount } from "../data/schema.ts";
 import { MCP_PATH, MCP_TOOLS } from "../mcp/tools.ts";
 import { formatNumber, formatPeriod, localePath, statusLabel, typeLabel } from "./format.ts";
 
@@ -8,6 +8,8 @@ export interface LlmsOptions {
   /** Absolute site URL without a trailing slash, e.g. https://chrissgon.dev */
   site: string;
   npm: NpmCount | null;
+  /** The ai-workbench counts read at build; absent or null leaves the skill count out. */
+  workbench?: WorkbenchCount | null;
 }
 
 const WORDS = {
@@ -15,7 +17,7 @@ const WORDS = {
   pt: { downloads: "downloads de", to: "a", code: "Código", license: "Licença", type: "Tipo", stack: "Stack", languages: "Idiomas", pages: "Páginas", home: "Início", other: "English (llms.txt)" },
 } as const;
 
-export function llmsText(lang: Lang, { site, npm }: LlmsOptions): string {
+export function llmsText(lang: Lang, { site, npm, workbench }: LlmsOptions): string {
   const w = WORDS[lang];
   const url = (path: string) => `${site}${localePath(lang, path)}`;
   const out: string[] = [];
@@ -31,6 +33,10 @@ export function llmsText(lang: Lang, { site, npm }: LlmsOptions): string {
     if (p.npm) {
       const count = npm ? ` (${formatNumber(npm.downloads, lang)} ${w.downloads} ${npm.start} ${w.to} ${npm.end})` : "";
       parts.push(`npm: ${p.npm}${count}.`);
+    }
+    const skills = stats.find((s) => s.id === "workbench-skills");
+    if (p.id === "ai-workbench" && workbench && skills) {
+      parts.push(`${formatNumber(workbench.skills, lang)} ${skills.label[lang]}.`);
     }
     parts.push(`${w.license}: ${p.license}.`);
     out.push(parts.join(" "));
@@ -54,8 +60,7 @@ export function llmsText(lang: Lang, { site, npm }: LlmsOptions): string {
   out.push(`## ${t(lang, "navWriting")}`, "");
   for (const p of posts) {
     const title = postTitle(p, lang);
-    const name = p.url ? `[${title}](${p.url})` : title;
-    out.push(`- ${name} (${p.date}; ${w.languages}: ${p.lang.map((l) => l.toUpperCase()).join(", ")})`);
+    out.push(`- [${title}](${p.url}) (${p.date}; ${w.languages}: ${p.lang.map((l) => l.toUpperCase()).join(", ")})`);
   }
   out.push("");
 
@@ -65,7 +70,7 @@ export function llmsText(lang: Lang, { site, npm }: LlmsOptions): string {
   }
   if (trajectory.education) out.push(`- ${t(lang, "education")}: ${trajectory.education[lang]}`);
   out.push("", `### ${t(lang, "proofs")}`, "");
-  for (const p of trajectory.proofs) out.push(`- ${p[lang] ?? p.en}`);
+  for (const p of trajectory.proofs) out.push(`- ${p[lang]}`);
   out.push("");
 
   out.push(`## ${t(lang, "navLab")}`, "");

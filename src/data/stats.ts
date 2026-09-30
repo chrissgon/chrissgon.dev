@@ -1,4 +1,5 @@
-// Source: site-content.md 3.2, approved on 2026-09-30. The npm count is read at build (ADR-0003).
+// Source: site-content.md 3.2, approved on 2026-09-30. The npm count and the skill count are read at build
+// (ADR-0003; scripts/fetch-npm.ts, scripts/fetch-workbench.ts).
 export default [
   {
     id: "npm-downloads",
@@ -20,8 +21,8 @@ export default [
   },
   {
     id: "workbench-skills",
-    value: "43",
+    value: null,
     label: { en: "skills in ai-workbench", pt: "skills no ai-workbench" },
-    source: "chrissgon/ai-workbench tree at commit f761781, 2026-09-30",
+    source: "api.github.com, tree of chrissgon/ai-workbench, read at build (scripts/fetch-workbench.ts)",
   },
 ];
