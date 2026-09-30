@@ -9,13 +9,15 @@ type Props = HTMLAttributes<"section"> & {
   tag?: string;
   /** Enter on scroll (site-home.md motion); never on the first screen. */
   reveal?: boolean;
+  /** The tag ends with a count that the project filters update (src/scripts/filters.ts). */
+  countTag?: boolean;
 };
 
-const { as: Tag = "section", tag, reveal = false, class: className, ...rest } = Astro.props;
+const { as: Tag = "section", tag, reveal = false, countTag = false, class: className, ...rest } = Astro.props;
 ---
 
 <Tag class:list={["cell", className, { reveal }]} {...rest}>
   <span class="cm tl" aria-hidden="true"></span><span class="cm tr" aria-hidden="true"></span>
-  {tag && <span class="tag" aria-hidden="true">{tag}</span>}
+  {tag && <span class="tag" aria-hidden="true" data-count-tag={countTag ? "" : undefined}>{tag}</span>}
   <slot />
 </Tag>

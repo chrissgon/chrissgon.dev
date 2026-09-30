@@ -1,15 +1,18 @@
 ---
-// Base layout, design direction A "Estrutura à mostra": head, Perfect UI, canonical, hreflang, JSON-LD, and the
-// page frame (a 1200 px column with 1px borders over the dot grid) holding the announcement bar (the newest
-// post), the navigation with the EN / PT switch, the page's cells and the footer. Dark only (2026-09-29).
+// Base layout, design direction A "Estrutura à mostra" as refined in Claude Design (personal-brand
+// claude-design/home-full.webp, 2026-09-30): head, Perfect UI, canonical, hreflang, JSON-LD, and the page frame
+// (a 1312 px column with 1px borders over the dot grid) holding the header (the domain, the mono navigation, the
+// "view as agent" switch on the home page and the EN / PT segmented control), the page's cells and the footer.
+// Dark only (2026-09-29).
 // Preloads: Inter 400 and 800 (the hero's text, the LCP) are on the first screen; Inter 600 and JetBrains Mono
 // load when a rule uses them (ADR-0006).
 import "@chrissgon/perfectui/perfectui.css";
 import "../styles/site.css";
 import { Font } from "astro:assets";
+import AgentSwitch from "../components/AgentSwitch.astro";
 import Cell from "../components/Cell.astro";
 import LangSwitch from "../components/LangSwitch.astro";
-import { posts, postTitle, profile, t, type Lang } from "../data/index.ts";
+import { profile, t, type Lang } from "../data/index.ts";
 import { LOCALE, localePath } from "../lib/format.ts";
 import { assertPublishable, serializeJsonLd, type jsonLd as JsonLdBuilder } from "../lib/jsonld.ts";
 import { siteUrl } from "../lib/site.ts";
@@ -32,9 +35,9 @@ const nav = [
   { key: "navProjects", href: localePath(lang, "/projects"), path: "/projects" },
   { key: "navWriting", href: localePath(lang, "/writing"), path: "/writing" },
   { key: "navLab", href: localePath(lang, "/lab"), path: "/lab" },
+  { key: "trajectory", href: `${localePath(lang, "/")}#${lang === "en" ? "trajectory" : "trajetoria"}`, path: "#trajectory" },
   { key: "navAgents", href: `${localePath(lang, "/")}#for-agents`, path: "#for-agents" },
 ] as const;
-const newest = posts[0];
 ---
 
 <!doctype html>
@@ -58,22 +61,13 @@ const newest = posts[0];
   <body data-agent-scope={agentScope ? "" : undefined}>
     <a class="skip pui-btn pui-solid pui-inverse" href="#main">{t(lang, "skipToContent")}</a>
     <div class="frame">
-      {newest && (
-        <Cell as="div" class="ann">
-          <span class="tag" aria-hidden="true">.pui-badge</span>
-          <span class="ann-post">
-            <span class="pui-badge pui-outline pui-surface mono">{newest.date}</span>
-            <a href={newest.url} lang={newest.title[lang] ? undefined : LOCALE[newest.lang[0]!]}>{postTitle(newest, lang)}</a>
-          </span>
-        </Cell>
-      )}
-      <Cell as="nav" class="nav">
-        <div class="nav-bar">
-          <a class="brand" href={localePath(lang, "/")}>{profile.handle}</a>
-          <LangSwitch lang={lang} path={path} />
-        </div>
-        <div class="nav-links">
+      <Cell as="header" class="nav">
+        <a class="brand" href={localePath(lang, "/")}>{profile.domain}</a>
+        <nav class="nav-links">
           {nav.map((n) => <a href={n.href} aria-current={n.path === path ? "page" : undefined}>{t(lang, n.key)}</a>)}
+        </nav>
+        <div class="nav-end">
+          {agentScope && <AgentSwitch lang={lang} id="view-as-agent" compact />}
           <LangSwitch lang={lang} path={path} />
         </div>
       </Cell>
@@ -85,7 +79,7 @@ const newest = posts[0];
         <ul class="profiles">
           {profile.profiles.map((p) => <li><a href={p.url} rel="me">{p.network} {p.handle}</a></li>)}
         </ul>
-        <LangSwitch lang={lang} path={path} />
+        <span class="site-name">{profile.domain}</span>
       </Cell>
     </div>
     <script>

@@ -8,9 +8,12 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const lang = document.documentElement.lang.startsWith("pt") ? "pt" : "en";
 
 // Tabs: [data-tabs] holds [role=tab] buttons that control [role=tabpanel] elements. Arrows move between tabs.
-const ON = ["pui-solid", "pui-inverse"];
-const OFF = ["pui-outline", "pui-surface"];
+// The selected tab's classes come from the root's data-on / data-off (default: solid inverse / outline surface).
+const classes = (value: string | undefined, fallback: string[]) => (value ? value.split(" ") : fallback);
 function select(tabs: HTMLButtonElement[], chosen: HTMLButtonElement, focus = false) {
+  const root = chosen.closest<HTMLElement>("[data-tabs]");
+  const ON = classes(root?.dataset.on, ["pui-solid", "pui-inverse"]);
+  const OFF = classes(root?.dataset.off, ["pui-outline", "pui-surface"]);
   for (const tab of tabs) {
     const on = tab === chosen;
     tab.setAttribute("aria-selected", String(on));
@@ -49,8 +52,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-copy]")
   button.addEventListener("click", async () => {
     const target = root?.querySelector<HTMLElement>(button.dataset.copy ?? "");
     if (!target) return;
+    const input = target instanceof HTMLInputElement ? target : null;
     try {
-      await navigator.clipboard.writeText(target.textContent ?? "");
+      await navigator.clipboard.writeText(input ? input.value : (target.textContent ?? ""));
       button.textContent = button.dataset.copied ?? label;
       if (status) status.textContent = button.dataset.copied ?? "";
       clearTimeout(timer);
@@ -59,6 +63,11 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-copy]")
         if (status) status.textContent = "";
       }, 2000);
     } catch {
+      if (input) {
+        input.select();
+        if (status) status.textContent = button.dataset.fallback ?? "";
+        return;
+      }
       const range = document.createRange();
       range.selectNodeContents(target);
       getSelection()?.removeAllRanges();

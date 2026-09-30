@@ -65,14 +65,14 @@ const CODE: Record<string, string> = {
     {lab.map((x) => (
       <div class="xp">
         <span class="tag" aria-hidden="true">{TAGS[x.id]}</span>
-        <article class="pui-card col xp-card" data-card={x.id}>
+        <article class="xp-card" data-card={x.id}>
           <a class="open-btn" href={`#${x.id}`} aria-controls={x.id} aria-expanded="false" data-open={x.id}>
-            <LabVisual id={x.id} height={180} />
-            <span class="pui-card-content">
+            <span class="xp-visual"><LabVisual id={x.id} height={160} /></span>
+            <span class="xp-head">
               <span class="xp-name">{x.id}</span>
               <time class="meta" datetime={x.date}>{x.date}</time>
-              <span class="xp-desc">{x.description[lang]}</span>
             </span>
+            <span class="xp-desc">{x.description[lang]}</span>
           </a>
           {x.source && (
             <div class="xp-actions">
@@ -199,47 +199,70 @@ const CODE: Record<string, string> = {
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: 40px 16px 20px;
+    padding: 40px 24px 24px;
     border-right: 1px solid var(--pui-border);
   }
   .xp:last-of-type {
     border-right: none;
   }
   .xp-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
     flex: 1;
+  }
+  .xp-visual {
+    display: block;
+    margin-bottom: 6px;
+    border: 1px solid var(--pui-border);
+    border-radius: calc(var(--pui-radius) * 1.5);
+    overflow: hidden;
     transition: border-color 0.15s;
   }
-  .xp-card.is-active {
+  .xp-visual :global(.lv) {
+    border-bottom: none;
+  }
+  .xp-card.is-active .xp-visual {
     border-color: var(--pui-text);
   }
   .open-btn {
     display: flex;
     flex-direction: column;
+    gap: 10px;
+    flex: 1;
     color: var(--pui-text);
     text-decoration: none;
     border-radius: calc(var(--pui-radius) * 1.5);
+  }
+  .xp-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .xp-head .meta {
+    font-size: 10px;
   }
   .open-btn:hover .xp-name {
     text-decoration: underline;
     text-underline-offset: 3px;
   }
-  .open-btn .pui-card-content {
-    gap: 8px;
-  }
   .xp-name {
     font-family: var(--font-mono);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
   }
   .xp-desc {
     font-size: 13px;
     line-height: 1.5;
+    color: var(--pui-text-muted);
   }
   .xp-actions {
     display: flex;
     gap: 4px;
-    padding: 0 16px 16px;
-    margin-top: auto;
+  }
+  .xp-actions .pui-btn {
+    font-size: 12px;
   }
   .xp-open {
     display: none;
@@ -352,6 +375,9 @@ const CODE: Record<string, string> = {
   @media (prefers-reduced-motion: reduce) {
     .xp-open.is-open {
       animation: none;
+    }
+    .xp-visual {
+      transition: none;
     }
   }
 </style>

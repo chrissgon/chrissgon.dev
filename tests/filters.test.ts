@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { projects } from "../src/data/index.ts";
 import { PROJECT_STATUSES, PROJECT_TYPES } from "../src/data/schema.ts";
-import { chipCount, EMPTY, isEmpty, matches, parseQuery, stackValues, toggle, toQuery } from "../src/lib/filters.ts";
+import { chipCount, EMPTY, isEmpty, matches, parseQuery, rowChips, stackValues, toggle, toQuery } from "../src/lib/filters.ts";
 
 const allowed = { type: [...PROJECT_TYPES], status: [...PROJECT_STATUSES], stack: stackValues(projects) };
 const shown = (state: typeof EMPTY) => projects.filter((p) => matches(p, state)).map((p) => p.id);
@@ -47,5 +47,44 @@ describe("project filters", () => {
     expect(parseQuery(q, allowed)).toEqual(state);
     expect(toQuery(EMPTY)).toBe("");
     expect(parseQuery("?type=evil&status=ready&x=1", allowed)).toEqual({ ...EMPTY, status: "ready" });
+  });
+
+  it("builds the home page's single row: statuses first, then stacks, with counts from the data", () => {
+    const row = rowChips(projects, EMPTY, PROJECT_STATUSES);
+    expect(row.map((c) => [c.group, c.value, c.count])).toEqual([
+      ["status", "ready", 6],
+      ["status", "in-progress", 4],
+      ["stack", "TypeScript", 2],
+      ["stack", "Go", 2],
+      ["stack", "JavaScript", 1],
+      ["stack", "CSS", 1],
+      ["stack", "Vue (Nuxt)", 1],
+      ["stack", "Python", 1],
+      ["stack", "Shell", 1],
+      ["stack", "Markdown", 1],
+    ]);
+    // The "All" chip is the sum of the statuses: every project has exactly one.
+    expect(row.filter((c) => c.group === "status").reduce((n, c) => n + c.count, 0)).toBe(projects.length);
+  });
+
+  it("recounts the row when a status is on: stacks count only that status", () => {
+    const ready = toggle(EMPTY, "status", "ready");
+    const row = rowChips(projects, ready, PROJECT_STATUSES);
+    expect(row.find((c) => c.value === "in-progress")!.count).toBe(4);
+    expect(row.find((c) => c.value === "Go")!.count).toBe(2);
+    const inProgress = rowChips(projects, toggle(EMPTY, "status", "in-progress"), PROJECT_STATUSES);
+    expect(inProgress.filter((c) => c.group === "stack").every((c) => c.count === 0)).toBe(true);
+  });
+
+  it("counts on made-up items, independent of the data", () => {
+    const items = [
+      { types: ["web-ui"], status: "ready", stack: ["CSS", "Go"] },
+      { types: ["ai-agents"], status: "in-progress", stack: ["Go"] },
+      { types: ["ai-agents"], status: "ready", stack: [] },
+    ];
+    expect(rowChips(items, EMPTY, ["ready", "in-progress"]).map((c) => `${c.value}:${c.count}`)).toEqual([
+      "ready:2", "in-progress:1", "Go:2", "CSS:1",
+    ]);
+    expect(rowChips(items, { ...EMPTY, stack: "Go" }, ["ready", "in-progress"]).map((c) => c.count)).toEqual([1, 1, 2, 1]);
   });
 });

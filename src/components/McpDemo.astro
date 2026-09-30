@@ -1,7 +1,8 @@
 ---
 // mcp-live: calls this site's read-only MCP server (/api/mcp) from the page and prints the answer line by line
 // in mono, within 800 ms (at once with reduced motion). `card`: the home page's "For agents" card, with
-// `tools/list`. `lab`: the opened lab experiment, with one button per call (tools/list and each tool). On a 429
+// `tools/list`. `row`: the home page's "For agents" cell (Claude Design): the address in a pui-input with Copy,
+// `tools/list` and the llms.txt link, the answer appearing under them. `lab`: the opened lab experiment, with one button per call (tools/list and each tool). On a 429
 // or a network error it says so (site-lab.md), and the address stays on the page to copy. Without JavaScript
 // the buttons stay hidden and the tool names read from the server's list remain.
 import CopyField from "./CopyField.astro";
@@ -11,7 +12,7 @@ import { siteUrl } from "../lib/site.ts";
 
 interface Props {
   lang: Lang;
-  variant: "card" | "lab";
+  variant: "card" | "row" | "lab";
 }
 const { lang, variant } = Astro.props;
 const endpoint = `${siteUrl(Astro.site)}${MCP_PATH}`;
@@ -20,6 +21,19 @@ const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
 ---
 
 <div class:list={["mcp", `mcp-${variant}`]} data-mcp data-lang={lang} data-down={t(lang, "mcpDown")} data-limit={t(lang, "mcpRateLimit")}>
+  {variant === "row" ? (
+    <div class="mcp-controls" data-copy-root>
+      <div class="pui-group-row mcp-field">
+        <input class="pui-input mono" type="text" readonly value={endpoint} aria-label={`MCP · ${t(lang, "connectAgent")}`} data-copy-text />
+        <button type="button" class="pui-btn pui-outline pui-surface" data-copy="[data-copy-text]" data-copied={t(lang, "copied")} data-fallback={t(lang, "copyFallback")} hidden>{t(lang, "copy")}</button>
+      </div>
+      <div class="mcp-calls">
+        <button type="button" class="pui-btn pui-outline pui-surface mono" data-mcp-call="tools/list" hidden>{t(lang, "toolsList")}</button>
+        <a class="pui-btn pui-link" href={llms}>{t(lang, "readLlms")}</a>
+      </div>
+      <span class="status" role="status" data-copy-status></span>
+    </div>
+  ) : (
   <div class="mcp-controls">
     {variant === "card" && <span class="mcp-connect">{t(lang, "connectAgent")}</span>}
     <CopyField lang={lang} text={endpoint} />
@@ -40,7 +54,8 @@ const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
       {variant === "card" && <a href={llms}>{t(lang, "readLlms")}</a>}
     </div>
   </div>
-  <div class="mcp-out" aria-live="polite">
+  )}
+  <div class="mcp-out" aria-live="polite" hidden={variant === "row"} data-mcp-box>
     <pre class="code muted" data-mcp-out>{MCP_TOOLS.join("\n")}</pre>
   </div>
 </div>
@@ -101,6 +116,8 @@ const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
         root.dispatchEvent(new CustomEvent("mcp-request", { bubbles: true, detail: { endpoint: location.origin + PATH, body: request(call, lang) } }));
         out.textContent = "";
         out.classList.remove("muted");
+        const box = root.querySelector<HTMLElement>("[data-mcp-box]");
+        if (box) box.hidden = false;
         let result: { lines: string[]; status: number };
         try {
           result = await run(call, lang);
@@ -169,8 +186,34 @@ const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
-  [data-mcp-call][hidden] {
+  [data-mcp-call][hidden],
+  .mcp-out[hidden],
+  .mcp-field .pui-btn[hidden] {
     display: none;
+  }
+  .mcp-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .mcp-row .mcp-controls {
+    gap: 12px;
+  }
+  .mcp-field .pui-input {
+    flex: 1;
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+  .mcp-row .mcp-calls {
+    gap: 8px;
+  }
+  .mcp-row .status:empty {
+    display: none;
+  }
+  .mcp-row .mcp-out {
+    min-height: 0;
+    border: 1px solid var(--pui-border);
+    border-radius: calc(var(--pui-radius) * 1.5);
   }
   .mcp-card {
     display: grid;

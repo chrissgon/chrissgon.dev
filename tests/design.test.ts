@@ -2,7 +2,8 @@
 // readings (parts of llms.txt), the perfectui-live showcase and the label blocks.
 import { describe, expect, it } from "vitest";
 import { approved, provisional } from "../src/data/labels.ts";
-import { countLabel, formatDate } from "../src/lib/format.ts";
+import { countLabel, formatDate, splitFigure, splitProducts } from "../src/lib/format.ts";
+import { products, profile } from "../src/data/index.ts";
 import { frame, parseFigure } from "../src/lib/countup.ts";
 import { LLMS_PARTS, llmsParts, llmsText } from "../src/lib/llms.ts";
 import { MODAL_EXAMPLE, SHOWCASE_IDS, productButtons, showcase } from "../src/lib/showcase.ts";
@@ -125,5 +126,43 @@ describe("labels", () => {
   it("keeps a key in one block only", () => {
     const both = Object.keys(approved).filter((k) => k in provisional);
     expect(both).toEqual([]);
+  });
+});
+
+describe("Claude Design home", () => {
+  const names = products.map((p) => p.name);
+
+  it("puts the two product buttons inside the approved label, EN and PT", () => {
+    expect(splitProducts(profile.label.en[2], names)).toEqual([
+      { text: "Creator of " },
+      { product: "Perfect UI" },
+      { text: " & " },
+      { product: "ai-workbench" },
+    ]);
+    expect(splitProducts(profile.label.pt[2], names)).toEqual([
+      { text: "Criador da " },
+      { product: "Perfect UI" },
+      { text: " e do " },
+      { product: "ai-workbench" },
+    ]);
+  });
+
+  it("keeps a label without product names as one text", () => {
+    expect(splitProducts("Building tech that serves people", names)).toEqual([{ text: "Building tech that serves people" }]);
+  });
+
+  it("splits each figure of the numbers strip into number and unit", () => {
+    expect(splitFigure("3.7 kB")).toEqual(["3.7", "kB"]);
+    expect(splitFigure("3,7 kB")).toEqual(["3,7", "kB"]);
+    expect(splitFigure("600+ hours")).toEqual(["600+", "hours"]);
+    expect(splitFigure("1,014")).toEqual(["1,014", ""]);
+    expect(splitFigure("n/a")).toEqual(["n/a", ""]);
+  });
+
+  it("the split number still counts up to itself", () => {
+    for (const [text, lang] of [["3.7", "en"], ["600+", "en"], ["1.014", "pt"]] as const) {
+      const f = parseFigure(text, lang)!;
+      expect(frame(f, 1)).toBe(text);
+    }
   });
 });
