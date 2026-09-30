@@ -7,7 +7,16 @@
 // and allowed (no reduced motion, no Save-Data), load after the page's `load` event, once the browser is idle.
 // The greeting plays once per session on arrival, then the loop; resting the pointer on the portrait greets
 // again at most every 20 s. Off-screen or in a hidden tab the video pauses and drawing stops.
+//
+// Cost (in Lighthouse's software-rendered canvas, rasterising the dots is most of a frame): each dot is filled
+// on its own path, which the canvas rasterises as an oval, faster than one path of many arcs (1.6x in a
+// micro-benchmark). While nothing moves, a new picture (the poster, a video frame) is painted band by band,
+// only where levels changed and within a budget of dots per animation frame (bands.ts), so no frame is a long
+// task; a video frame is sampled only once the previous one is fully painted, so a slow device lowers the
+// frame rate instead of blocking the page. The frame loop reads no layout: the canvas position is kept from
+// the last build.
 
+import { anyDirty, bandRange, BAND_PX, markChanged, planBands, takeBands, type Bands } from "./bands.ts";
 import { fills, parseColor, DEFAULT_RGB, STEPS, type RGB } from "./colors.ts";
 import { clipType, plan, readEnvironment } from "./gating.ts";
 import {
@@ -17,7 +26,7 @@ import {
 import { band, decodePoster, dotRadius, levelTable, lumaHistogram, luma, MAX_LEVEL } from "./levels.ts";
 import type { Clip, PortraitController, PortraitOptions } from "./types.ts";
 
-const INTRO = 1200, EACH = 620, BACK = 600, FADE = 300, NP = 4 * (STEPS + 1);
+const INTRO = 1200, EACH = 620, BACK = 600, FADE = 300, NP = 4 * (STEPS + 1), TAU = 2 * Math.PI;
 const TOKENS = ["--pui-bg-emphasis", "--pui-border", "--pui-muted", "--pui-text"] as const;
 const KEY = "portrait-greeted";
 
@@ -39,6 +48,9 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   offscreen.width = COLS;
   offscreen.height = ROWS;
   const octx = offscreen.getContext("2d", { willReadFrequently: true });
+  // A band is painted here without a clip (a clip changes how the canvas anti-aliases the dots it cuts), then
+  // its rows are copied to the canvas, so a band repaint gives the same pixels as a whole-canvas paint.
+  const strip = document.createElement("canvas"), sctx = strip.getContext("2d");
   const cleanups: Array<() => void> = [], vids: Partial<Record<Name, HTMLVideoElement>> = {};
   const on = (t: EventTarget, e: string, f: EventListener, p?: AddEventListenerOptions) => {
     t.addEventListener(e, f, p);
@@ -50,6 +62,18 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   let cell = new Int32Array(0), hx = new Float32Array(0), hy = new Float32Array(0), fx = new Float32Array(0), fy = new Float32Array(0);
   let rf = new Float32Array(0), hb = new Uint8Array(0), mid = new Int32Array(0), delay: Float32Array = new Float32Array(0);
   let ox = new Float32Array(0), oy = new Float32Array(0), box = [0, 0, 0, 0], FILLS: string[] = [];
+  // Canvas position in the page (read in build, so the frame loop reads no layout) and backing-store scale.
+  let cvLeft = 0, cvTop = 0, dpr = 1;
+  // Dots of the frame being painted (x, y, radius, fill index), and their order by fill.
+  let DX = new Float32Array(0), DY = new Float32Array(0), DR = new Float32Array(0), DJ = new Uint8Array(0), ORD = new Int32Array(0);
+  const CNT = new Int32Array(NP + 1);
+  // Banded painting while nothing moves: the bands, each cell's band range, the dirty flags, the levels on
+  // the canvas, and where the next sweep starts. `still` is true when the canvas shows the picture at rest.
+  let bands: Bands = planBands([], 0, 0), bandLo = new Int16Array(NC).fill(-1), bandHi = new Int16Array(NC).fill(-1);
+  let bdirty = new Uint8Array(1), cursor = 0, still = false, moving = false, blank = true, pad = 0;
+  // Each band's columns in device px (where its dots can paint), so a repaint clears and copies no more.
+  let bx0 = new Int32Array(1), bx1 = new Int32Array(1);
+  const drawnLv = new Uint8Array(NC);
   // State.
   let shown: Uint8Array = poster, prev: Uint8Array = poster, lut: Uint8Array | null = null;
   let raf = 0, last = 0, dirty = true, dead = false, vis = true, rt = 0, dwell = 0;
@@ -57,7 +81,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   let ready = false, started = false, active: HTMLVideoElement | null = null, sampledAt = 0, lastT = -1;
   let fadeT = -1, fadeMs = 0, fadeArm = 0, greetAt = -1e9, gridFrom = 0, gridTo = 0, gridT = 0;
 
-  if (!ctx || !octx) return { setGrid() {}, refresh() {}, destroy() {} };
+  if (!ctx || !octx || !sctx) return { setGrid() {}, refresh() {}, destroy() {} };
 
   function palette() {
     const rgb = TOKENS.map((_, i) => {
@@ -79,13 +103,21 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       slot: { left: sr.left + scrollX, top: slotTop, width: sr.width, height: sr.height },
       cols: COLS, rows: ROWS, gridPx: G, subdiv: SUB, face: FACE,
     }));
-    const dpr = Math.min(2, devicePixelRatio || 1);
+    cvLeft = cr.left + scrollX;
+    cvTop = cr.top + scrollY;
+    dpr = Math.min(2, devicePixelRatio || 1);
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Portrait cells inside the slot. Any of them may light up in a video frame, so all are kept.
-    const A = { cell: [] as number[], hx: [] as number[], hy: [] as number[], fx: [] as number[], fy: [] as number[], rf: [] as number[], hb: [] as number[], mid: [] as number[] };
+    // Typed arrays sized for the most particles there can be, trimmed at the end (no per-particle allocation).
+    const cap = NC + L.NX * L.NY, halo = L.NX * L.NY;
+    const A = {
+      cell: new Int32Array(NC), hx: new Float32Array(cap), hy: new Float32Array(cap), fx: new Float32Array(cap), fy: new Float32Array(cap),
+      rf: new Float32Array(halo), hb: new Uint8Array(halo), mid: new Int32Array(halo),
+    };
+    let q = 0;
     const mass = new Float32Array(L.NX * L.NY), midOf = new Int32Array(L.NX * L.NY).fill(-1);
     const s = L.slot;
     for (let r = 0; r < ROWS; r++)
@@ -97,9 +129,9 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
           mass[k]! += poster[i]! / MAX_LEVEL / (SUB * SUB);
           if (c % SUB === SUB >> 1 && r % SUB === SUB >> 1) midOf[k] = i;
         }
-        A.cell.push(i); A.hx.push(h0); A.hy.push(h1); A.fx.push(x); A.fy.push(y);
+        A.cell[q] = i; A.hx[q] = h0; A.hy[q] = h1; A.fx[q] = x; A.fy[q++] = y;
       }
-    np = A.cell.length;
+    np = q;
     // The halo: grid dots near the portrait grow and lighten with its blurred mass.
     const b = blur(mass, L.NX, L.NY);
     for (let j = 0; j < L.NY; j++)
@@ -107,16 +139,107 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
         const k = j * L.NX + i, h = haloStrength(b[k]!);
         if (!h) continue;
         const x = L.gx0 + i * L.G, y = L.gy0 + j * L.G;
-        A.hx.push(x); A.hy.push(y); A.fx.push(x); A.fy.push(y);
-        A.rf.push(haloRadius(h)); A.hb.push(h > 0.4 ? 1 : 0); A.mid.push(midOf[k]!);
+        const e = q - np;
+        A.hx[q] = A.fx[q] = x; A.hy[q] = A.fy[q++] = y;
+        A.rf[e] = haloRadius(h); A.hb[e] = h > 0.4 ? 1 : 0; A.mid[e] = midOf[k]!;
       }
-    n = A.hx.length;
-    cell = Int32Array.from(A.cell);
-    hx = Float32Array.from(A.hx); hy = Float32Array.from(A.hy); fx = Float32Array.from(A.fx); fy = Float32Array.from(A.fy);
-    rf = Float32Array.from(A.rf); hb = Uint8Array.from(A.hb); mid = Int32Array.from(A.mid);
+    n = q;
+    cell = A.cell.slice(0, np);
+    hx = A.hx.slice(0, n); hy = A.hy.slice(0, n); fx = A.fx.slice(0, n); fy = A.fy.slice(0, n);
+    rf = A.rf.slice(0, n - np); hb = A.hb.slice(0, n - np); mid = A.mid.slice(0, n - np);
     ox = new Float32Array(n); oy = new Float32Array(n);
-    delay = introDelays(fx, fy, L.X + FACE.x * COLS * S, L.Y + FACE.y * ROWS * S, INTRO - EACH - 60);
+    if (!introDone) delay = introDelays(fx, fy, L.X + FACE.x * COLS * S, L.Y + FACE.y * ROWS * S, INTRO - EACH - 60);
     box = [Math.max(L.X, s.x0), Math.max(L.Y, s.y0), Math.min(L.X + COLS * S, s.x1), Math.min(L.Y + ROWS * S, s.y1)];
+    DX = new Float32Array(n); DY = new Float32Array(n); DR = new Float32Array(n); DJ = new Uint8Array(n); ORD = new Int32Array(n);
+    // A dot paints up to its radius plus the anti-aliased edge (and the band's rounding to device pixels).
+    let maxR = RAD[MAX_LEVEL]!;
+    for (let h = 0; h < n - np; h++) maxR = Math.max(maxR, rf[h]!);
+    const margin = maxR + 2 / dpr;
+    bands = planBands(fy, H, margin);
+    pad = Math.ceil(margin * dpr) + 1;
+    strip.width = canvas.width;
+    strip.height = Math.ceil(BAND_PX * dpr) + 1 + 2 * pad;
+    bdirty = new Uint8Array(bands.count).fill(1);
+    bx0 = new Int32Array(bands.count);
+    bx1 = new Int32Array(bands.count);
+    for (let k = 0; k < bands.count; k++) {
+      let a = Infinity, z = -Infinity;
+      for (let j = bands.start[k]!; j < bands.end[k]!; j++) {
+        const x = fx[bands.order[j]!]!;
+        if (x < a) a = x;
+        if (x > z) z = x;
+      }
+      bx0[k] = Math.max(0, Math.floor((a - margin) * dpr));
+      bx1[k] = Math.min(canvas.width, Math.ceil((z + margin) * dpr));
+    }
+    bandLo.fill(-1);
+    bandHi.fill(-1);
+    for (let i = 0; i < n; i++) {
+      const c = i < np ? cell[i]! : mid[i - np]!;
+      if (c < 0) continue;
+      const [lo, hi] = bandRange(fy[i]!, margin, bands.count);
+      bandLo[c] = lo;
+      bandHi[c] = hi;
+    }
+    cursor = 0;
+    still = moving = false;
+    blank = true; // setting the canvas size cleared it
+  }
+
+  /** Fills dots 0..m-1 of DX/DY/DR/DJ on `c`, grouped by fill (counting sort), each dot on its own path. */
+  function paint(c: CanvasRenderingContext2D, m: number) {
+    CNT.fill(0);
+    for (let k = 0; k < m; k++) CNT[DJ[k]! + 1]!++;
+    for (let j = 0; j < NP; j++) CNT[j + 1]! += CNT[j]!;
+    for (let k = 0; k < m; k++) ORD[CNT[DJ[k]!]!++] = k;
+    // CNT[j] is now the end of fill j's run; its start is the end of the run before it.
+    for (let j = 0, a = 0; j < NP; j++) {
+      const z = CNT[j]!;
+      if (z > a) {
+        c.fillStyle = FILLS[j]!;
+        for (let k = a; k < z; k++) {
+          const d = ORD[k]!;
+          c.beginPath();
+          c.arc(DX[d]!, DY[d]!, DR[d]!, 0, TAU);
+          c.fill();
+        }
+      }
+      a = z;
+    }
+  }
+
+  /** Repaints band b at rest (every dot in place, full size): its device-pixel rows, through the strip. */
+  function paintBand(b: number) {
+    const y0 = Math.min(canvas.height, Math.round(b * BAND_PX * dpr));
+    const y1 = Math.min(canvas.height, Math.round((b + 1) * BAND_PX * dpr)), x0 = bx0[b]!, cw = bx1[b]! - x0;
+    if (y1 <= y0 || cw <= 0) return;
+    let m = 0;
+    for (let k = bands.start[b]!, end = bands.end[b]!; k < end; k++) {
+      const i = bands.order[k]!;
+      if (i < np) {
+        const v = shown[cell[i]!]!;
+        if (!v) continue;
+        DR[m] = RAD[v]!;
+        DJ[m] = BAND[v]! * (STEPS + 1) + STEPS;
+      } else {
+        const h = i - np, c = mid[h]!;
+        if (c >= 0 && shown[c]) continue; // the portrait already has a dot here
+        DR[m] = rf[h]!;
+        DJ[m] = hb[h] ? STEPS + 1 + STEPS : 0;
+      }
+      DX[m] = fx[i]!;
+      DY[m] = fy[i]!;
+      m++;
+    }
+    // The strip's row `pad` is the canvas row y0: an integer shift, so every dot keeps its sub-pixel position.
+    sctx!.setTransform(1, 0, 0, 1, 0, 0);
+    sctx!.clearRect(x0, 0, cw, strip.height);
+    sctx!.setTransform(dpr, 0, 0, dpr, 0, pad - y0);
+    paint(sctx!, m);
+    ctx!.setTransform(1, 0, 0, 1, 0, 0);
+    ctx!.clearRect(x0, y0, cw, y1 - y0);
+    ctx!.drawImage(strip, x0, pad, cw, y1 - y0, x0, y0, cw, y1 - y0);
+    ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   function gridAmount(now: number): number {
@@ -126,13 +249,20 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     return gridFrom + (gridTo - gridFrom) * easeInOut(p);
   }
 
-  function draw(now: number, dt: number): boolean {
-    const rect = canvas.getBoundingClientRect();
-    if (!Lay || rect.bottom < 0 || rect.top > innerHeight) return false;
+  /**
+   * One animation frame. At rest (intro over, portrait in place, no pointer near, no dot displaced) it paints
+   * the dirty bands within the budget; otherwise, or with `full`, the whole canvas. Returns true while more
+   * frames are needed.
+   */
+  function draw(now: number, dt: number, full = false): boolean {
+    const top = cvTop - scrollY, left = cvLeft - scrollX;
+    if (!Lay || top + H < 0 || top > innerHeight) return false;
     const t = introStart < 0 ? 0 : now - introStart;
     if (!introDone && introStart >= 0 && t > INTRO) { introDone = true; start(); }
     const back = RM ? 0 : scrollBack(scrollY, slotTop, slotH), g = gridAmount(now), away = Math.max(back, g);
-    const p = RM || !ptr ? null : { x: ptr.x - rect.left, y: ptr.y - rect.top };
+    let p = RM || !ptr ? null : { x: ptr.x - left, y: ptr.y - top };
+    // A pointer farther than the push radius from the canvas moves no dot.
+    if (p && (p.x < -PUSH_R || p.y < -PUSH_R || p.x > W + PUSH_R || p.y > H + PUSH_R)) p = null;
     const k = 1 - Math.exp(-dt / 105);
     let busy = !introDone || g !== gridTo || (back > 0 && back < 1);
     if (fadeT >= 0) {
@@ -142,7 +272,23 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       busy = true;
       if (f >= 1) { fadeT = -1; shown = cur; }
     }
-    const paths: Array<Path2D | null> = new Array(NP).fill(null);
+    const rest = introDone && away === 0 && !p && !moving;
+    // Bands paint over the picture at rest, or over a canvas the last build cleared. After motion, one whole
+    // paint puts every dot back in place first.
+    if (rest && !full && (still || blank)) {
+      if (!still) bdirty.fill(1);
+      still = true;
+      markChanged(drawnLv, shown, bandLo, bandHi, bdirty);
+      const pick = takeBands(bdirty, bands, cursor);
+      cursor = pick.cursor;
+      for (const b of pick.take) paintBand(b);
+      return busy || anyDirty(bdirty);
+    }
+    if (rest) { // nothing moves any more: drop what is left of the displacements
+      ox.fill(0);
+      oy.fill(0);
+    }
+    let m = 0, displaced = false;
     // The hot loop: about 10k particles per frame, so no allocation and no calls it can avoid. A dark
     // portrait cell at rest is skipped before any maths; easing and the pointer push are inlined
     // (grid.ts has the same maths as pure, tested functions: easeOut, pointerPush).
@@ -182,6 +328,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
         else if (!p) dx0 = dy0 = 0;
         ox[i] = dx0;
         oy[i] = dy0;
+        if (dx0 || dy0) displaced = true;
       }
       let rad: number, b: number;
       if (port) {
@@ -194,16 +341,19 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
         rad = 0.7 + (rf[h]! - 0.7) * e;
         b = hb[h]!;
       }
-      const j = b ? b * (STEPS + 1) + ((e * STEPS + 0.5) | 0) : 0, x = bx + dx0, y = by + dy0;
-      const path = paths[j] ?? (paths[j] = new Path2D());
-      path.moveTo(x + rad, y);
-      path.arc(x, y, rad, 0, 6.2832);
+      DJ[m] = b ? b * (STEPS + 1) + ((e * STEPS + 0.5) | 0) : 0;
+      DX[m] = bx + dx0;
+      DY[m] = by + dy0;
+      DR[m++] = rad;
     }
     ctx!.clearRect(0, 0, W, H);
-    for (let j = 0; j < NP; j++) {
-      const path = paths[j];
-      if (path) { ctx!.fillStyle = FILLS[j]!; ctx!.fill(path); }
-    }
+    paint(ctx!, m);
+    // The canvas now shows `shown`; it is the picture at rest only when this frame was.
+    moving = displaced;
+    still = rest;
+    blank = false;
+    drawnLv.set(shown);
+    bdirty.fill(0);
     return busy;
   }
 
@@ -224,7 +374,8 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     raf = 0;
     const v = active, playing = !!v && !v.paused && !v.ended;
     let fresh = false;
-    if (v && playing && v.readyState >= 2 && now - sampledAt >= GAP && v.currentTime !== lastT) {
+    // A new frame is sampled only once the last one is fully painted (no band left).
+    if (v && playing && v.readyState >= 2 && now - sampledAt >= GAP && v.currentTime !== lastT && !anyDirty(bdirty)) {
       lastT = v.currentTime;
       sampledAt = now;
       sample(v);
@@ -328,7 +479,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       const e = ev as PointerEvent;
       ptr = { x: e.clientX, y: e.clientY };
       kick();
-      const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      const x = e.clientX - (cvLeft - scrollX), y = e.clientY - (cvTop - scrollY);
       const inside = x >= box[0]! && x <= box[2]! && y >= box[1]! && y <= box[3]!;
       if (!inside) { clearTimeout(dwell); dwell = 0; }
       else if (e.type === "pointerdown" && e.pointerType !== "mouse") greet();
@@ -348,7 +499,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     build();
     built = where();
     last = 0;
-    if (draw(performance.now(), 16)) kick(); // one draw; more frames only while something moves
+    if (draw(performance.now(), 16)) kick(); // the first bands now; more frames while bands remain or dots move
   };
   // Layout signature of the last build, in page coordinates: a resize or font swap that moves nothing
   // (the ResizeObserver's first call, usually) costs no rebuild and no redraw.
@@ -376,7 +527,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       gridTo = onGrid ? 1 : 0;
       gridFrom = instant || RM ? gridTo : from;
       gridT = now;
-      if (instant || RM) { last = 0; draw(now, 16); }
+      if (instant || RM) { last = 0; draw(now, 16, true); }
       kick();
     },
     refresh,

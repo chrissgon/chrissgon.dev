@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import poster from "../src/assets/portrait/portrait.json" with { type: "json" };
+import { anyDirty, BAND_PX, bandRange, DOT_BUDGET, markChanged, planBands, takeBands } from "../src/lib/portrait/bands.ts";
 import { findClips } from "../src/lib/portrait/clips.ts";
 import { fills, parseColor, STEPS, type RGB } from "../src/lib/portrait/colors.ts";
 import { clipType, plan, readEnvironment } from "../src/lib/portrait/gating.ts";
@@ -151,6 +152,61 @@ describe("portrait grid and halo maths", () => {
     expect(y).toBe(0);
     expect(pointerPush(-20, 0)[0]).toBeLessThan(0);
     expect(pointerPush(10, 0)[0]).toBeGreaterThan(pointerPush(40, 0)[0]);
+  });
+});
+
+describe("portrait banded repaint", () => {
+  it("lists every particle in each band it can paint into, in particle order", () => {
+    // Band px 10, margin 2: y 5 is in band 0 only, y 9 reaches band 1, y 21 reaches back into band 1.
+    const ys = [5, 9, 21, 35, 0];
+    const b = planBands(ys, 40, 2, 10);
+    expect(b.count).toBe(4);
+    const band = (k: number) => [...b.order.subarray(b.start[k]!, b.end[k]!)];
+    expect(band(0)).toEqual([0, 1, 4]);
+    expect(band(1)).toEqual([1, 2]);
+    expect(band(2)).toEqual([2]);
+    expect(band(3)).toEqual([3]);
+    // Brute force on a grid of dots: a particle is in band k exactly when [y - margin, y + margin] meets it.
+    const many = Array.from({ length: 300 }, (_, i) => (i * 7.3) % 200);
+    const p = planBands(many, 200, 3.3);
+    for (let k = 0; k < p.count; k++) {
+      const want = many.flatMap((y, i) => (y + 3.3 >= k * BAND_PX && y - 3.3 < (k + 1) * BAND_PX ? [i] : []));
+      expect([...p.order.subarray(p.start[k]!, p.end[k]!)]).toEqual(want);
+    }
+    expect(planBands([], 0, 1).count).toBe(1);
+  });
+
+  it("clamps a dot's band range to the canvas", () => {
+    expect(bandRange(14, 3, 10)).toEqual([0, 0]);
+    expect(bandRange(27, 3, 10)).toEqual([0, 1]);
+    expect(bandRange(-10, 3, 10)).toEqual([0, 0]);
+    expect(bandRange(1000, 3, 10)).toEqual([9, 9]);
+  });
+
+  it("marks only the bands of cells whose level changed, and remembers the new levels", () => {
+    const drawn = Uint8Array.from([0, 5, 9, 9]), lo = Int16Array.from([0, 1, 2, -1]), hi = Int16Array.from([0, 2, 2, -1]);
+    const dirty = new Uint8Array(4);
+    expect(markChanged(drawn, [0, 6, 9, 3], lo, hi, dirty)).toBe(2);
+    expect([...dirty]).toEqual([0, 1, 1, 0]); // cell 3 changed but paints nothing
+    expect([...drawn]).toEqual([0, 6, 9, 3]);
+    dirty.fill(0);
+    expect(markChanged(drawn, [0, 6, 9, 3], lo, hi, dirty)).toBe(0);
+    expect(anyDirty(dirty)).toBe(false);
+  });
+
+  it("takes dirty bands from the cursor within the budget, at least one, and wraps", () => {
+    const bands = { start: Int32Array.from([0, 10, 20, 30]), end: Int32Array.from([10, 20, 30, 40]) };
+    const dirty = Uint8Array.from([1, 1, 0, 1]);
+    let r = takeBands(dirty, bands, 1, 15);
+    expect(r.take).toEqual([1]);
+    expect([...dirty]).toEqual([1, 0, 0, 1]);
+    r = takeBands(dirty, bands, r.cursor, 25);
+    expect(r.take).toEqual([3, 0]);
+    expect(anyDirty(dirty)).toBe(false);
+    expect(takeBands(dirty, bands, 0).take).toEqual([]);
+    // One band larger than the budget still goes, alone.
+    expect(takeBands(Uint8Array.from([0, 0, 1, 1]), bands, 0, 5).take).toEqual([2]);
+    expect(DOT_BUDGET).toBeGreaterThan(0);
   });
 });
 
