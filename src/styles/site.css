@@ -303,6 +303,21 @@ pre .ln {
   align-items: center;
   gap: 8px;
   min-height: 24px;
+  container: brand / inline-size;
+}
+/* When the brand's box is narrower than the symbol and the domain (12.3 + 8 + 101.4 px), as in the narrow header
+   next to "view as agent" and EN / PT (the Portuguese switch label is longer, so the width differs by language),
+   the row shows the symbol alone; the domain stays the link's accessible name. At a fixed 390 px breakpoint the
+   Portuguese domain still ran 3 px under the switch (scripts/check-layout.ts measures the header's pieces apart). */
+@container brand (max-width: 124px) {
+  .brand-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 .brand-mark {
   flex: none;
@@ -384,11 +399,21 @@ pre .ln {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-[data-agent-scope]:has(.agent-toggle:checked) .agent-text {
+/* Which regions a switch swaps: a scope reacts only to its own switch and swaps only its own regions. The page's
+   scope is the body (its switch is in the header); a scope inside another (the lab's view-as-agent experiment)
+   is a world of its own: the page's switch neither swaps it nor is swapped by it, and its switch leaves the page
+   alone. So the page's rules take a top-level scope whose checked switch is not inside a nested scope, over the
+   regions that are not inside one; the nested scope's rules take its own switch and regions.
+     top-level scope on:  [data-agent-scope]:not([data-agent-scope] *):has(.agent-toggle:checked:not(N *))
+     nested scope on:     N:has(.agent-toggle:checked)          (N = [data-agent-scope] [data-agent-scope])
+   Pages under one scope need nothing else; scripts/check-layout.ts checks the lab's two scopes apart. */
+[data-agent-scope]:not([data-agent-scope] *):has(.agent-toggle:checked:not([data-agent-scope] [data-agent-scope] *)) .agent-text:not([data-agent-scope] [data-agent-scope] *),
+[data-agent-scope] [data-agent-scope]:has(.agent-toggle:checked) .agent-text {
   display: block;
   animation: wipe 0.4s var(--ease);
 }
-[data-agent-scope]:has(.agent-toggle:checked) .human {
+[data-agent-scope]:not([data-agent-scope] *):has(.agent-toggle:checked:not([data-agent-scope] [data-agent-scope] *)) .human:not([data-agent-scope] [data-agent-scope] *),
+[data-agent-scope] [data-agent-scope]:has(.agent-toggle:checked) .human {
   display: none;
 }
 /* The reading replaces the region's titles too (owner, 2026-09-30: the name and the section titles stayed on
@@ -396,7 +421,8 @@ pre .ln {
    removed: screen readers still read them and every aria-labelledby still names its section. The portrait's
    caption (aria-hidden) goes. What stays is the frame: lines, corner markers, cell tags, header, footer and the
    switch. scripts/check-layout.ts fails when anything else in the scope shows text with the switch on. */
-[data-agent-scope]:has(.agent-toggle:checked) :is(h1, h2, h3, h4, h5, h6, .index) {
+[data-agent-scope]:not([data-agent-scope] *):has(.agent-toggle:checked:not([data-agent-scope] [data-agent-scope] *)) :is(h1, h2, h3, h4, h5, h6, .index):not([data-agent-scope] [data-agent-scope] *),
+[data-agent-scope] [data-agent-scope]:has(.agent-toggle:checked) :is(h1, h2, h3, h4, h5, h6, .index) {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -406,8 +432,14 @@ pre .ln {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-[data-agent-scope]:has(.agent-toggle:checked) .portrait-caption {
+[data-agent-scope]:not([data-agent-scope] *):has(.agent-toggle:checked:not([data-agent-scope] [data-agent-scope] *)) .portrait-caption:not([data-agent-scope] [data-agent-scope] *),
+[data-agent-scope] [data-agent-scope]:has(.agent-toggle:checked) .portrait-caption {
   display: none;
+}
+/* The inner pages' title cell (projects, writing, lab) keeps only the strip its tag sits in: its title is hidden
+   as above and its count is human. */
+[data-agent-scope]:not([data-agent-scope] *):has(.agent-toggle:checked:not([data-agent-scope] [data-agent-scope] *)) .page-title {
+  padding-block: 40px 0;
 }
 @keyframes wipe {
   from {
@@ -476,7 +508,8 @@ html.js .reveal.in {
     transform: none;
     transition: none;
   }
-  [data-agent-scope]:has(.agent-toggle:checked) .agent-text {
+  [data-agent-scope]:not([data-agent-scope] *):has(.agent-toggle:checked:not([data-agent-scope] [data-agent-scope] *)) .agent-text:not([data-agent-scope] [data-agent-scope] *),
+  [data-agent-scope] [data-agent-scope]:has(.agent-toggle:checked) .agent-text {
     animation: none;
   }
 }
@@ -668,6 +701,38 @@ html.js .reveal.in {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+/* The header in two rows (the symbol and domain, the switch and EN / PT; then the navigation) below 900 px: from
+   768 to 899 px the Portuguese navigation ran under the switch in one row (scripts/check-layout.ts measures the
+   header's pieces apart at every width). */
+@media (max-width: 899.98px) {
+  .nav {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "brand end" "links links";
+    height: auto;
+    gap: 0;
+    padding: 0;
+  }
+  .brand {
+    grid-area: brand;
+    padding: 0 var(--gutter);
+  }
+  .nav-end {
+    grid-area: end;
+    height: 48px;
+    gap: 12px;
+    padding-inline-end: var(--gutter);
+  }
+  .nav-links {
+    grid-area: links;
+    height: 40px;
+    gap: 20px;
+    padding: 0 var(--gutter);
+    overflow-x: auto;
+    white-space: nowrap;
+    border-top: 1px solid var(--pui-bg-emphasis);
+    font-size: 11px;
+  }
+}
 @media (max-width: 767px) {
   :root {
     --gutter: 12px;
@@ -685,46 +750,6 @@ html.js .reveal.in {
   }
   .lead {
     font-size: 16px;
-  }
-  .nav {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "brand end" "links links";
-    height: auto;
-    gap: 0;
-    padding: 0;
-  }
-  .brand {
-    grid-area: brand;
-    padding: 0 var(--gutter);
-  }
-  /* Below 390 px the home page's header row (the domain, "view as agent" and EN / PT) is wider than the screen,
-     and the domain ran under the switch. There the row shows the symbol alone; the domain stays the link's
-     accessible name. */
-  @media (max-width: 389.98px) {
-    .brand-tight .brand-text {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-    }
-  }
-  .nav-end {
-    grid-area: end;
-    height: 48px;
-    gap: 12px;
-    padding-inline-end: var(--gutter);
-  }
-  .nav-links {
-    grid-area: links;
-    height: 40px;
-    gap: 20px;
-    padding: 0 var(--gutter);
-    overflow-x: auto;
-    white-space: nowrap;
-    border-top: 1px solid var(--pui-bg-emphasis);
-    font-size: 11px;
   }
   .site-footer {
     padding: 24px var(--gutter);

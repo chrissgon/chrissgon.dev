@@ -2,7 +2,7 @@
 
 Christopher Gonçalves's personal site. Static pages for people (EN at `/`, PT at `/pt/`) and a surface for AI agents (`/llms.txt`, `/pt/llms.txt`, schema.org JSON-LD, sitemap), all generated from one typed data module. Built with [Astro](https://astro.build) and [Perfect UI](https://perfectui.dev), no Tailwind.
 
-Status: design direction A, "Estrutura à mostra" (chosen by the owner on 2026-09-30), refined by the owner's Claude Design home (2026-09-30): every section is a cell of a visible frame with corner markers, a mono caption naming the Perfect UI classes that build it and, on the home page, a numbered index; a real `pui-switch` "view as agent" in the header turns every region into its llms.txt reading, with CSS only. The home hero carries the dot portrait (poster only until the clips exist); the fonts are self-hosted. The read-only MCP server answers at `/api/mcp` (see below).
+Status: design direction A, "Estrutura à mostra" (chosen by the owner on 2026-09-30), refined by the owner's Claude Design home (2026-09-30): every section is a cell of a visible frame with corner markers, a mono caption naming the Perfect UI classes that build it and, on the home page, a numbered index; a real `pui-switch` "view as agent" in the header of every page turns every region into its llms.txt reading, with CSS only. The home hero carries the dot portrait (poster only until the clips exist); the fonts are self-hosted. The read-only MCP server answers at `/api/mcp` (see below).
 
 ## Commands
 
@@ -35,7 +35,7 @@ Node 22.12 or newer (`.nvmrc`), npm.
 The logo is 4a from the owner's brand export (a white C with a floating bar in `#07b6f0`, and the wordmark "chrissgon"). The site ships only what it uses, each file with the export's C2PA metadata removed (the `<metadata>` element of SVGs, the `caBX` chunk of PNGs; the drawing and the pixels unchanged):
 
 - `public/`: `favicon.ico` (16, 32, 48), `favicon.svg`, `apple-touch-icon.png` (180), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` and `site.webmanifest`, linked from `src/layouts/Base.astro`. Keep these paths: search engines show a favicon only from a stable URL.
-- The header's brand link starts with the symbol as inline SVG (`.brand-mark`, `aria-hidden`); below 390 px on the home page, where the header row holds the "view as agent" switch, it shows the symbol alone and the domain stays the link's accessible name.
+- The header's brand link starts with the symbol as inline SVG (`.brand-mark`, `aria-hidden`); when the header row, which holds the "view as agent" switch on every page, leaves the link too little room (a container query on `.brand`), it shows the symbol alone and the domain stays the link's accessible name. Below 900 px the header has two rows: the brand, the switch and EN / PT, then the navigation.
 - `public/og/og-en.png` and `og-pt.png` (1200 x 630): drawn by `scripts/og-image.ts` from `scripts/og-image/lockup.svg` and `profile.label` over the page's dot grid, in the build's own Inter. Redraw them with `npm run og:image` after a build whenever the label or the logo changes, and commit them. A test keeps them 1200 x 630 and under 100 KB, and every image in `public/` free of metadata.
 
 ## Data

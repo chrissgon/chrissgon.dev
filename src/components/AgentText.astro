@@ -3,8 +3,9 @@
 // src/styles/site.css). The text is the same part of llms.txt the agent reads (src/lib/llms.ts, llmsParts).
 interface Props {
   text: string;
+  class?: string;
 }
-const { text } = Astro.props;
+const { text, class: className } = Astro.props;
 ---
 
-<pre class="agent-text" set:text={text.trimEnd()} />
+<pre class:list={["agent-text", className]} set:text={text.trimEnd()} />
