@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -8,6 +8,7 @@ import { Posts, Profile, Project, Trajectory, parseData } from "../src/data/sche
 import rawTrajectory from "../src/data/trajectory.ts";
 import rawProfile from "../src/data/profile.ts";
 import rawPosts from "../src/data/posts.json" with { type: "json" };
+import { DRAWN_PROJECTS } from "../src/lib/project-visuals.ts";
 
 const post = rawPosts[0]!;
 
@@ -97,6 +98,19 @@ describe("data module", () => {
     expect(byId["doc-git-patterns"]).toEqual({ kind: "file", src: "projects/doc-git-patterns.png" });
     expect(byId["ai-workbench"]).toEqual({ kind: "generated" });
     expect(byId["doc-github-workflow"]).toEqual({ kind: "generated" });
+  });
+
+  it("draws a cover for every generated project, in the brand's colours only, with no placeholder", () => {
+    const generated = projects.filter((p) => p.image.kind === "generated").map((p) => p.id);
+    expect([...DRAWN_PROJECTS].sort()).toEqual([...generated].sort());
+    const visual = readFileSync(new URL("../src/components/ProjectVisual.astro", import.meta.url), "utf8");
+    // Each drawing but the fallback pipeline (doc-github-workflow) has its own branch.
+    for (const id of DRAWN_PROJECTS.filter((x) => x !== "doc-github-workflow" && x !== "ai-workbench")) {
+      expect(visual).toContain(`id === "${id}"`);
+    }
+    expect(visual).toContain('aria-hidden="true"');
+    for (const [c] of visual.matchAll(/#[0-9A-Fa-f]{6}\b/g)) expect(["#FFFFFF", "#374151"]).toContain(c.toUpperCase());
+    expect(visual).not.toMatch(/07B6F0|pui-theme|gradient|shadow|<image|<img|cover ·/i);
   });
 
   it("points every cover and project image at a file in src/assets (EDGE-5)", () => {

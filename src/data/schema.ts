@@ -58,7 +58,7 @@ export const PROJECT_STATUSES = ["ready", "in-progress"] as const;
 
 /**
  * A project image: a file under src/assets/, or a card the site generates at build from the data
- * (src/components/ProjectVisual.astro, else a dot pattern seeded by its id, src/lib/patterns.ts). There is no
+ * (src/components/ProjectVisual.astro, one drawing per project listed in src/lib/project-visuals.ts). There is no
  * "pending" image: a missing file fails the build (EDGE-5).
  */
 export const ProjectImage = z.discriminatedUnion("kind", [
