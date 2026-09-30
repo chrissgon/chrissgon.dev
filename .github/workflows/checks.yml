@@ -55,9 +55,11 @@ jobs:
           # Optional repository secret, one term per line (ADR-0002). Empty on forks: the check says so.
           SENSITIVE_PRIVATE_TERMS: ${{ secrets.SENSITIVE_PRIVATE_TERMS }}
 
-  # Lighthouse 13.5.0 (pinned in package.json) on the built site served locally, mobile profile, median of
-  # 3 runs per page: performance >= 90 and agentic-browsing = 100 on / and /pt/ (ADR-0009, AC-7 gate, AC-8).
-  # Uses the Google Chrome preinstalled on the runner image.
+  # Lighthouse 13.5.0 (pinned in package.json) on the built site served locally, mobile profile: one warm-up
+  # run per page, discarded (a fresh runner's first run on / scored 55 to 95 while the next ones scored 98 to
+  # 99), then the median of 5 runs per page: performance >= 90 and agentic-browsing = 100 on / and /pt/
+  # (ADR-0009, AC-7 gate, AC-8). The summary lists each run's benchmarkIndex. Uses the Google Chrome
+  # preinstalled on the runner image.
   lighthouse:
     name: lighthouse
     runs-on: ubuntu-24.04
@@ -77,7 +79,7 @@ jobs:
         env:
           SENSITIVE_PRIVATE_TERMS: ${{ secrets.SENSITIVE_PRIVATE_TERMS }}
       - name: Lighthouse (performance >= 90 mobile, agentic-browsing = 100)
-        run: npm run lighthouse -- --runs 3
+        run: npm run lighthouse -- --warmup 1 --runs 5
       - name: Keep the reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

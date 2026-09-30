@@ -25,7 +25,7 @@ The design and its decision records are kept locally by the owner, outside this 
 | Type-check | `npm run typecheck` | `astro check` and `tsc --noEmit` |
 | Test | `npm test` | vitest, `tests/*.test.ts` |
 | Build | `npm run build` | npm and ai-workbench counts, sensitive check of `src/data/`, image check, `astro build`, sensitive check and `check-dist` of `dist/` |
-| Lighthouse | `npm run lighthouse` | after a build; Lighthouse 13.5.0 mobile, performance >= 90, agentic browsing = 100 |
+| Lighthouse | `npm run lighthouse` | after a build; Lighthouse 13.5.0 mobile, 1 discarded warm-up then the median of 5 runs per page, performance >= 90, agentic browsing = 100 |
 | Secret scan | `npm run secrets` | add `-- --history` for every commit |
 | Portrait check | `npm run check:portrait` | after a build; Playwright Chromium; `-- --with-synthetic-clips` needs ffmpeg |
 | Portrait clips | `scripts/encode-portrait.sh --help` | ffmpeg; `--self-test` on synthetic clips |
