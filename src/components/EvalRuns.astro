@@ -12,27 +12,22 @@ const { lang } = Astro.props;
 const runs = lab.find((x) => x.id === "workbench-evals")?.runs ?? [];
 // Scores as the source writes them: 1.0, 0.75, 0.812 (one to three decimals).
 const score = (v: number) => v.toLocaleString(LOCALE[lang], { minimumFractionDigits: 1, maximumFractionDigits: 3 });
+const cols = [t(lang, "evalSkill"), t(lang, "evalModel"), t(lang, "evalRun"), t(lang, "evalWith"), t(lang, "evalWithout")];
 ---
 
 <div class="pui-card evals">
-  <table class="pui-table">
-    <thead>
-      <tr>
-        <th scope="col">{t(lang, "evalSkill")}</th>
-        <th scope="col">{t(lang, "evalModel")}</th>
-        <th scope="col">{t(lang, "evalRun")}</th>
-        <th scope="col">{t(lang, "evalWith")}</th>
-        <th scope="col">{t(lang, "evalWithout")}</th>
+  <table class="pui-table" role="table">
+    <thead role="rowgroup">
+      <tr role="row">
+        {cols.map((c) => <th scope="col" role="columnheader">{c}</th>)}
       </tr>
     </thead>
-    <tbody>
+    <tbody role="rowgroup">
       {runs.map((r) => (
-        <tr>
-          <td>{r.skill}</td>
-          <td>{r.model} ({r.role[lang]})</td>
-          <td>{r.iteration}</td>
-          <td>{score(r.withSkill)}</td>
-          <td>{score(r.withoutSkill)}</td>
+        <tr role="row">
+          {[r.skill, `${r.model} (${r.role[lang]})`, String(r.iteration), score(r.withSkill), score(r.withoutSkill)].map((v, i) => (
+            <td role="cell" data-label={cols[i]}>{v}</td>
+          ))}
         </tr>
       ))}
     </tbody>
@@ -40,11 +35,48 @@ const score = (v: number) => v.toLocaleString(LOCALE[lang], { minimumFractionDig
 </div>
 
 <style>
-  .evals {
-    overflow-x: auto;
-  }
+  /* The table never scrolls sideways (scripts/check-layout.ts checks .evals). From 600 px the five columns fit,
+     with narrower side padding below 1100 px; under 600 px each run becomes a block of label and value lines, the
+     label read from the cell's data-label and hidden from assistive technology, which reads the column header.
+     The explicit table roles keep the table's semantics when its display changes. */
   .evals table {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 1099px) {
+    .evals :is(th, td) {
+      padding-inline: 8px;
+    }
+  }
+  @media (max-width: 599px) {
+    .evals thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    .evals :is(table, tbody, tr) {
+      display: block;
+    }
+    .evals tr {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--pui-border);
+    }
+    .evals tr:last-child {
+      border-bottom: none;
+    }
+    .evals td {
+      display: grid;
+      grid-template-columns: minmax(0, 8rem) minmax(0, 1fr);
+      gap: 12px;
+      padding: 4px 16px;
+      border-bottom: none;
+    }
+    .evals td::before {
+      content: attr(data-label);
+      content: attr(data-label) / "";
+      color: var(--pui-text-muted);
+    }
   }
 </style>

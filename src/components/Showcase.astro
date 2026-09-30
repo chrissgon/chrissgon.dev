@@ -4,6 +4,7 @@
 // the component's own. Without JavaScript the selected tab shows. `panel`: the home page's form (Claude Design),
 // a pui-card whose header holds the tabs as chips, with the markup beside the live component.
 import { readNpmCount, readWorkbenchCount, type Lang } from "../data/index.ts";
+import CodeLines from "./CodeLines.astro";
 import { showcase, type ShowcaseId } from "../lib/showcase.ts";
 import { siteUrl } from "../lib/site.ts";
 import { resolveStats } from "../lib/stats.ts";
@@ -50,7 +51,7 @@ const OFF = "pui-outline pui-surface";
     </div>
     {items.map((c, i) => (
       <div class="panel-grid" role="tabpanel" id={`${prefix}-panel-${c.id}`} aria-labelledby={`${prefix}-tab-${c.id}`} hidden={i !== first}>
-        <pre class="code panel-code" tabindex="0"><code set:text={c.html} /></pre>
+        <pre class="code panel-code"><code><CodeLines text={c.html} /></code></pre>
         <div class="panel-live">
           <div class={`live live-${c.id}`} set:html={c.html} />
         </div>
@@ -83,7 +84,7 @@ const OFF = "pui-outline pui-surface";
       </div>
       <div class="showcase-code">
         <span class="tag" aria-hidden="true">markup</span>
-        <pre class="code" tabindex="0"><code set:text={c.html} /></pre>
+        <pre class="code"><code><CodeLines text={c.html} /></code></pre>
       </div>
     </div>
   ))}
@@ -114,8 +115,6 @@ const OFF = "pui-outline pui-surface";
   .panel-code {
     padding: 20px;
     font-size: 11px;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
     border-right: 1px solid var(--pui-border);
   }
   .panel-live {
@@ -168,7 +167,6 @@ const OFF = "pui-outline pui-surface";
     position: relative;
     padding: 40px 24px 24px;
     background: var(--pui-bg-muted);
-    overflow: auto;
   }
   .live {
     width: 100%;

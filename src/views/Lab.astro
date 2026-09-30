@@ -6,6 +6,7 @@
 import AgentSwitch from "../components/AgentSwitch.astro";
 import AgentText from "../components/AgentText.astro";
 import Cell from "../components/Cell.astro";
+import CodeLines from "../components/CodeLines.astro";
 import EvalRuns from "../components/EvalRuns.astro";
 import LabVisual from "../components/LabVisual.astro";
 import McpDemo from "../components/McpDemo.astro";
@@ -117,7 +118,7 @@ const CODE: Record<string, string> = {
       </div>
       <div class="xp-code">
         <span class="tag" aria-hidden="true">code</span>
-        <pre class="code" tabindex="0" data-code={x.id}><code>{CODE[x.id]}</code></pre>
+        <pre class="code" data-code={x.id}><code><CodeLines text={CODE[x.id] ?? ""} /></code></pre>
         {x.source && (
           <div class="xp-actions-code">
             <a class="pui-btn pui-outline pui-surface mono" href={x.source}>{t(lang, "source")}</a>
@@ -129,6 +130,8 @@ const CODE: Record<string, string> = {
 </Base>
 
 <script>
+  import { codeLineNodes } from "../scripts/code-lines.ts";
+
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const panels = [...document.querySelectorAll<HTMLElement>("[data-panel]")];
   const links = [...document.querySelectorAll<HTMLAnchorElement>("[data-open]")];
@@ -186,7 +189,7 @@ const CODE: Record<string, string> = {
   document.addEventListener("mcp-request", (e) => {
     const code = document.querySelector('[data-code="mcp-live"] code');
     const detail = (e as CustomEvent<{ endpoint: string; body: unknown }>).detail;
-    if (code && detail) code.textContent = `POST ${detail.endpoint}\n${JSON.stringify(detail.body)}`;
+    if (code && detail) code.replaceChildren(...codeLineNodes(`POST ${detail.endpoint}\n${JSON.stringify(detail.body)}`));
   });
 </script>
 
@@ -309,10 +312,6 @@ const CODE: Record<string, string> = {
     min-width: 0;
     padding: 48px 24px 24px;
     background: var(--pui-bg-muted);
-  }
-  .xp-code .code {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
   }
   .xp-actions-code {
     display: flex;

@@ -1,8 +1,9 @@
 ---
 // mcp-live: calls this site's read-only MCP server (/api/mcp) from the page and prints the answer line by line
-// in mono, within 800 ms (at once with reduced motion). `card`: the home page's "For agents" card, with
-// `tools/list`. `row`: the home page's "For agents" cell (Claude Design): the address in a pui-input with Copy,
-// `tools/list` and the llms.txt link, the answer appearing under them. `lab`: the opened lab experiment, with one button per call (tools/list and each tool). On a 429
+// in mono, within 800 ms (at once with reduced motion), each line wrapping with a hanging indent. `card`: the
+// home page's "For agents" card, with `tools/list`. `row`: the home page's "For agents" cell (Claude Design): the
+// address with Copy (a CopyField, which wraps), `tools/list` and the llms.txt link, the answer appearing under
+// them. `lab`: the opened lab experiment, with one button per call (tools/list and each tool). On a 429
 // or a network error it says so (site-lab.md), and the address stays on the page to copy. Without JavaScript
 // the buttons stay hidden and the tool names read from the server's list remain.
 import CopyField from "./CopyField.astro";
@@ -18,25 +19,22 @@ const { lang, variant } = Astro.props;
 const endpoint = `${siteUrl(Astro.site)}${MCP_PATH}`;
 const calls = variant === "lab" ? ["tools/list", ...MCP_TOOLS] : ["tools/list"];
 const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
+const label = `MCP · ${t(lang, "connectAgent")}`;
 ---
 
 <div class:list={["mcp", `mcp-${variant}`]} data-mcp data-lang={lang} data-down={t(lang, "mcpDown")} data-limit={t(lang, "mcpRateLimit")}>
   {variant === "row" ? (
-    <div class="mcp-controls" data-copy-root>
-      <div class="pui-group-row mcp-field">
-        <input class="pui-input mono" type="text" readonly value={endpoint} aria-label={`MCP · ${t(lang, "connectAgent")}`} data-copy-text />
-        <button type="button" class="pui-btn pui-outline pui-surface" data-copy="[data-copy-text]" data-copied={t(lang, "copied")} data-fallback={t(lang, "copyFallback")} hidden>{t(lang, "copy")}</button>
-      </div>
+    <div class="mcp-controls">
+      <CopyField lang={lang} text={endpoint} label={label} />
       <div class="mcp-calls">
         <button type="button" class="pui-btn pui-outline pui-surface mono" data-mcp-call="tools/list" hidden>{t(lang, "toolsList")}</button>
         <a class="pui-btn pui-link" href={llms}>{t(lang, "readLlms")}</a>
       </div>
-      <span class="status" role="status" data-copy-status></span>
     </div>
   ) : (
   <div class="mcp-controls">
     {variant === "card" && <span class="mcp-connect">{t(lang, "connectAgent")}</span>}
-    <CopyField lang={lang} text={endpoint} />
+    <CopyField lang={lang} text={endpoint} label={label} />
     <div class="mcp-calls">
       <div class:list={[{ "pui-group-row": variant === "lab" }, "mcp-buttons"]} role="group" aria-label="MCP">
         {calls.map((c, i) => (
@@ -61,6 +59,8 @@ const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
 </div>
 
 <script>
+  import { codeLineNodes } from "../scripts/code-lines.ts";
+
   const PATH = "/api/mcp";
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   type Tool = { name: string; annotations?: { readOnlyHint?: boolean } };
@@ -130,13 +130,13 @@ const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
           return;
         }
         if (reduced) {
-          out.textContent = result.lines.join("\n");
+          out.replaceChildren(...codeLineNodes(result.lines.join("\n")));
           return;
         }
         const each = Math.min(80, 800 / result.lines.length);
-        result.lines.forEach((line, i) =>
+        result.lines.forEach((text, i) =>
           setTimeout(() => {
-            if (mine === turn) out.textContent += (i ? "\n" : "") + line;
+            if (mine === turn) out.append(...codeLineNodes(text));
           }, i * each),
         );
       });
@@ -182,13 +182,8 @@ const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
   .mcp-out .code.muted {
     color: var(--pui-text-muted);
   }
-  .mcp-out .code {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
   [data-mcp-call][hidden],
-  .mcp-out[hidden],
-  .mcp-field .pui-btn[hidden] {
+  .mcp-out[hidden] {
     display: none;
   }
   .mcp-row {
@@ -199,15 +194,13 @@ const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
   .mcp-row .mcp-controls {
     gap: 12px;
   }
-  .mcp-field .pui-input {
-    flex: 1;
-    padding: 9px 12px;
+  .mcp-row :global(.field code) {
     font-size: 13px;
   }
   .mcp-row .mcp-calls {
     gap: 8px;
   }
-  .mcp-row .status:empty {
+  .mcp-row :global(.status:empty) {
     display: none;
   }
   .mcp-row .mcp-out {
@@ -231,10 +224,6 @@ const llms = lang === "en" ? "/llms.txt" : "/pt/llms.txt";
   .mcp-lab .mcp-out {
     border: 1px solid var(--pui-border);
     border-radius: calc(var(--pui-radius) * 1.5);
-  }
-  .mcp-lab .copy-field,
-  .mcp-lab :global(.copy-field) {
-    max-width: 460px;
   }
   @media (max-width: 767px) {
     .mcp-card {

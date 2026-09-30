@@ -2,18 +2,25 @@
 // A text to copy: selectable mono text and a Copy button (hidden without JavaScript). Copied: the button says
 // "Copied" for 2 s and the status region announces it; copy failed: the text is selected and the status says
 // "Press Ctrl+C to copy" (site-home.md states; src/scripts/site.ts).
+// The text is a read-only textbox that wraps (an <input> cannot): named by `label`, focusable, its whole text
+// selected on click or focus, and a URL may break only at its <wbr> points (src/lib/code.ts). It takes the
+// box's whole width, and Copy moves below it when both do not fit on one line (src/styles/site.css, .field).
 import { t, type Lang } from "../data/index.ts";
+import { urlBreaks } from "../lib/code.ts";
 
 interface Props {
   lang: Lang;
   text: string;
+  /** The accessible name of the text. */
+  label: string;
 }
-const { lang, text } = Astro.props;
+const { lang, text, label } = Astro.props;
+const pieces = /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? urlBreaks(text) : [text];
 ---
 
 <div class="copy-field" data-copy-root>
   <div class="field">
-    <code data-copy-text>{text}</code>
+    <code role="textbox" aria-readonly="true" aria-label={label} tabindex="0" data-copy-text>{pieces.map((p, i) => <>{i > 0 && <wbr />}{p}</>)}</code>
     <button type="button" class="pui-btn pui-outline pui-surface" data-copy="[data-copy-text]" data-copied={t(lang, "copied")} data-fallback={t(lang, "copyFallback")} hidden>{t(lang, "copy")}</button>
   </div>
   <span class="status" role="status" data-copy-status></span>

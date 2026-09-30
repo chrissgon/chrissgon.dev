@@ -52,9 +52,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-copy]")
   button.addEventListener("click", async () => {
     const target = root?.querySelector<HTMLElement>(button.dataset.copy ?? "");
     if (!target) return;
-    const input = target instanceof HTMLInputElement ? target : null;
     try {
-      await navigator.clipboard.writeText(input ? input.value : (target.textContent ?? ""));
+      await navigator.clipboard.writeText(target.textContent ?? "");
       button.textContent = button.dataset.copied ?? label;
       if (status) status.textContent = button.dataset.copied ?? "";
       clearTimeout(timer);
@@ -63,18 +62,23 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-copy]")
         if (status) status.textContent = "";
       }, 2000);
     } catch {
-      if (input) {
-        input.select();
-        if (status) status.textContent = button.dataset.fallback ?? "";
-        return;
-      }
-      const range = document.createRange();
-      range.selectNodeContents(target);
-      getSelection()?.removeAllRanges();
-      getSelection()?.addRange(range);
+      selectAll(target);
       if (status) status.textContent = button.dataset.fallback ?? "";
     }
   });
+}
+
+function selectAll(el: HTMLElement) {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  getSelection()?.removeAllRanges();
+  getSelection()?.addRange(range);
+}
+
+// A text to copy is a read-only textbox that wraps (src/components/CopyField.astro): focusing it selects all of
+// it, as focusing a read-only input would, so Ctrl+C copies it; a click selects it through CSS (user-select: all).
+for (const text of document.querySelectorAll<HTMLElement>("[data-copy-text][tabindex]")) {
+  text.addEventListener("focus", () => selectAll(text));
 }
 
 // Numbers count up to their figure when their strip enters the screen: COUNT_MS each on an ease-out curve,
