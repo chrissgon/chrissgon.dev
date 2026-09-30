@@ -250,11 +250,11 @@ const TAB_OFF = "pui-outline pui-surface";
 
 <style>
   /* Text and portrait share the cell with no divider between them, in two equal columns (owner, 2026-09-30):
-     at 55% the portrait crowded the text and wrapped the label. */
+     at 55% the portrait crowded the text and wrapped the label. No min-height: the content sets the height
+     (owner, 2026-09-30: a shorter hero). */
   .hero {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    min-height: 743px;
   }
   .hero-text {
     position: relative;
