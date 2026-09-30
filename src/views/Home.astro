@@ -38,6 +38,8 @@ const agent = llmsParts(lang, { site, npm, workbench });
 const productLine = (name: string) => agent.products.split("\n").find((l) => l.startsWith(`- [${name}]`)) ?? "";
 const [perfectui, aiWorkbench] = products;
 const latest = posts.slice(0, 4);
+// The posts row: four columns from 1024 px, else a row that scrolls sideways with cards min(260px, 68vw) wide.
+const POST_SIZES = "(min-width: 1024px) 288px, (min-width: 383px) 260px, 68vw";
 const label = profile.label[lang];
 const pieces = splitProducts(label[2], products.map((p) => p.name));
 const productBy = (name: string) => products.find((p) => p.name === name);
@@ -183,7 +185,7 @@ const TAB_OFF = "pui-outline pui-surface";
     <span class="index">{index(4, t(lang, "navWriting"))}</span>
     <h2 id="writing-title" class="h2 sec-title">{t(lang, "writingTitle")}</h2>
     <div class="human grid4 posts">
-      {latest.map((p) => <PostCard post={p} lang={lang} date={false} compact />)}
+      {latest.map((p) => <PostCard post={p} lang={lang} date={false} compact sizes={POST_SIZES} />)}
     </div>
     <AgentText text={agent.writing} />
   </Cell>
@@ -442,6 +444,24 @@ const TAB_OFF = "pui-outline pui-surface";
   }
   .posts {
     gap: 16px;
+  }
+  /* Below 1024 px the posts become one row that scrolls sideways inside the section, snapping card by card; the
+     page itself never scrolls sideways. The padding keeps the cards' focus ring inside the scroller. */
+  @media (max-width: 1023px) {
+    .posts {
+      grid-template-columns: none;
+      grid-auto-flow: column;
+      grid-auto-columns: min(260px, 68vw);
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: 4px;
+      margin: -4px;
+      padding: 4px;
+    }
+    .posts > :global(*) {
+      scroll-snap-align: start;
+    }
   }
 
   .traj {
