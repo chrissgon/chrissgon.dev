@@ -27,6 +27,7 @@ import { readFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import { chromium, type Browser, type BrowserContextOptions, type Page } from "playwright";
+import { BG_PUSH_R } from "../src/lib/portrait/push.ts";
 
 const argv = process.argv.slice(2);
 if (argv.includes("--help")) {
@@ -172,12 +173,25 @@ async function plainPixels(page: Page, x: number, y: number, w: number, h: numbe
   return px;
 }
 
+/** Clearances tried around a test spot: the whole push radius first, then a narrower stretch where a page
+ *  (a dense grid of cards) has no bare area that wide; the compared box is the clearance found. */
+const CLEARS = [BG_PUSH_R + 6, 110, 100];
+
+/** The first spot with the widest clearance in CLEARS, with that clearance as `r`. */
+async function emptySpot(page: Page, fromY: number): Promise<{ x: number; y: number; r: number } | null> {
+  for (const r of CLEARS) {
+    const s = await bareSpot(page, fromY, r);
+    if (s) return { ...s, r };
+  }
+  return null;
+}
+
 /**
  * A point over bare grid: the element under it and its ancestors paint no box (no background, image or media),
  * nor within `clear` px around it, and it is at least `clear` px from the portrait. Searches the viewport's
  * rows from `fromY`, left to right.
  */
-async function emptySpot(page: Page, fromY: number, clear = 110): Promise<{ x: number; y: number } | null> {
+async function bareSpot(page: Page, fromY: number, clear: number): Promise<{ x: number; y: number } | null> {
   // A string, not a function: tsx would wrap a named inner function in a helper the page does not have.
   return page.evaluate(`(() => {
     const fromY = ${fromY}, clear = ${clear};
@@ -190,7 +204,7 @@ async function emptySpot(page: Page, fromY: number, clear = 110): Promise<{ x: n
       return true;
     };
     const p = document.querySelector("[data-portrait]")?.getBoundingClientRect();
-    for (let y = fromY; y < innerHeight - clear; y += 14)
+    for (let y = Math.max(fromY, clear); y < innerHeight - clear; y += 14)
       for (let x = clear; x < innerWidth - clear; x += 14) {
         if (p && x > p.left - clear - 170 && x < p.right + clear + 170 && y > p.top - clear - 170 && y < p.bottom + clear + 170) continue;
         let ok = true;
@@ -207,13 +221,14 @@ async function glide(page: Page, x: number, y: number) {
   await page.mouse.move(x, y, { steps: 8 });
 }
 
-/** A resting grid dot 75 to 80 px from (x, y): drawn by the canvas under the pointer, but moved by under half a device px. */
+/** A resting grid dot just inside the push radius of (x, y): drawn by the canvas under the pointer, but moved by under half a device px. */
 function edgeDot(x: number, y: number, scrollY: number): { x: number; y: number } {
-  for (let j = -4; j <= 4; j++)
-    for (let i = -4; i <= 4; i++) {
+  const cells = Math.ceil(BG_PUSH_R / 28) + 1;
+  for (let j = -cells; j <= cells; j++)
+    for (let i = -cells; i <= cells; i++) {
       const dx = 28 * (Math.round((x - 14) / 28) + i) + 14, dy = 28 * (Math.round((y + scrollY - 14) / 28) + j) + 14 - scrollY;
       const d = Math.hypot(dx - x, dy - y);
-      if (d > 76 && d < 79.5) return { x: dx, y: dy };
+      if (d > BG_PUSH_R - 4.5 && d < BG_PUSH_R - 0.5) return { x: dx, y: dy };
     }
   return { x: -1, y: -1 };
 }
@@ -231,17 +246,17 @@ async function pointerScenario(browser: Browser, base: string, path: string, whe
     check(`${label}: layer behind the content, no pointer target`, layer.z === "-1" && layer.pe === "none" && layer.parent && layer.iso === "isolate" && layer.pos === "relative", JSON.stringify(layer));
     await page.evaluate(() => { (window as unknown as { __measure: boolean }).__measure = true; });
     // The top of the page, or the first stretch of bare grid found scrolling down from the middle.
-    let spot: { x: number; y: number } | null = null;
+    let spot: { x: number; y: number; r: number } | null = null;
     if (where === "top") spot = await emptySpot(page, 120);
     else
       for (const at of [0.45, 0.6, 0.3, 0.75, 0.9, 1]) {
         await page.evaluate((a) => scrollTo(0, Math.round((document.documentElement.scrollHeight - innerHeight) * a)), at);
         await sleep(700); // sections entering on scroll settle
-        if ((spot = await emptySpot(page, 120, 100))) break;
+        if ((spot = await emptySpot(page, 120))) break;
       }
     if (!spot) { check(`${label}: an empty stretch of grid to test on`, false, "none found"); return; }
     const sy = await page.evaluate(() => scrollY);
-    const R = 110, box = { x: spot.x - R, y: spot.y - R, w: 2 * R, h: 2 * R };
+    const R = spot.r, box = { x: spot.x - R, y: spot.y - R, w: 2 * R, h: 2 * R };
     const edge = edgeDot(spot.x, spot.y, sy);
     await glide(page, spot.x, spot.y);
     await sleep(600);
@@ -294,7 +309,7 @@ async function scrollScenario(browser: Browser, base: string) {
     await sleep(700);
     const sy = await page.evaluate(() => scrollY);
     check("/projects/ scroll: dots under a still pointer move while scrolling", rest0 > 0 && (await canvasInk(page)) > 0, `scrollY ${sy}`);
-    const box = { x: spot.x - 110, y: spot.y - 110, w: 220, h: 220 };
+    const box = { x: spot.x - spot.r, y: spot.y - spot.r, w: 2 * spot.r, h: 2 * spot.r };
     await page.evaluate(() => document.documentElement.dispatchEvent(new MouseEvent("mouseleave")));
     await sleep(1000);
     const after = await pixels(page, box.x, box.y, box.w, box.h), plain = await plainPixels(page, box.x, box.y, box.w, box.h);
@@ -317,7 +332,7 @@ async function heroShot(browser: Browser, base: string, path: string) {
     });
     await glide(page, at.x, at.y);
     await sleep(600);
-    const ink = await canvasInk(page, { x: at.x - 110, y: at.y - 110, w: 220, h: 220 });
+    const ink = await canvasInk(page, { x: at.x - BG_PUSH_R - 30, y: at.y - BG_PUSH_R - 30, w: 2 * BG_PUSH_R + 60, h: 2 * BG_PUSH_R + 60 });
     check(`${path} hero between the text and the portrait: the dots near the pointer move`, ink > 0, `canvas px ${ink} at ${at.x},${at.y}`);
     const name = `bg-dots-${path === "/" ? "en" : "pt"}-hero`;
     await page.screenshot({ path: join(SHOTS, `${name}.png`) });
