@@ -128,7 +128,7 @@ export default [
       en: "An MCP server and a skill that teach coding agents to build interfaces with Perfect UI.",
       pt: "Um servidor MCP e uma skill que ensinam agentes de código a montar interfaces com a Perfect UI.",
     },
-    links: [{ label: "GitHub", url: "https://github.com/chrissgon/perfectui-agents" }],
+    links: [{ label: "GitHub", url: "https://github.com/chrissgon/perfectui-mcp" }],
   },
   {
     id: "agent-ready-kit",
