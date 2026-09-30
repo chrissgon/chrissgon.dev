@@ -21,10 +21,11 @@ import { fills, parseColor, DEFAULT_RGB, STEPS, type RGB } from "./colors.ts";
 import { clipType, plan, readEnvironment } from "./gating.ts";
 import {
   blur, cellX, cellY, clamp01, easeInOut, gridCell, haloRadius, haloStrength, homeX, homeY,
-  introDelays, layout, PUSH_PX, PUSH_R, scrollBack, type Layout,
+  introDelays, layout, scrollBack, type Layout,
 } from "./grid.ts";
+import { PUSH_PX, PUSH_R, SETTLE_PX, springStep } from "./push.ts";
 import { band, decodePoster, dotRadius, levelTable, lumaHistogram, luma, MAX_LEVEL } from "./levels.ts";
-import type { Clip, PortraitController, PortraitOptions } from "./types.ts";
+import type { Clip, GridDotOwner, PortraitController, PortraitOptions } from "./types.ts";
 
 const INTRO = 1200, EACH = 620, BACK = 600, FADE = 300, NP = 4 * (STEPS + 1), TAU = 2 * Math.PI;
 const TOKENS = ["--pui-bg-emphasis", "--pui-border", "--pui-muted", "--pui-text"] as const;
@@ -74,6 +75,9 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   // Each band's columns in device px (where its dots can paint), so a repaint clears and copies no more.
   let bx0 = new Int32Array(1), bx1 = new Int32Array(1);
   const drawnLv = new Uint8Array(NC);
+  // The grid dots this canvas draws and moves itself, for the background dots (ownsGridDot): the halo dots
+  // (one flag per grid dot of the canvas) and, in canvas px, the part of the canvas no ancestor clips away.
+  let haloAt = new Uint8Array(0), shownBox = [0, 0, 0, 0];
   // State.
   let shown: Uint8Array = poster, prev: Uint8Array = poster, lut: Uint8Array | null = null;
   let raf = 0, last = 0, dirty = true, dead = false, vis = true, rt = 0, dwell = 0;
@@ -134,10 +138,12 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     np = q;
     // The halo: grid dots near the portrait grow and lighten with its blurred mass.
     const b = blur(mass, L.NX, L.NY);
+    haloAt = new Uint8Array(L.NX * L.NY);
     for (let j = 0; j < L.NY; j++)
       for (let i = 0; i < L.NX; i++) {
         const k = j * L.NX + i, h = haloStrength(b[k]!);
         if (!h) continue;
+        haloAt[k] = 1;
         const x = L.gx0 + i * L.G, y = L.gy0 + j * L.G;
         const e = q - np;
         A.hx[q] = A.fx[q] = x; A.hy[q] = A.fy[q++] = y;
@@ -150,6 +156,14 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     ox = new Float32Array(n); oy = new Float32Array(n);
     if (!introDone) delay = introDelays(fx, fy, L.X + FACE.x * COLS * S, L.Y + FACE.y * ROWS * S, INTRO - EACH - 60);
     box = [Math.max(L.X, s.x0), Math.max(L.Y, s.y0), Math.min(L.X + COLS * S, s.x1), Math.min(L.Y + ROWS * S, s.y1)];
+    // An ancestor that clips (the band clips the halo sideways) hides the halo dots outside it: the page's own
+    // grid dots show there, and the background dots move them.
+    shownBox = [0, 0, W, H];
+    for (let e = canvas.parentElement; e && e !== document.body; e = e.parentElement) {
+      const cs = getComputedStyle(e), r = e.getBoundingClientRect();
+      if (cs.overflowX !== "visible") { shownBox[0] = Math.max(shownBox[0]!, r.left - cr.left); shownBox[2] = Math.min(shownBox[2]!, r.right - cr.left); }
+      if (cs.overflowY !== "visible") { shownBox[1] = Math.max(shownBox[1]!, r.top - cr.top); shownBox[3] = Math.min(shownBox[3]!, r.bottom - cr.top); }
+    }
     DX = new Float32Array(n); DY = new Float32Array(n); DR = new Float32Array(n); DJ = new Uint8Array(n); ORD = new Int32Array(n);
     // A dot paints up to its radius plus the anti-aliased edge (and the band's rounding to device pixels).
     let maxR = RAD[MAX_LEVEL]!;
@@ -263,7 +277,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     let p = RM || !ptr ? null : { x: ptr.x - left, y: ptr.y - top };
     // A pointer farther than the push radius from the canvas moves no dot.
     if (p && (p.x < -PUSH_R || p.y < -PUSH_R || p.x > W + PUSH_R || p.y > H + PUSH_R)) p = null;
-    const k = 1 - Math.exp(-dt / 105);
+    const k = springStep(dt);
     let busy = !introDone || g !== gridTo || (back > 0 && back < 1);
     if (fadeT >= 0) {
       const f = clamp01((now - fadeT) / fadeMs);
@@ -324,7 +338,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
         }
         dx0 += (tx - dx0) * k;
         dy0 += (ty - dy0) * k;
-        if (Math.abs(tx - dx0) > 0.05 || Math.abs(ty - dy0) > 0.05) busy = true;
+        if (Math.abs(tx - dx0) > SETTLE_PX || Math.abs(ty - dy0) > SETTLE_PX) busy = true;
         else if (!p) dx0 = dy0 = 0;
         ox[i] = dx0;
         oy[i] = dy0;
@@ -446,6 +460,19 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     play("greet", FADE);
   }
 
+  /** Whether this canvas draws and moves the grid dot at page (x, y): inside the portrait, or a shown halo dot. */
+  function ownsGridDot(x: number, y: number): boolean {
+    if (!Lay || dead) return false;
+    const cx = x - cvLeft, cy = y - cvTop;
+    if (cx >= box[0]! && cx <= box[2]! && cy >= box[1]! && cy <= box[3]!) return true;
+    if (cx < shownBox[0]! || cx > shownBox[2]! || cy < shownBox[1]! || cy > shownBox[3]!) return false;
+    const k = gridCell(Lay, cx, cy);
+    return k >= 0 && haloAt[k] === 1;
+  }
+  const owner: GridDotOwner = canvas;
+  owner.ownsGridDot = ownsGridDot;
+  canvas.setAttribute("data-grid-owner", "");
+
   const io = new IntersectionObserver((es) => {
     const e = es[es.length - 1];
     if (!e) return;
@@ -533,6 +560,8 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     refresh,
     destroy() {
       dead = true;
+      delete owner.ownsGridDot;
+      canvas.removeAttribute("data-grid-owner");
       cancelAnimationFrame(raf);
       clearTimeout(dwell);
       clearTimeout(rt);
