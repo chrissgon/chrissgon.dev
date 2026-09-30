@@ -131,3 +131,14 @@ const seen = new IntersectionObserver(
   { rootMargin: "0px 0px -10% 0px" },
 );
 for (const el of document.querySelectorAll<HTMLElement>(".reveal")) seen.observe(el);
+
+// The background dots step aside from the pointer, like the portrait's (src/lib/griddots/). Only with a mouse or
+// pen, without reduced motion or Save-Data, and loaded once the page is idle after load: a separate chunk, so it
+// is no part of the first render. Without it the CSS grid is the whole picture.
+const saveData = !!(navigator as { connection?: { saveData?: boolean } }).connection?.saveData;
+if (!reduced && !saveData && matchMedia("(hover: hover) and (pointer: fine)").matches) {
+  const go = () => void import("../lib/griddots/mount.ts").then((m) => m.mountGridDots(), () => {});
+  const idle = () => ("requestIdleCallback" in window ? requestIdleCallback(go, { timeout: 3000 }) : setTimeout(go, 1500));
+  if (document.readyState === "complete") idle();
+  else addEventListener("load", idle, { once: true });
+}

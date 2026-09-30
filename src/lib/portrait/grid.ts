@@ -140,13 +140,5 @@ export function scrollBack(scrollY: number, slotTop: number, slotHeight: number)
   return easeInOut(clamp01((gone - BACK_FROM) / (BACK_TO - BACK_FROM)));
 }
 
-/** The pointer pushes dots within PUSH_R px, by up to PUSH_PX px. */
-export const PUSH_R = 80, PUSH_PX = 26;
-
-/** Target displacement of a dot at (dx, dy) from the pointer: pushed away inside radius R, up to `push` px. */
-export function pointerPush(dx: number, dy: number, R = PUSH_R, push = PUSH_PX): [number, number] {
-  const d2 = dx * dx + dy * dy;
-  if (d2 >= R * R) return [0, 0];
-  const d = Math.sqrt(d2) || 0.01, f = (1 - d / R) ** 2 * push / d;
-  return [dx * f, dy * f];
-}
+/** The pointer push lives in push.ts, shared with the page's background dots. */
+export { pointerPush, PUSH_PX, PUSH_R } from "./push.ts";

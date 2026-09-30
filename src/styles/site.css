@@ -22,12 +22,32 @@ html {
 /* The brand dot grid: 1.4 px dots every 28 px in #1f2937, anchored to the document so the portrait's halo
    (src/lib/portrait/grid.ts, dots at 14 px + n × 28 px) lands on the same dots. */
 body {
+  /* A positioned stacking context, so the background dots' layer (.grid-dots) sits over this background and
+     under every piece of content. */
+  position: relative;
+  isolation: isolate;
   margin: 0;
   background-color: var(--pui-bg);
   background-image: radial-gradient(circle, var(--pui-bg-emphasis) 0.7px, transparent 1px);
   background-size: var(--grid) var(--grid);
   background-position: 0 0;
   line-height: 1.5;
+}
+/* The background dots that step aside from the pointer (src/lib/griddots/mount.ts, added by a script with a
+   mouse and without reduced motion): the body's own box, behind the content, clipped so it never widens the
+   page, and never a pointer target. */
+.grid-dots {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: clip;
+  pointer-events: none;
+}
+.grid-dots canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
 }
 
 *,

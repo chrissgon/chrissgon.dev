@@ -59,6 +59,15 @@ export interface PortraitController {
   destroy(): void;
 }
 
+/**
+ * An element that draws some of the page's grid dots itself and moves them with the pointer: the portrait's
+ * canvas, marked with the `data-grid-owner` attribute. The background dots (src/lib/griddots/) leave the dots
+ * it owns alone, so no dot reacts twice. Coordinates are page px (client + scroll).
+ */
+export interface GridDotOwner extends Element {
+  ownsGridDot?: (pageX: number, pageY: number) => boolean;
+}
+
 /** Axis-aligned box in px. */
 export interface Rect {
   left: number;
