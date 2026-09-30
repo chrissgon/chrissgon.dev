@@ -11,8 +11,8 @@
 import { fills, parseColor, DEFAULT_RGB, STEPS, type RGB } from "./colors.ts";
 import { clipType, plan, readEnvironment } from "./gating.ts";
 import {
-  blur, cellX, cellY, clamp01, easeInOut, easeOut, gridCell, haloRadius, haloStrength, homeX, homeY,
-  introDelays, layout, pointerPush, scrollBack, type Layout,
+  blur, cellX, cellY, clamp01, easeInOut, gridCell, haloRadius, haloStrength, homeX, homeY,
+  introDelays, layout, PUSH_PX, PUSH_R, scrollBack, type Layout,
 } from "./grid.ts";
 import { band, decodePoster, dotRadius, levelTable, lumaHistogram, luma, MAX_LEVEL } from "./levels.ts";
 import type { Clip, PortraitController, PortraitOptions } from "./types.ts";
@@ -33,7 +33,8 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   const slot = canvas.parentElement ?? canvas, ctx = canvas.getContext("2d");
   const COLS = o.poster.cols, ROWS = o.poster.rows, NC = COLS * ROWS;
   const poster = decodePoster(o.poster), cur = new Uint8Array(NC), blended = new Uint8Array(NC);
-  const RAD = Array.from({ length: MAX_LEVEL + 1 }, (_, v) => dotRadius(v, S));
+  const RAD = Float32Array.from({ length: MAX_LEVEL + 1 }, (_, v) => dotRadius(v, S));
+  const BAND = Uint8Array.from({ length: MAX_LEVEL + 1 }, (_, v) => band(v));
   const offscreen = document.createElement("canvas");
   offscreen.width = COLS;
   offscreen.height = ROWS;
@@ -142,31 +143,58 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       if (f >= 1) { fadeT = -1; shown = cur; }
     }
     const paths: Array<Path2D | null> = new Array(NP).fill(null);
+    // The hot loop: about 10k particles per frame, so no allocation and no calls it can avoid. A dark
+    // portrait cell at rest is skipped before any maths; easing and the pointer push are inlined
+    // (grid.ts has the same maths as pure, tested functions: easeOut, pointerPush).
+    const intro = !introDone && introStart >= 0, before = !introDone && introStart < 0, cap = 1 - away;
+    const px = p ? p.x : 0, py = p ? p.y : 0, R2 = PUSH_R * PUSH_R;
     for (let i = 0; i < n; i++) {
-      let e = introDone ? 1 : introStart < 0 ? 0 : easeOut(clamp01((t - delay[i]!) / EACH));
-      e = Math.min(e, 1 - away);
+      const port = i < np, v = port ? shown[cell[i]!]! : 0;
+      let dx0 = ox[i]!, dy0 = oy[i]!;
+      if (port) {
+        if (!v && !p && !dx0 && !dy0) continue;
+      } else {
+        const m = mid[i - np]!;
+        if (m >= 0 && shown[m]) continue; // the portrait already has a dot here
+      }
+      let e = 1;
+      if (intro) {
+        let q = (t - delay[i]!) / EACH;
+        q = q < 0 ? 0 : q > 1 ? 1 : q;
+        const u = 1 - q;
+        e = 1 - u * u * u;
+      } else if (before) e = 0;
+      if (e > cap) e = cap;
       const bx = hx[i]! + (fx[i]! - hx[i]!) * e, by = hy[i]! + (fy[i]! - hy[i]!) * e;
-      if (p || ox[i] || oy[i]) {
-        const [tx, ty] = p ? pointerPush(bx - p.x, by - p.y) : [0, 0];
-        ox[i]! += (tx - ox[i]!) * k;
-        oy[i]! += (ty - oy[i]!) * k;
-        if (Math.abs(tx - ox[i]!) > 0.05 || Math.abs(ty - oy[i]!) > 0.05) busy = true;
-        else if (!p) ox[i] = oy[i] = 0;
+      if (p || dx0 || dy0) {
+        let tx = 0, ty = 0;
+        if (p) {
+          const dx = bx - px, dy = by - py, d2 = dx * dx + dy * dy;
+          if (d2 < R2) {
+            const d = Math.sqrt(d2) || 0.01, w = 1 - d / PUSH_R, f = (w * w * PUSH_PX) / d;
+            tx = dx * f;
+            ty = dy * f;
+          }
+        }
+        dx0 += (tx - dx0) * k;
+        dy0 += (ty - dy0) * k;
+        if (Math.abs(tx - dx0) > 0.05 || Math.abs(ty - dy0) > 0.05) busy = true;
+        else if (!p) dx0 = dy0 = 0;
+        ox[i] = dx0;
+        oy[i] = dy0;
       }
       let rad: number, b: number;
-      if (i < np) {
-        const v = shown[cell[i]!]!;
+      if (port) {
         if (!v) continue;
         rad = 0.7 + (RAD[v]! - 0.7) * e;
-        b = band(v);
+        b = BAND[v]!;
       } else {
-        const h = i - np, m = mid[h]!;
-        if (m >= 0 && shown[m]) continue; // the portrait already has a dot here
-        if (e <= 0 && !ox[i] && !oy[i]) continue; // at rest a halo dot is the page's own grid dot
+        if (e <= 0 && !dx0 && !dy0) continue; // at rest a halo dot is the page's own grid dot
+        const h = i - np;
         rad = 0.7 + (rf[h]! - 0.7) * e;
         b = hb[h]!;
       }
-      const j = b * (STEPS + 1) + (b ? Math.round(e * STEPS) : 0), x = bx + ox[i]!, y = by + oy[i]!;
+      const j = b ? b * (STEPS + 1) + ((e * STEPS + 0.5) | 0) : 0, x = bx + dx0, y = by + dy0;
       const path = paths[j] ?? (paths[j] = new Path2D());
       path.moveTo(x + rad, y);
       path.arc(x, y, rad, 0, 6.2832);
@@ -271,9 +299,8 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     const e = es[es.length - 1];
     if (!e) return;
     vis = e.isIntersecting;
-    if (e.intersectionRatio >= 0.2 && introStart < 0 && !introDone) introStart = performance.now();
+    if (e.intersectionRatio >= 0.2 && introStart < 0 && !introDone) { introStart = performance.now(); kick(); }
     sync();
-    kick();
   }, { threshold: [0, 0.2] });
 
   if (PLAN.video) {
@@ -319,11 +346,22 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     if (dead) return;
     palette();
     build();
+    built = where();
     last = 0;
-    draw(performance.now(), 16);
-    kick();
+    if (draw(performance.now(), 16)) kick(); // one draw; more frames only while something moves
   };
-  const later = () => { clearTimeout(rt); rt = window.setTimeout(refresh, 120); };
+  // Layout signature of the last build, in page coordinates: a resize or font swap that moves nothing
+  // (the ResizeObserver's first call, usually) costs no rebuild and no redraw.
+  let built = "";
+  const where = () => {
+    const c = canvas.getBoundingClientRect(), s = slot.getBoundingClientRect();
+    return [c.left + scrollX, c.top + scrollY, c.width, c.height, s.left + scrollX, s.top + scrollY, s.width, s.height, devicePixelRatio].join();
+  };
+  const relayout = () => {
+    const now = where();
+    if (now !== built) refresh();
+  };
+  const later = () => { clearTimeout(rt); rt = window.setTimeout(relayout, 120); };
   const ro = new ResizeObserver(later);
   ro.observe(slot);
   on(window, "resize", later);
