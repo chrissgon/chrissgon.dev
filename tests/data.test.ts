@@ -84,7 +84,7 @@ describe("data module", () => {
     );
     expect(parseData(Project, { ...base, links: [] }, "projects.ts").links).toEqual([]);
     const repo = (id: string) => projects.find((p) => p.id === id)!.links;
-    expect(repo("perfectui-for-agents")).toEqual([{ label: "GitHub", url: "https://github.com/chrissgon/perfectui-agents" }]);
+    expect(repo("perfectui-for-agents")).toEqual([{ label: "GitHub", url: "https://github.com/chrissgon/perfectui-mcp" }]);
     expect(repo("agent-ready-kit")).toEqual([{ label: "GitHub", url: "https://github.com/chrissgon/agent-ready-kit" }]);
     expect(repo("light-site-auditor")).toEqual([{ label: "GitHub", url: "https://github.com/chrissgon/light-site-auditor" }]);
     expect(repo("social-agent")).toEqual([]);
