@@ -124,7 +124,7 @@ export const Posts = z
   });
 
 export const TrajectoryEntry = z.strictObject({
-  /** Years, never a birth year: `from` absent means "before `to`"; `to` null means "now". */
+  /** Years, never a birth year: `from` absent means "before `to`"; `to` null means "now"; both absent and null mean just "Now". */
   from: z.int().min(2000).optional(),
   to: z.int().min(2000).nullable(),
   role: text.nullable(),

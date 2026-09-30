@@ -6,6 +6,10 @@ export const LOCALE: Record<Lang, string> = { en: "en", pt: "pt-BR" };
 export const formatNumber = (n: number, lang: Lang) => n.toLocaleString(LOCALE[lang]);
 
 export function formatPeriod(e: TrajectoryEntry, lang: Lang): string {
+  if (e.from === undefined && e.to === null) {
+    const now = t(lang, "now");
+    return now.charAt(0).toUpperCase() + now.slice(1);
+  }
   if (e.from === undefined) return `${t(lang, "before")} ${e.to}`;
   if (e.to === null) return `${e.from} – ${t(lang, "now")}`;
   return e.from === e.to ? `${e.from}` : `${e.from} – ${e.to}`;
