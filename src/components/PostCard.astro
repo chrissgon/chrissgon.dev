@@ -109,65 +109,27 @@ const size = coverSize(widths[0]!);
 
 <style is:global>
   /* The posts' focus effect (owner, 2026-10-01), CSS only: with the pointer on a card, or keyboard focus on one,
-     that card grows by --post-scale and the other cards of its list go to half opacity; with the pointer off the
-     cards (outside the list or between two cards) every card is whole. The lists are the home page's row (.posts)
-     and the writing page's sheet (.sheet); global, because the list belongs to the page, not to this component.
-     A browser without :has() dims nothing. The scale is a transform (no layout shift) and stays inside the
-     section: 1.1 where the room around a card takes it, less where it would be cut or leave the frame.
-     scripts/check-layout.ts hovers and focuses every card at every width. */
-  .posts,
-  .sheet {
-    --post-scale: 1.1;
-  }
-  /* The writing sheet: a card grows 13 px upwards whatever its height and the rest downwards, so it stays clear
-     of its cell's date tag above and of the next row's below. */
-  .sheet {
-    --post-origin: 50% 130px;
-  }
+     the other cards of its list go to opacity 0.3 and that card stays whole; with the pointer off the cards
+     (outside the list or between two cards) every card is whole. No card grows or moves. The lists are the home
+     page's row (.posts) and the writing page's sheet (.sheet); global, because the list belongs to the page, not
+     to this component. A browser without :has() dims nothing. scripts/check-layout.ts hovers and focuses every
+     card at every width. */
   .post-card {
-    transform-origin: var(--post-origin, center);
     transition:
       border-color 0.15s,
-      opacity 0.2s var(--ease),
-      transform 0.2s var(--ease);
+      opacity 0.2s var(--ease);
   }
   :is(.posts, .sheet):has(.post-card:focus-visible) .post-card:not(:focus-visible) {
-    opacity: 0.5;
-  }
-  :is(.posts, .sheet) .post-card:focus-visible {
-    z-index: 1;
-    transform: scale(var(--post-scale));
+    opacity: 0.3;
   }
   /* A mouse or a pen only: a touch screen has no hover to leave. */
   @media (hover: hover) and (pointer: fine) {
     :is(.posts, .sheet):has(.post-card:hover) .post-card:not(:hover, :focus-visible) {
-      opacity: 0.5;
-    }
-    :is(.posts, .sheet):has(.post-card:hover) .post-card:hover {
-      z-index: 1;
-      opacity: 1;
-      transform: scale(var(--post-scale));
-      transform-origin: var(--post-origin, center);
+      opacity: 0.3;
     }
   }
-  /* The home page's row scrolls sideways inside its own box below 1024 px, and that box would cut a grown card. */
-  @media (max-width: 1023px) {
-    .posts {
-      --post-scale: 1;
-    }
-  }
-  /* The writing sheet's two columns leave 12 px beside a card. */
-  @media (max-width: 767px) {
-    .sheet {
-      --post-scale: 1.05;
-    }
-  }
-  /* Reduced motion keeps the dimming and drops the scale and the transition. */
+  /* Reduced motion keeps the dimming and drops the transition. */
   @media (prefers-reduced-motion: reduce) {
-    .posts,
-    .sheet {
-      --post-scale: 1;
-    }
     .post-card {
       transition: none;
     }
