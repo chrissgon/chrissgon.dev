@@ -23,10 +23,8 @@
 // header's switch on: the section is redrawn, each topic shows its count of picks in the page's language, its
 // links open the pre-filled issues in a new tab and the reading follows. / and /writing/ and their /pt/ pages also
 // with the pointer on, and keyboard focus on, each post card in turn ("posts", with motion allowed): that card is
-// whole and grown by the scale its list allows at that width, the others are at half opacity, the grown card stays
-// inside the frame and every box that clips, on top of its neighbours and clear of the date tags, and the page does
-// not scroll sideways; with the pointer away every card is whole again; with reduced motion the cards dim and none
-// grows. Every state answers the section's request to GitHub itself (scripts/pick-fixture.ts), with the build's
+// whole and not scaled, the others are at opacity 0.3, and the page does not scroll sideways; with the pointer away
+// every card is whole again; with reduced motion the cards dim without a transition. Every state answers the section's request to GitHub itself (scripts/pick-fixture.ts), with the build's
 // round unless it is a pick state, so the check needs no network.
 // Widths: 320 360 375 390 414 600 768 820 1024 1100 1186 1280 1366 1440 1920.
 // The switches are turned on the way a user does (Playwright's check(), which fails when the switch is covered
@@ -406,14 +404,14 @@ async function pickFlow(page: Page, kind: "closed" | "new"): Promise<string[]> {
 
 // Runs in the page, as plain JavaScript: the post cards of the page's list (.posts on the home page, .sheet on the
 // writing page) with card number ACTIVE (or none, -1) under the pointer or focused. WANT is the scale that card
-// must have. Returns one message per fault.
+// must have (1: no card grows). Returns one message per fault.
 const POSTS = `((ACTIVE, WANT, HOW) => {
   const cards = [...document.querySelectorAll(":is(.posts, .sheet) .post-card")];
   const out = [];
   const scale = (el) => { const t = getComputedStyle(el).transform; return t === "none" ? 1 : new DOMMatrix(t).a; };
   cards.forEach((c, i) => {
     const op = Number(getComputedStyle(c).opacity), sc = scale(c);
-    const wantOp = ACTIVE < 0 || i === ACTIVE ? 1 : 0.5, wantSc = i === ACTIVE ? WANT : 1;
+    const wantOp = ACTIVE < 0 || i === ACTIVE ? 1 : 0.3, wantSc = i === ACTIVE ? WANT : 1;
     if (Math.abs(op - wantOp) > 0.01) out.push(HOW + ": card " + (i + 1) + " opacity " + op + ", expected " + wantOp);
     if (Math.abs(sc - wantSc) > 0.001) out.push(HOW + ": card " + (i + 1) + " scale " + sc + ", expected " + wantSc);
   });
@@ -446,10 +444,10 @@ const POSTS = `((ACTIVE, WANT, HOW) => {
 
 // "posts": the pointer on each post card, then keyboard focus on each, then neither; then again with reduced
 // motion. Ends with the pointer away and reduced motion on, as the other states are measured.
-async function postsFlow(page: Page, width: number, home: boolean): Promise<string[]> {
+async function postsFlow(page: Page): Promise<string[]> {
   const out: string[] = [];
   const probe = async (active: number, want: number, how: string) => out.push(...((await page.evaluate(`${POSTS}(${active}, ${want}, ${JSON.stringify(how)})`)) as string[]));
-  const want = home ? (width >= 1024 ? 1.1 : 1) : width >= 768 ? 1.1 : 1.05;
+  const want = 1;
   // Wait for the transitions under way (the cards', the sections' entrance) to end, however slow the machine.
   const settle = async () => {
     await page.waitForTimeout(50);
@@ -538,7 +536,7 @@ async function sweep(browser: Browser, base: string, s: State, width: number) {
     if (s.agent === "page") await toggle(".frame > header .agent-toggle");
     if (s.agent === "demo") await toggle("[data-agent-scope] [data-agent-scope] .agent-toggle");
     if (s.filters) flowOut.push(...(await filtersFlow(page)));
-    if (s.posts) flowOut.push(...(await postsFlow(page, width, s.path.replace("/pt", "") === "/")));
+    if (s.posts) flowOut.push(...(await postsFlow(page)));
     if (s.typed) {
       try {
         const editor = page.locator("#perfectui-live [role=tabpanel]:not([hidden]) textarea");
