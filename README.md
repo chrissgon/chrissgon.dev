@@ -97,4 +97,4 @@ A false positive in this site's texts goes to `src/data/sensitive-exclude.json` 
 
 ## Security
 
-See [SECURITY.md](SECURITY.md). Enable the pre-commit hook once per clone: `git config core.hooksPath .githooks`.
+See [SECURITY.md](SECURITY.md). The git hooks (`.husky/`: the pre-commit checks and the commit message convention) are installed by `npm install`; nothing to enable by hand.

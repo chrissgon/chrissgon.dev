@@ -1,6 +1,6 @@
 {
   "name": "chrissgon.dev",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Christopher Gonçalves's personal site: static Astro pages, llms.txt and schema.org data from one typed data module.",
   "type": "module",
@@ -25,7 +25,11 @@
     "check:layout": "tsx scripts/check-layout.ts",
     "check:griddots": "tsx scripts/check-griddots.ts",
     "check:playground": "tsx scripts/check-playground.ts",
-    "og:image": "tsx scripts/og-image.ts"
+    "og:image": "tsx scripts/og-image.ts",
+    "check:live": "tsx scripts/check-live.ts",
+    "changelog": "changelogen --noAuthors --no-output",
+    "release:prepare": "changelogen --bump --noAuthors --output CHANGELOG.md",
+    "prepare": "husky"
   },
   "dependencies": {
     "@astrojs/sitemap": "3.7.4",
@@ -36,8 +40,12 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
+    "@commitlint/cli": "21.2.3",
+    "@commitlint/config-conventional": "21.2.3",
     "@netlify/functions": "6.0.0",
     "@types/node": "22.20.4",
+    "changelogen": "0.6.2",
+    "husky": "9.1.7",
     "lighthouse": "13.5.0",
     "playwright": "1.63.0",
     "tsx": "4.23.15",

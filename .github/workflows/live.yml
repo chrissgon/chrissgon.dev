@@ -1,0 +1,35 @@
+# Checks the site that is live, once a day and on demand: the home pages, llms.txt and the MCP endpoint
+# answer as the repository says they should (scripts/check-live.ts). Netlify builds and publishes main on
+# every merge; this is the check that runs after that, outside the pull request. A failed run e-mails the
+# owner. Read-only permissions; actions pinned to a commit.
+name: live
+
+on:
+  schedule:
+    - cron: "17 9 * * *" # every day at 09:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live
+  cancel-in-progress: true
+
+jobs:
+  live:
+    name: live
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: The live site answers
+        run: npm run check:live
