@@ -156,6 +156,12 @@ document.addEventListener("playground", (e) => {
   if (root instanceof HTMLElement) void import("./playground.ts").then((m) => m.mountPlayground(root));
 });
 
+// A test variation of the portrait, only with ?portrait=text in the address: letters of Perfect UI class names
+// instead of dots (src/lib/portrait/glyphs.ts). Loaded after the page, so the portrait is mounted by then.
+if (location.search.includes("portrait=text")) {
+  addEventListener("load", () => void import("../lib/portrait/glyphs.ts").then((m) => m.useGlyphs(), () => {}), { once: true });
+}
+
 // The background dots step aside from the pointer, like the portrait's (src/lib/griddots/). Only with a mouse or
 // pen, without reduced motion or Save-Data, and loaded once the page is idle after load: a separate chunk, so it
 // is no part of the first render. Without it the CSS grid is the whole picture.
