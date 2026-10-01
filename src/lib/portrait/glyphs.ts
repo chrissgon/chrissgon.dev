@@ -43,23 +43,28 @@ export function glyphPainter(cols: number, cellPx: number, family: string, mode:
     c.textBaseline = "middle";
   };
   if (mode === "blocks") {
+    const alpha = (level: number) => Math.min(1, 0.06 + 0.94 * (level / 15) ** 1.6);
     return {
       reach: size + cellPx,
       setup,
       // Each cell paints its own block and its own half of the line's letter (clipped to the cell), so the
-      // order the cells are painted in does not matter.
+      // order the cells are painted in does not matter. For the letter to read, both halves use one ink,
+      // chosen from the line's two blocks together (dark on a bright pair, light on a dim one), and a cell
+      // whose neighbour in the line is dark draws the whole letter, since no other cell will.
       dot(c, x, y, _r, cell, levels) {
         const lower = Math.floor(cell / cols) % 2 === 1, fill = c.fillStyle;
-        const a = Math.min(1, 0.06 + 0.94 * ((levels[cell] ?? 0) / 15) ** 1.6);
+        const other = levels[lower ? cell - cols : cell + cols] ?? 0, a = alpha(levels[cell] ?? 0);
+        const mean = other ? (a + alpha(other)) / 2 : a, dark = mean > 0.5;
         c.save();
-        c.beginPath();
-        c.rect(x - half, y - half, cellPx, cellPx);
-        c.clip();
         c.fillStyle = ink;
         c.globalAlpha = a;
         c.fillRect(x - half, y - half, cellPx, cellPx);
-        c.globalAlpha = a > 0.45 ? 1 : 0.55;
-        c.fillStyle = a > 0.45 ? paper : ink;
+        c.beginPath();
+        if (other) c.rect(x - half, y - half, cellPx, cellPx);
+        else c.rect(x - half, lower ? y - half - cellPx : y - half, cellPx, 2 * cellPx);
+        c.clip();
+        c.globalAlpha = dark ? 1 : Math.min(1, 0.32 + 1.6 * mean);
+        c.fillStyle = dark ? paper : ink;
         c.fillText(letterAt(cell, cols), x, lower ? y - half : y + half);
         c.restore();
         c.fillStyle = fill;
