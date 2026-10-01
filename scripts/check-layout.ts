@@ -21,7 +21,12 @@
 // / and /pt/ also with the "Pick the next post" section redrawn in the page from a fresh round ("pick closed": the
 // round closed with a winner and its post; "pick new": a new round with three topics), each as loaded and with the
 // header's switch on: the section is redrawn, each topic shows its count of picks in the page's language, its
-// links open the pre-filled issues in a new tab and the reading follows. Every state answers the section's request to GitHub itself (scripts/pick-fixture.ts), with the build's
+// links open the pre-filled issues in a new tab and the reading follows. / and /writing/ and their /pt/ pages also
+// with the pointer on, and keyboard focus on, each post card in turn ("posts", with motion allowed): that card is
+// whole and grown by the scale its list allows at that width, the others are at half opacity, the grown card stays
+// inside the frame and every box that clips, on top of its neighbours and clear of the date tags, and the page does
+// not scroll sideways; with the pointer away every card is whole again; with reduced motion the cards dim and none
+// grows. Every state answers the section's request to GitHub itself (scripts/pick-fixture.ts), with the build's
 // round unless it is a pick state, so the check needs no network.
 // Widths: 320 360 375 390 414 600 768 820 1024 1100 1186 1280 1366 1440 1920.
 // The switches are turned on the way a user does (Playwright's check(), which fails when the switch is covered
@@ -110,6 +115,7 @@ interface State {
   filters?: boolean;
   pick?: "closed" | "new";
   typed?: boolean;
+  posts?: boolean;
 }
 const TYPED = `<a class="pui-btn pui-solid pui-theme" href="https://chrissgon.dev/a-long-path/${"segment-".repeat(12)}end">${"x".repeat(160)}</a> <p>${"word ".repeat(40)}</p>`;
 const PAGES = ["/", "/projects/", "/writing/", "/lab/"];
@@ -122,6 +128,7 @@ for (const prefix of ["", "/pt"]) {
   for (const p of PAGES) {
     const path = prefix + p;
     states.push({ page: path, path, hash: "", agent: "" }, { page: `${path} agent`, path, hash: "", agent: "page" });
+    if (p === "/" || p === "/writing/") states.push({ page: `${path} posts`, path, hash: "", agent: "", posts: true });
     if (p === "/projects/") states.push({ page: `${path} filters`, path, hash: "", agent: "", filters: true });
     if (p === "/") {
       for (const pick of ["closed", "new"] as const) {
@@ -397,6 +404,97 @@ async function pickFlow(page: Page, kind: "closed" | "new"): Promise<string[]> {
   return out;
 }
 
+// Runs in the page, as plain JavaScript: the post cards of the page's list (.posts on the home page, .sheet on the
+// writing page) with card number ACTIVE (or none, -1) under the pointer or focused. WANT is the scale that card
+// must have. Returns one message per fault.
+const POSTS = `((ACTIVE, WANT, HOW) => {
+  const cards = [...document.querySelectorAll(":is(.posts, .sheet) .post-card")];
+  const out = [];
+  const scale = (el) => { const t = getComputedStyle(el).transform; return t === "none" ? 1 : new DOMMatrix(t).a; };
+  cards.forEach((c, i) => {
+    const op = Number(getComputedStyle(c).opacity), sc = scale(c);
+    const wantOp = ACTIVE < 0 || i === ACTIVE ? 1 : 0.5, wantSc = i === ACTIVE ? WANT : 1;
+    if (Math.abs(op - wantOp) > 0.01) out.push(HOW + ": card " + (i + 1) + " opacity " + op + ", expected " + wantOp);
+    if (Math.abs(sc - wantSc) > 0.001) out.push(HOW + ": card " + (i + 1) + " scale " + sc + ", expected " + wantSc);
+  });
+  const de = document.documentElement;
+  if (de.scrollWidth > de.clientWidth) out.push(HOW + ": the page scrolls sideways by " + (de.scrollWidth - de.clientWidth) + " px");
+  const el = cards[ACTIVE];
+  if (!el) return out;
+  const r = el.getBoundingClientRect();
+  const past = (o) => Math.max(o.left - r.left, r.right - o.right, o.top - r.top, r.bottom - o.bottom);
+  const frame = document.querySelector(".frame").getBoundingClientRect();
+  // A card that does not grow may sit past the frame inside a row that scrolls (the home page below 1024 px).
+  if (WANT > 1 && (r.left < frame.left - 0.5 || r.right > frame.right + 0.5)) out.push(HOW + ": card " + (ACTIVE + 1) + " leaves the frame sideways");
+  for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+    const cs = getComputedStyle(a);
+    if (cs.overflowX === "visible" && cs.overflowY === "visible") continue;
+    if (WANT > 1 && past(a.getBoundingClientRect()) > 0.5) out.push(HOW + ": card " + (ACTIVE + 1) + " is cut by " + a.tagName.toLowerCase() + "." + String(a.className).trim().split(/\\s+/)[0]);
+  }
+  for (const t of document.querySelectorAll(".sheet .tag")) {
+    const o = t.getBoundingClientRect();
+    if (Math.min(o.right, r.right) - Math.max(o.left, r.left) > 0.5 && Math.min(o.bottom, r.bottom) - Math.max(o.top, r.top) > 0.5) out.push(HOW + ": card " + (ACTIVE + 1) + " runs over the date tag \\"" + t.textContent.trim() + "\\"");
+  }
+  // On top of its neighbours: 3 px inside each side of its box, the card (or its content) is what is drawn.
+  for (const [x, y] of [[r.left + 3, r.top + r.height / 2], [r.right - 3, r.top + r.height / 2], [r.left + r.width / 2, r.top + 3], [r.left + r.width / 2, r.bottom - 3]]) {
+    if (x < 0 || y < 0 || x >= de.clientWidth || y >= de.clientHeight) continue;
+    const top = document.elementFromPoint(x, y);
+    if (WANT > 1 && top && !el.contains(top)) out.push(HOW + ": card " + (ACTIVE + 1) + " is under " + top.tagName.toLowerCase() + "." + String(top.className).trim().split(/\\s+/)[0]);
+  }
+  return out;
+})`;
+
+// "posts": the pointer on each post card, then keyboard focus on each, then neither; then again with reduced
+// motion. Ends with the pointer away and reduced motion on, as the other states are measured.
+async function postsFlow(page: Page, width: number, home: boolean): Promise<string[]> {
+  const out: string[] = [];
+  const probe = async (active: number, want: number, how: string) => out.push(...((await page.evaluate(`${POSTS}(${active}, ${want}, ${JSON.stringify(how)})`)) as string[]));
+  const want = home ? (width >= 1024 ? 1.1 : 1) : width >= 768 ? 1.1 : 1.05;
+  const cards = page.locator(":is(.posts, .sheet) .post-card");
+  const n = await cards.count();
+  if (n < 2) return [`posts: ${n} post cards found`];
+  if (!(await page.evaluate(() => matchMedia("(hover: hover) and (pointer: fine)").matches))) return ["posts: the browser reports no hover-capable fine pointer"];
+  // Sections and the writing page's cells enter on scroll when motion is allowed: bring every card in and let
+  // them settle (a cell still entering is a stacking context of its own).
+  for (let i = 0; i < n; i++) await cards.nth(i).scrollIntoViewIfNeeded();
+  await page.locator(".frame > footer").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(800);
+  const away = async () => {
+    await page.mouse.move(1, 1);
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.waitForTimeout(300);
+  };
+  await probe(-1, 1, "idle");
+  for (let i = 0; i < n; i++) {
+    await cards.nth(i).hover();
+    await page.waitForTimeout(300);
+    await probe(i, want, "hover");
+  }
+  await away();
+  await probe(-1, 1, "pointer away");
+  // Keyboard focus: Tab from the link before the card, so the browser treats the focus as the keyboard's.
+  for (let i = 0; i < n; i++) {
+    await cards.nth(i).focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await page.waitForTimeout(300);
+    if (!(await cards.nth(i).evaluate((el) => el.matches(":focus-visible")))) out.push(`focus: card ${i + 1} did not take keyboard focus`);
+    else await probe(i, want, "focus");
+  }
+  await away();
+  await probe(-1, 1, "focus away");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const i of [0, n - 1]) {
+    await cards.nth(i).hover();
+    await page.waitForTimeout(100);
+    await probe(i, 1, "reduced motion");
+    if ((await cards.nth(i).evaluate((el) => getComputedStyle(el).transitionDuration)).split(",").some((d) => parseFloat(d) > 0)) out.push("reduced motion: the card still has a transition");
+  }
+  await away();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  return out;
+}
+
 interface Result { page: string; width: number; ok: boolean; info: string }
 const results: Result[] = [];
 const scrollbars = new Set<number>();
@@ -405,7 +503,7 @@ const agentStates = new Set<string>();
 const agentHeadings = new Set<string>();
 
 async function sweep(browser: Browser, base: string, s: State, width: number) {
-  const ctx = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: "reduce" });
+  const ctx = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: s.posts ? "no-preference" : "reduce" });
   try {
     await routePick(ctx, s.pick === "closed" ? closedPick() : s.pick === "new" ? newPick() : undefined);
     const page = await ctx.newPage();
@@ -425,6 +523,7 @@ async function sweep(browser: Browser, base: string, s: State, width: number) {
     if (s.agent === "page") await toggle(".frame > header .agent-toggle");
     if (s.agent === "demo") await toggle("[data-agent-scope] [data-agent-scope] .agent-toggle");
     if (s.filters) flowOut.push(...(await filtersFlow(page)));
+    if (s.posts) flowOut.push(...(await postsFlow(page, width, s.path.replace("/pt", "") === "/")));
     if (s.typed) {
       try {
         const editor = page.locator("#perfectui-live [role=tabpanel]:not([hidden]) textarea");
