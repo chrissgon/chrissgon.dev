@@ -104,6 +104,9 @@ export const provisional = {
     pt: "O post desta semana é do pilar {pillar}. Escolha o tema que eu escrevo a seguir: uma escolha por conta do GitHub, que você pode trocar até a rodada fechar em {date}.",
   },
   pickButton: { en: "Pick", pt: "Escolher" },
+  // A topic's count of picks, singular and plural ("1 pick", "3 picks"): proposals awaiting the owner.
+  pickCountOne: { en: "pick", pt: "escolha" },
+  pickCountMany: { en: "picks", pt: "escolhas" },
   pickClosed: { en: "The next round opens on a Monday.", pt: "A próxima rodada abre numa segunda-feira." },
   pickClosedLast: { en: "Until then, the last result is below.", pt: "Até lá, o último resultado fica abaixo." },
   pickLast: { en: "Last round you picked {topic}.", pt: "Na última rodada, vocês escolheram {topic}." },

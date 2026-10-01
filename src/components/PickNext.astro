@@ -1,12 +1,13 @@
 ---
 // "Pick the next post" (src/lib/pick.ts): the open round of the owner's GitHub profile, its three topics and, for
-// each, a link to the same pre-filled issue the profile README uses (a new tab on github.com). Rendered at build
+// each, its count of picks and a link to the same pre-filled issue the profile README uses (a new tab on
+// github.com); once closed, the last round's topics with their final counts and its winner. Rendered at build
 // from src/data/pick.ts; when the section comes near, src/scripts/pick-refresh.ts (a lazy chunk, outside the first
 // render) reads the profile's pick.json again and redraws this markup, the same elements with the same classes,
-// when the round has changed. Only the owner's topics are shown, never the text of an issue.
+// when the round or a count has changed. Only the owner's topics are shown, never the text of an issue.
 import AgentText from "./AgentText.astro";
 import Cell from "./Cell.astro";
-import { viewKey, viewTexts, type PickView } from "../lib/pick.ts";
+import { countText, viewKey, viewTexts, type PickView } from "../lib/pick.ts";
 import type { Lang } from "../data/schema.ts";
 
 interface Props {
@@ -25,21 +26,17 @@ const x = viewTexts(view, lang);
   <span class="index">{index}</span>
   <h2 id="pick-title" class="h2">{title}</h2>
   <div class="human pick" data-pick-body>
-    {view.state === "open" && x.lead ? (
-      <>
-      <p class="pick-lead">{x.lead[0]}<strong>{x.pillar}</strong>{x.lead[1]}</p>
+    <p class="pick-lead">{view.state === "open" && x.lead ? <>{x.lead[0]}<strong>{x.pillar}</strong>{x.lead[1]}</> : x.closed}</p>
+    {view.options.length > 0 && (
       <ol class="pick-list">
         {view.options.map((o) => (
           <li>
             <span class="pick-letter mono">{o.letter}</span>
-            <span class="pick-topic">{o.topic}</span>
-            <a class="pui-btn pui-outline pui-surface" href={o.url} target="_blank" rel="noopener" aria-label={`${x.button} ${o.letter}: ${o.topic}`}>{x.button}</a>
+            <span class="pick-main"><span class="pick-topic">{o.topic}</span><span class="pick-count mono">{countText(o.count, lang)}</span></span>
+            {"url" in o && <a class="pui-btn pui-outline pui-surface" href={o.url} target="_blank" rel="noopener" aria-label={`${x.button} ${o.letter}: ${o.topic}`}>{x.button}</a>}
           </li>
         ))}
       </ol>
-      </>
-    ) : (
-      <p class="pick-lead">{x.closed}</p>
     )}
     {view.last && x.last && (
       <p class="pick-last">
@@ -72,8 +69,8 @@ const x = viewTexts(view, lang);
   :where(#pick) .pick-lead strong {
     color: var(--pui-text);
   }
-  /* One row per topic: the letter, the topic and its link, with a line between rows. Below 600 px the link goes
-     under the topic. */
+  /* One row per topic: the letter, the topic over its count of picks, and its link (an open round), with a line
+     between rows. Below 600 px the link goes under the topic. */
   :where(#pick) .pick-list {
     margin: 0;
     padding: 0;
@@ -99,6 +96,14 @@ const x = viewTexts(view, lang);
   :where(#pick) .pick-topic {
     font-size: 17px;
     line-height: 1.45;
+  }
+  :where(#pick) .pick-main {
+    display: grid;
+    gap: 4px;
+  }
+  :where(#pick) .pick-count {
+    font-size: 12px;
+    color: var(--pui-text-muted);
   }
   :where(#pick) .pick-last {
     font-size: 14px;

@@ -20,8 +20,8 @@
 // project in the reading, the switch off shows the same filtered cards and pressed chip, "All" shows them all).
 // / and /pt/ also with the "Pick the next post" section redrawn in the page from a fresh round ("pick closed": the
 // round closed with a winner and its post; "pick new": a new round with three topics), each as loaded and with the
-// header's switch on: the section is redrawn, its links open the pre-filled issues in a new tab and the reading
-// follows. Every state answers the section's request to GitHub itself (scripts/pick-fixture.ts), with the build's
+// header's switch on: the section is redrawn, each topic shows its count of picks in the page's language, its
+// links open the pre-filled issues in a new tab and the reading follows. Every state answers the section's request to GitHub itself (scripts/pick-fixture.ts), with the build's
 // round unless it is a pick state, so the check needs no network.
 // Widths: 320 360 375 390 414 600 768 820 1024 1100 1186 1280 1366 1440 1920.
 // The switches are turned on the way a user does (Playwright's check(), which fails when the switch is covered
@@ -52,7 +52,7 @@ import { createServer, type Server } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import { chromium, type Browser, type Page } from "playwright";
 import { FIXTURE_POST, closedPick, newPick, routePick } from "./pick-fixture.ts";
-import { issueUrl } from "../src/lib/pick.ts";
+import { countText, issueUrl } from "../src/lib/pick.ts";
 
 const argv = process.argv.slice(2);
 if (argv.includes("--help")) {
@@ -373,10 +373,16 @@ async function pickFlow(page: Page, kind: "closed" | "new"): Promise<string[]> {
     return {
       links: [...s.querySelectorAll(".pick-list a")].map((a) => [a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel"), a.className].join(" ")),
       topics: [...s.querySelectorAll(".pick-topic")].map((t) => t.textContent),
+      counts: [...s.querySelectorAll(".pick-count")].map((t) => t.textContent).join("|"),
       last: s.querySelector(".pick-last a")?.getAttribute("href") ?? null,
       reading: s.querySelector(".agent-text")?.textContent ?? "",
     };
   });
+  // Each topic's count of picks, in the page's language, singular and plural: the closed round's final 1, 2 and 0.
+  const lang = (await page.getAttribute("html", "lang"))?.startsWith("pt") ? "pt" : "en";
+  const counts = (kind === "closed" ? [1, 2, 0] : [0, 0, 0]).map((n) => countText(n, lang)).join("|");
+  if (got.counts !== counts) out.push(`pick ${kind}: counts "${got.counts}", expected "${counts}"`);
+  if (!counts.split("|").every((c) => got.reading.includes(`(${c})`))) out.push(`pick ${kind}: the reading lacks the counts`);
   if (kind === "closed") {
     if (got.links.length) out.push(`pick closed: ${got.links.length} pick links still shown`);
     if (got.last !== FIXTURE_POST) out.push(`pick closed: the last round's post link is ${got.last}`);

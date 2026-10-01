@@ -55,16 +55,24 @@ export interface PickLast {
   url: string | null;
 }
 
+/** A topic with the number of accounts that picked it. */
+export interface PickTally {
+  letter: Letter;
+  topic: string;
+  count: number;
+}
+
 export type PickView =
   | {
       state: "open";
       round: string;
       closes: string;
       pillar: string;
-      options: { letter: Letter; topic: string; url: string }[];
+      options: (PickTally & { url: string })[];
       last: PickLast | null;
     }
-  | { state: "closed"; round: string; last: PickLast | null };
+  // `options`: the topics of the round `last` comes from with their final counts; empty without such a round.
+  | { state: "closed"; round: string; options: PickTally[]; last: PickLast | null };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
@@ -174,9 +182,12 @@ export function winnerOf(c: Counts): Letter | null {
 /** The pre-filled issue the profile README links to for a letter (template pick.yml, title "pick: A"). */
 export const issueUrl = (l: Letter) => `${ISSUE_BASE}?template=pick.yml&title=${encodeURIComponent(`pick: ${l}`)}`;
 
-const lastOf = (history: PickPast[]): PickLast | null => {
+const tally = (o: Options, c: Counts): PickTally[] => LETTERS.map((l) => ({ letter: l, topic: o[l], count: c[l] }));
+
+/** The last round with a winner: its topics with their final counts, and the winner. */
+const lastOf = (history: PickPast[]): { options: PickTally[]; last: PickLast | null } => {
   const h = history.find((x) => x.winner !== null);
-  return h && h.winner ? { topic: h.options[h.winner], url: h.post_url } : null;
+  return h && h.winner ? { options: tally(h.options, h.counts), last: { topic: h.options[h.winner], url: h.post_url } } : { options: [], last: null };
 };
 
 /**
@@ -190,15 +201,16 @@ export function pickView(data: PickData, now: Date): PickView {
       round: data.round,
       closes: data.closes,
       pillar: data.pillar,
-      options: LETTERS.map((l) => ({ letter: l, topic: data.options[l], url: issueUrl(l) })),
-      last: lastOf(data.history),
+      options: tally(data.options, data.counts).map((o) => ({ ...o, url: issueUrl(o.letter) })),
+      last: lastOf(data.history).last,
     };
   }
-  if (data.open) {
-    const w = winnerOf(data.counts);
-    return { state: "closed", round: data.round, last: w ? { topic: data.options[w], url: null } : lastOf(data.history) };
-  }
-  return { state: "closed", round: data.round, last: lastOf(data.history) };
+  const w = data.open ? winnerOf(data.counts) : null;
+  return {
+    state: "closed",
+    round: data.round,
+    ...(w ? { options: tally(data.options, data.counts), last: { topic: data.options[w], url: null } } : lastOf(data.history)),
+  };
 }
 
 /** A short fingerprint of a view: the page compares the build's with a fresh one and redraws only on a change. */
@@ -209,8 +221,11 @@ export function viewKey(view: PickView): string {
   return h.toString(36);
 }
 
-type PickLabel = "pickTitle" | "pickLead" | "pickButton" | "pickClosed" | "pickClosedLast" | "pickLast" | "pickWrote" | "pickWriting";
+type PickLabel = "pickTitle" | "pickLead" | "pickButton" | "pickCountOne" | "pickCountMany" | "pickClosed" | "pickClosedLast" | "pickLast" | "pickWrote" | "pickWriting";
 export const pickText = (lang: Lang, key: PickLabel) => labels[key][lang];
+
+/** A topic's count as the section writes it: "1 pick", "3 picks" (also "0 picks"). */
+export const countText = (n: number, lang: Lang) => `${n} ${pickText(lang, n === 1 ? "pickCountOne" : "pickCountMany")}`;
 
 export const pillarName = (pillar: string, lang: Lang) => (lang === "pt" ? (PILLAR_PT[pillar] ?? pillar) : pillar);
 
@@ -258,10 +273,12 @@ export function pickMarkdown(view: PickView, lang: Lang): string {
   const out = [`## ${pickText(lang, "pickTitle")}`, ""];
   if (view.state === "open" && x.lead) {
     out.push(`${x.lead[0]}**${md(x.pillar)}**${x.lead[1]}`, "");
-    for (const o of view.options) out.push(`- ${o.letter}: [${md(o.topic)}](${o.url})`);
+    for (const o of view.options) out.push(`- ${o.letter}: [${md(o.topic)}](${o.url}) (${countText(o.count, lang)})`);
     out.push("");
   } else {
     out.push(x.closed, "");
+    for (const o of view.options) out.push(`- ${o.letter}: ${md(o.topic)} (${countText(o.count, lang)})`);
+    if (view.options.length) out.push("");
   }
   if (view.last && x.last) {
     const result = view.last.url ? `[${x.wrote}](${view.last.url}).` : x.writing;
