@@ -226,6 +226,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       }
       a = z;
     }
+    if (P?.done) P.done(c);
   }
 
   /** Repaints band b at rest (every dot in place, full size): its device-pixel rows, through the strip. */

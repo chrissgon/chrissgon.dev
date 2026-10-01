@@ -59,6 +59,8 @@ export interface Painter {
   reach: number;
   setup(c: CanvasRenderingContext2D): void;
   dot(c: CanvasRenderingContext2D, x: number, y: number, r: number, cell: number, levels: Uint8Array): void;
+  /** Runs once after a paint's last dot, for a painter that gathers its dots and draws them together. */
+  done?(c: CanvasRenderingContext2D): void;
 }
 
 export interface PortraitController {
