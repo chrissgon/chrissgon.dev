@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { posts, sensitiveTopics } from "../src/data/index.ts";
 import { localePath } from "../src/lib/format.ts";
 import { assertPublishable, forbiddenFields, jsonLd } from "../src/lib/jsonld.ts";
+import { pickSnapshot } from "../src/data/pick.ts";
 import { llmsText } from "../src/lib/llms.ts";
+import { pickView } from "../src/lib/pick.ts";
 import { matchTopics, withLocalExcludes } from "../src/lib/sensitive.ts";
 import exclude from "../src/data/sensitive-exclude.json" with { type: "json" };
 
@@ -35,6 +37,13 @@ describe("llms.txt (REQ-3)", () => {
     expect(pt).toContain("\n## Para agentes\n");
     expect(pt).toContain(`- [Conecte seu agente a este site](${site}/api/mcp)`);
     expect(en).toMatch(/- mcp-live: .*\(Code: https:\/\/github\.com\/chrissgon\/chrissgon\.dev\/blob\/main\/netlify\/functions\/mcp\.mts\)/);
+  });
+
+  it("gives each topic of the pick round its count of picks, in the file's language", () => {
+    const pick = pickView(pickSnapshot, new Date("2026-10-01T10:00:00Z"));
+    const lines = (text: string) => text.split("\n").filter((l) => /^- [ABC]: /.test(l)).map((l) => l.slice(l.lastIndexOf("(")));
+    expect(lines(llmsText("en", { site, npm, pick }))).toEqual(["(1 pick)", "(0 picks)", "(0 picks)"]);
+    expect(lines(llmsText("pt", { site, npm, pick }))).toEqual(["(1 escolha)", "(0 escolhas)", "(0 escolhas)"]);
   });
 
   it("shows the npm count only when there is one", () => {
