@@ -450,24 +450,39 @@ async function postsFlow(page: Page, width: number, home: boolean): Promise<stri
   const out: string[] = [];
   const probe = async (active: number, want: number, how: string) => out.push(...((await page.evaluate(`${POSTS}(${active}, ${want}, ${JSON.stringify(how)})`)) as string[]));
   const want = home ? (width >= 1024 ? 1.1 : 1) : width >= 768 ? 1.1 : 1.05;
+  // Wait for the transitions under way (the cards', the sections' entrance) to end, however slow the machine.
+  const settle = async () => {
+    await page.waitForTimeout(50);
+    await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"), null, { timeout: 5000 }).catch(() => out.push("posts: a transition is still running after 5 s"));
+  };
   const cards = page.locator(":is(.posts, .sheet) .post-card");
   const n = await cards.count();
   if (n < 2) return [`posts: ${n} post cards found`];
   if (!(await page.evaluate(() => matchMedia("(hover: hover) and (pointer: fine)").matches))) return ["posts: the browser reports no hover-capable fine pointer"];
   // Sections and the writing page's cells enter on scroll when motion is allowed: bring every card in and let
   // them settle (a cell still entering is a stacking context of its own).
-  for (let i = 0; i < n; i++) await cards.nth(i).scrollIntoViewIfNeeded();
-  await page.locator(".frame > footer").scrollIntoViewIfNeeded();
-  await page.waitForTimeout(800);
+  for (let i = 0; i < n; i++) {
+    await cards.nth(i).scrollIntoViewIfNeeded();
+    // Polled with no named helper: tsx wraps named functions in __name(), which the page does not have.
+    await cards.nth(i).evaluate((el) => new Promise<void>((done) => {
+      const t0 = performance.now();
+      const id = setInterval(() => {
+        if (el.closest(".reveal:not(.in)") && performance.now() - t0 < 5000) return;
+        clearInterval(id);
+        done();
+      }, 20);
+    }));
+  }
+  await settle();
   const away = async () => {
     await page.mouse.move(1, 1);
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    await page.waitForTimeout(300);
+    await settle();
   };
   await probe(-1, 1, "idle");
   for (let i = 0; i < n; i++) {
     await cards.nth(i).hover();
-    await page.waitForTimeout(300);
+    await settle();
     await probe(i, want, "hover");
   }
   await away();
@@ -477,7 +492,7 @@ async function postsFlow(page: Page, width: number, home: boolean): Promise<stri
     await cards.nth(i).focus();
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");
-    await page.waitForTimeout(300);
+    await settle();
     if (!(await cards.nth(i).evaluate((el) => el.matches(":focus-visible")))) out.push(`focus: card ${i + 1} did not take keyboard focus`);
     else await probe(i, want, "focus");
   }
@@ -486,7 +501,7 @@ async function postsFlow(page: Page, width: number, home: boolean): Promise<stri
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const i of [0, n - 1]) {
     await cards.nth(i).hover();
-    await page.waitForTimeout(100);
+    await settle();
     await probe(i, 1, "reduced motion");
     if ((await cards.nth(i).evaluate((el) => getComputedStyle(el).transitionDuration)).split(",").some((d) => parseFloat(d) > 0)) out.push("reduced motion: the card still has a transition");
   }
