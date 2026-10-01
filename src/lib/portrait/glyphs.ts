@@ -64,14 +64,20 @@ export function glyphPainter(cols: number, cellPx: number, family: string, ink =
   const full = Float32Array.from({ length: 16 }, (_, level) => restRadius(level, cellPx));
   // The frame's blocks, by level: x and y of each, flat, and how many numbers each level holds.
   const bx: number[][] = Array.from({ length: 16 }, () => []), bn = new Int32Array(16);
-  let n = 0;
+  let n = 0, started = 0, spent = 0, waiting = false;
   // The frame's letters: where, which tile and how opaque.
   const lx: number[] = [], ly: number[] = [], ls: number[] = [], la: number[] = [];
-  return {
+  // Its dots cost more than round ones, by an amount that depends on the device, so the budget of the banded
+  // repaint follows the time this painter took in the last frame it painted and aims at 2.5 to 5 ms: a slow
+  // device paints fewer bands per frame instead of blocking the page, and a device that turns 8 times slower
+  // stays under 50 ms. 2500 is the dots' own budget (DOT_BUDGET in bands.ts).
+  const painter: Painter = {
+    budget: 2500,
     reach: Math.round((cellPx / 0.6) * 10) / 10 + cellPx,
     setup() {
       bn.fill(0);
       n = 0;
+      started = performance.now();
     },
     // The blocks carry the face, so the letters stay quieter than them: every letter is dark (the page's
     // background colour) and see-through, fainter on a dim pair of blocks, which keeps the dark around the
@@ -111,8 +117,18 @@ export function glyphPainter(cols: number, cellPx: number, family: string, ink =
         c.drawImage(atlas, ls[i]!, 0, tw, th, lx[i]!, ly[i]!, cellPx, 2 * cellPx);
       }
       c.globalAlpha = 1;
+      spent += performance.now() - started;
+      if (waiting) return;
+      waiting = true;
+      requestAnimationFrame(() => {
+        const budget = painter.budget!;
+        painter.budget = spent > 5 ? Math.max(300, budget * 0.6) : spent < 2.5 ? Math.min(2500, budget * 1.25) : budget;
+        spent = 0;
+        waiting = false;
+      });
     },
   };
+  return painter;
 }
 
 /**

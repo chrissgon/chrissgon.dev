@@ -48,11 +48,6 @@ export interface PortraitOptions extends ToneOptions {
   /** Overrides of the environment, for tests. */
   reducedMotion?: boolean;
   saveData?: boolean;
-  /**
-   * Draw no portrait dot until a painter arrives through the canvas's setPainter, so the picture does not
-   * show as dots first; after 4 s without one, the dots are drawn.
-   */
-  awaitPainter?: boolean;
 }
 
 /**
@@ -66,6 +61,8 @@ export interface Painter {
   dot(c: CanvasRenderingContext2D, x: number, y: number, r: number, cell: number, levels: Uint8Array): void;
   /** Runs once after a paint's last dot, for a painter that gathers its dots and draws them together. */
   done?(c: CanvasRenderingContext2D): void;
+  /** Dot places the banded repaint may paint per animation frame; absent, the dots' own (bands.ts). */
+  budget?: number;
 }
 
 export interface PortraitController {

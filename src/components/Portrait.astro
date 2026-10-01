@@ -41,9 +41,9 @@ const width = Math.round(poster.cols * cell), height = Math.round(poster.rows * 
     // Labelled only when the script runs; without JavaScript the <noscript> image carries the same alt.
     canvas.setAttribute("role", "img");
     canvas.setAttribute("aria-label", canvas.dataset.alt ?? "");
-    // The portrait is drawn by the blocks painter, which src/scripts/site.ts loads as a lazy chunk: the canvas
-    // waits for it instead of showing dots first.
-    mountPortrait(canvas, { ...(JSON.parse(data.textContent) as PortraitOptions), awaitPainter: true });
+    // The picture is drawn by the blocks painter, which src/scripts/site.ts loads as a lazy chunk: the mounted
+    // canvas waits for it instead of showing dots first.
+    mountPortrait(canvas, JSON.parse(data.textContent) as PortraitOptions);
   }
 </script>
 
