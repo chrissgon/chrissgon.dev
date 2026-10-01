@@ -18,12 +18,12 @@ describe("portrait glyphs", () => {
     expect(letterAt(8, 4, "abcde")).toBe("e");
   });
 
-  it("lights a letter by the brighter of its two rows, and draws it once", () => {
+  it("lights a letter by the mean of its two rows, and draws it once", () => {
     // 2 columns, 2 rows: column 0 lit on both rows, column 1 lit on the lower row only.
-    const levels = [15, 0, 6, 9];
-    expect(letterLevel(0, 2, levels)).toBe(1); // upper row draws, at the brighter level
-    expect(letterLevel(2, 2, levels)).toBe(-1); // lower row leaves it to the upper one
-    expect(letterLevel(3, 2, levels)).toBeCloseTo(0.6); // upper row dark: the lower row draws
+    const levels = [15, 0, 5, 9];
+    expect(letterLevel(0, 2, levels)).toBeCloseTo(10 / 15); // the upper row draws, at the mean level
+    expect(letterLevel(2, 2, levels)).toBe(-1); // the lower row leaves it to the upper one
+    expect(letterLevel(3, 2, levels)).toBeCloseTo(4.5 / 15); // upper row dark: the lower row draws
     expect(letterLevel(1, 2, [0, 0, 0, 0])).toBe(0);
   });
 });
