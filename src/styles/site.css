@@ -581,7 +581,8 @@ html.js .reveal.in {
   text-decoration: none;
   transition: border-color 0.15s;
 }
-.card-link:hover {
+/* Post cards keep their border on hover: their hover effect is the dimming of the others (PostCard.astro). */
+.card-link:not(.post-card):hover {
   border-color: var(--pui-text-muted);
 }
 .pui-card.col {

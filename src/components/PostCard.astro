@@ -110,14 +110,12 @@ const size = coverSize(widths[0]!);
 <style is:global>
   /* The posts' focus effect (owner, 2026-10-01), CSS only: with the pointer on a card, or keyboard focus on one,
      the other cards of its list go to opacity 0.3 and that card stays whole; with the pointer off the cards
-     (outside the list or between two cards) every card is whole. No card grows or moves. The lists are the home
+     (outside the list or between two cards) every card is whole. No card grows or moves, and its border does not change. The lists are the home
      page's row (.posts) and the writing page's sheet (.sheet); global, because the list belongs to the page, not
      to this component. A browser without :has() dims nothing. scripts/check-layout.ts hovers and focuses every
      card at every width. */
   .post-card {
-    transition:
-      border-color 0.15s,
-      opacity 0.2s var(--ease);
+    transition: opacity 0.2s var(--ease);
   }
   :is(.posts, .sheet):has(.post-card:focus-visible) .post-card:not(:focus-visible) {
     opacity: 0.3;
