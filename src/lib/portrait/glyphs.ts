@@ -85,8 +85,8 @@ export function glyphPainter(cols: number, cellPx: number, family: string, mode:
 }
 
 /** Hands the letters to every mounted portrait of the page, once the monospace font is there. */
-export async function useGlyphs(): Promise<void> {
-  const mode: GlyphMode = new URLSearchParams(location.search).get("portrait") === "blocks" ? "blocks" : "text";
+export async function useGlyphs(variation: string): Promise<void> {
+  const mode: GlyphMode = variation === "blocks" ? "blocks" : "text";
   const family = getComputedStyle(document.documentElement).getPropertyValue("--font-mono").trim() || "monospace";
   await document.fonts.load(`600 9px ${family}`).catch(() => {});
   const paper = getComputedStyle(document.body).backgroundColor;

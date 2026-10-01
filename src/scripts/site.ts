@@ -158,8 +158,9 @@ document.addEventListener("playground", (e) => {
 
 // Test variations of the portrait, only with ?portrait=text or ?portrait=blocks in the address: letters of
 // Perfect UI class names instead of dots (src/lib/portrait/glyphs.ts). Loaded after the page, so the portrait is mounted by then.
-if (location.search.includes("portrait=")) {
-  addEventListener("load", () => void import("../lib/portrait/glyphs.ts").then((m) => m.useGlyphs(), () => {}), { once: true });
+const portrait = new URLSearchParams(location.search).get("portrait");
+if (portrait) {
+  addEventListener("load", () => void import("../lib/portrait/glyphs.ts").then((m) => m.useGlyphs(portrait), () => {}), { once: true });
 }
 
 // The background dots step aside from the pointer, like the portrait's (src/lib/griddots/). Only with a mouse or
