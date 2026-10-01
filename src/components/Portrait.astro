@@ -1,6 +1,7 @@
 ---
-// The portrait island (ADR-0008, design "Retrato"): a <canvas> that draws the poster in dots at once and
-// plays the clips after the page's load event, and a <noscript> WebP of the same dots for no JavaScript.
+// The portrait island (ADR-0008, design "Retrato"): a <canvas> that draws the poster, in blocks with letters
+// over them once their painter arrives (src/lib/portrait/glyphs.ts, asked for by src/scripts/site.ts), and
+// plays the clips after the page's load event, and a <noscript> WebP of the picture in dots for no JavaScript.
 // The poster is inlined, so the first render needs no second request. Clips are offered only when their
 // files exist in public/portrait/ at build time (scripts/encode-portrait.sh writes them); without them the
 // page never requests a video. Styles here are only what the island needs: the slot, the halo margin
@@ -40,7 +41,9 @@ const width = Math.round(poster.cols * cell), height = Math.round(poster.rows * 
     // Labelled only when the script runs; without JavaScript the <noscript> image carries the same alt.
     canvas.setAttribute("role", "img");
     canvas.setAttribute("aria-label", canvas.dataset.alt ?? "");
-    mountPortrait(canvas, JSON.parse(data.textContent) as PortraitOptions);
+    // The portrait is drawn by the blocks painter, which src/scripts/site.ts loads as a lazy chunk: the canvas
+    // waits for it instead of showing dots first.
+    mountPortrait(canvas, { ...(JSON.parse(data.textContent) as PortraitOptions), awaitPainter: true });
   }
 </script>
 

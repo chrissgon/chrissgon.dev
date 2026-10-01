@@ -16,7 +16,7 @@
 // frame rate instead of blocking the page. The frame loop reads no layout: the canvas position is kept from
 // the last build.
 
-import { anyDirty, bandRange, BAND_PX, markChanged, planBands, takeBands, type Bands } from "./bands.ts";
+import { anyDirty, bandRange, BAND_PX, DOT_BUDGET, markChanged, planBands, takeBands, type Bands } from "./bands.ts";
 import { fills, parseColor, DEFAULT_RGB, STEPS, type RGB } from "./colors.ts";
 import { clipType, plan, readEnvironment } from "./gating.ts";
 import {
@@ -70,7 +70,9 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   // The poster cell of each dot of the frame (-1 for a halo dot), for a painter.
   let DC = new Int32Array(0);
   const CNT = new Int32Array(NP + 1);
-  let P: Painter | undefined;
+  // A painter that draws nothing holds the portrait back while the real one loads (awaitPainter).
+  const HOLD: Painter = { reach: 0, setup() {}, dot() {} };
+  let P: Painter | undefined = o.awaitPainter ? HOLD : undefined, budget = DOT_BUDGET;
   // Banded painting while nothing moves: the bands, each cell's band range, the dirty flags, the levels on
   // the canvas, and where the next sweep starts. `still` is true when the canvas shows the picture at rest.
   let bands: Bands = planBands([], 0, 0), bandLo = new Int16Array(NC).fill(-1), bandHi = new Int16Array(NC).fill(-1);
@@ -301,9 +303,16 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       if (!still) bdirty.fill(1);
       still = true;
       markChanged(drawnLv, shown, bandLo, bandHi, bdirty);
-      const pick = takeBands(bdirty, bands, cursor);
+      // A painter's dots cost more than round ones, by an amount that depends on the device: its budget
+      // follows the time the bands took and aims at 2.5 to 5 ms a frame, so a slow device paints fewer bands
+      // per frame instead of blocking the page, and a device that turns 8 times slower stays under 50 ms.
+      const t0 = P ? performance.now() : 0, pick = takeBands(bdirty, bands, cursor, budget);
       cursor = pick.cursor;
       for (const b of pick.take) paintBand(b);
+      if (P) {
+        const ms = performance.now() - t0;
+        budget = ms > 5 ? Math.max(300, budget * 0.6) : ms < 2.5 ? Math.min(DOT_BUDGET, budget * 1.25) : budget;
+      }
       return busy || anyDirty(bdirty);
     }
     if (rest) { // nothing moves any more: drop what is left of the displacements
@@ -480,7 +489,8 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   }
   const owner: GridDotOwner = canvas;
   owner.ownsGridDot = ownsGridDot;
-  owner.setPainter = (make) => { P = make(COLS, S); refresh(); };
+  owner.setPainter = (make) => { P = make?.(COLS, S); budget = DOT_BUDGET; refresh(); };
+  if (P) setTimeout(() => { if (P === HOLD) owner.setPainter!(); }, 4000);
   canvas.setAttribute("data-grid-owner", "");
 
   const io = new IntersectionObserver((es) => {

@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CLASSES, letterAt, letterLevel, TEXT } from "../src/lib/portrait/glyphs.ts";
+import { CLASSES, letterAt, restRadius, TEXT } from "../src/lib/portrait/glyphs.ts";
+import { dotRadius } from "../src/lib/portrait/levels.ts";
 
-// The portrait's letters variation (a test behind ?portrait=text).
+// The letters of the portrait's blocks painter.
 describe("portrait glyphs", () => {
   it("spells only classes that Perfect UI's stylesheet defines", () => {
     const css = readFileSync(new URL("../node_modules/@chrissgon/perfectui/dist/perfectui.css", import.meta.url), "utf8");
@@ -18,12 +19,7 @@ describe("portrait glyphs", () => {
     expect(letterAt(8, 4, "abcde")).toBe("e");
   });
 
-  it("lights a letter by the mean of its two rows, and draws it once", () => {
-    // 2 columns, 2 rows: column 0 lit on both rows, column 1 lit on the lower row only.
-    const levels = [15, 0, 5, 9];
-    expect(letterLevel(0, 2, levels)).toBeCloseTo(10 / 15); // the upper row draws, at the mean level
-    expect(letterLevel(2, 2, levels)).toBe(-1); // the lower row leaves it to the upper one
-    expect(letterLevel(3, 2, levels)).toBeCloseTo(4.5 / 15); // upper row dark: the lower row draws
-    expect(letterLevel(1, 2, [0, 0, 0, 0])).toBe(0);
+  it("uses the dots' own radius to tell a cell in place from one on its way", () => {
+    for (let level = 0; level <= 15; level++) expect(restRadius(level, 5.6)).toBe(dotRadius(level, 5.6));
   });
 });
