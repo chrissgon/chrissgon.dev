@@ -16,8 +16,8 @@ describe("data module", () => {
   it("validates every entity on import", () => {
     expect(profile.name).toBe("Christopher Gonçalves");
     expect(products.map((p) => p.id)).toEqual(["perfectui", "ai-workbench"]);
-    expect(projects.filter((p) => p.status === "ready")).toHaveLength(8);
-    expect(projects.filter((p) => p.status === "in-progress")).toHaveLength(4);
+    expect(projects.filter((p) => p.status === "ready")).toHaveLength(11);
+    expect(projects.filter((p) => p.status === "in-progress")).toHaveLength(1);
     expect(posts).toHaveLength(8);
     expect(trajectory.entries.length).toBeGreaterThan(0);
     expect(lab).toHaveLength(5);
@@ -88,9 +88,12 @@ describe("data module", () => {
     expect(repo("agent-ready-kit")).toEqual([{ label: "GitHub", url: "https://github.com/chrissgon/agent-ready-kit" }]);
     expect(repo("light-site-auditor")).toEqual([{ label: "GitHub", url: "https://github.com/chrissgon/light-site-auditor" }]);
     expect(repo("social-agent")).toEqual([]);
-    for (const id of ["perfectui-for-agents", "agent-ready-kit", "light-site-auditor", "social-agent"]) {
-      expect(projects.find((p) => p.id === id)!.status).toBe("in-progress");
+    // Published on npm from public repositories: ready, each with a stack. Social agent has no repository yet.
+    for (const id of ["perfectui-for-agents", "agent-ready-kit", "light-site-auditor"]) {
+      const p = projects.find((x) => x.id === id)!;
+      expect([p.status, p.stack]).toEqual(["ready", ["TypeScript", "Node.js"]]);
     }
+    expect(projects.find((p) => p.id === "social-agent")!.status).toBe("in-progress");
     const ready = projects.find((p) => p.status === "ready")!;
     expect(() => parseData(Project, { ...ready, links: [] }, "projects.ts")).toThrow(/ready project needs/);
   });

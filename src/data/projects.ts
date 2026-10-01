@@ -1,6 +1,8 @@
 // Source: site-content.md section 4 (4.1 ready, 4.2 in progress, 4.3 revisions back after their merge), approved on 2026-09-30. Texts are verbatim.
-// 4.2 "no link until they exist": Perfect UI for agents, Agent-ready kit and Light-site auditor have public
-// repositories since 2026-09-30, so they link to them and stay in progress; Social agent has none yet.
+// Perfect UI for agents, Agent-ready kit and Light-site auditor are ready since 2026-10-01: each is published on
+// npm (@chrissgon/perfectui-mcp 0.2.0, @chrissgon/agent-ready-kit 0.1.0, @chrissgon/light-site-auditor 0.1.0) from
+// a public repository; their stacks come from each repository's languages and package.json engines.
+// 4.2 "no link until they exist": Social agent has no public repository yet and stays in progress.
 import products from "./products.ts";
 
 const [perfectui, workbench] = products;
@@ -121,8 +123,8 @@ export default [
     id: "perfectui-for-agents",
     name: "Perfect UI for agents",
     types: ["ai-agents", "web-ui"],
-    status: "in-progress",
-    stack: [],
+    status: "ready",
+    stack: ["TypeScript", "Node.js"],
     image: { kind: "generated" },
     summary: {
       en: "An MCP server and a skill that teach coding agents to build interfaces with Perfect UI.",
@@ -134,8 +136,8 @@ export default [
     id: "agent-ready-kit",
     name: "Agent-ready kit",
     types: ["ai-agents"],
-    status: "in-progress",
-    stack: [],
+    status: "ready",
+    stack: ["TypeScript", "Node.js"],
     image: { kind: "generated" },
     summary: {
       en: "One data file in, llms.txt, schema.org data and a read-only MCP server out.",
@@ -160,8 +162,8 @@ export default [
     id: "light-site-auditor",
     name: "Light-site auditor",
     types: ["ai-agents", "web-ui"],
-    status: "in-progress",
-    stack: [],
+    status: "ready",
+    stack: ["TypeScript", "Node.js"],
     image: { kind: "generated" },
     summary: {
       en: "An agent that checks a small business's site for weight, speed on 3G and accessibility, and explains the fixes in plain words.",

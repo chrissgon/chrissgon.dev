@@ -13,10 +13,10 @@ describe("project filters", () => {
     expect(shown(EMPTY)).toHaveLength(12);
     const count = (g: "type" | "status" | "stack", v: string) => chipCount(projects, EMPTY, g, v);
     expect([count("type", "ai-agents"), count("type", "web-ui"), count("type", "docs-architecture")]).toEqual([5, 6, 3]);
-    expect([count("status", "ready"), count("status", "in-progress")]).toEqual([8, 4]);
+    expect([count("status", "ready"), count("status", "in-progress")]).toEqual([11, 1]);
     expect(Object.fromEntries(allowed.stack.map((s) => [s, count("stack", s)]))).toEqual({
-      TypeScript: 4, JavaScript: 2, "Vue (Nuxt)": 2, Go: 2, CSS: 1, Python: 1, Shell: 1, Markdown: 1,
-      "Node.js": 1, MongoDB: 1, React: 1, Redux: 1, Tailwind: 1, "Perfect UI": 1,
+      TypeScript: 7, "Node.js": 4, JavaScript: 2, "Vue (Nuxt)": 2, Go: 2, CSS: 1, Python: 1, Shell: 1, Markdown: 1,
+      MongoDB: 1, React: 1, Redux: 1, Tailwind: 1, "Perfect UI": 1,
     });
   });
 
@@ -24,7 +24,7 @@ describe("project filters", () => {
     const ai = toggle(EMPTY, "type", "ai-agents");
     expect(shown(ai)).toEqual(["ai-workbench", "perfectui-for-agents", "agent-ready-kit", "social-agent", "light-site-auditor"]);
     expect(chipCount(projects, ai, "stack", "Python")).toBe(1);
-    expect(chipCount(projects, ai, "status", "in-progress")).toBe(4);
+    expect(chipCount(projects, ai, "status", "in-progress")).toBe(1);
     expect(shown(toggle(ai, "stack", "Python"))).toEqual(["ai-workbench"]);
   });
 
@@ -53,9 +53,10 @@ describe("project filters", () => {
   it("builds the home page's single row: statuses first, then stacks, with counts from the data", () => {
     const row = rowChips(projects, EMPTY, PROJECT_STATUSES);
     expect(row.map((c) => [c.group, c.value, c.count])).toEqual([
-      ["status", "ready", 8],
-      ["status", "in-progress", 4],
-      ["stack", "TypeScript", 4],
+      ["status", "ready", 11],
+      ["status", "in-progress", 1],
+      ["stack", "TypeScript", 7],
+      ["stack", "Node.js", 4],
       ["stack", "JavaScript", 2],
       ["stack", "Vue (Nuxt)", 2],
       ["stack", "Go", 2],
@@ -63,7 +64,6 @@ describe("project filters", () => {
       ["stack", "Python", 1],
       ["stack", "Shell", 1],
       ["stack", "Markdown", 1],
-      ["stack", "Node.js", 1],
       ["stack", "MongoDB", 1],
       ["stack", "React", 1],
       ["stack", "Redux", 1],
@@ -77,7 +77,7 @@ describe("project filters", () => {
   it("recounts the row when a status is on: stacks count only that status", () => {
     const ready = toggle(EMPTY, "status", "ready");
     const row = rowChips(projects, ready, PROJECT_STATUSES);
-    expect(row.find((c) => c.value === "in-progress")!.count).toBe(4);
+    expect(row.find((c) => c.value === "in-progress")!.count).toBe(1);
     expect(row.find((c) => c.value === "Go")!.count).toBe(2);
     const inProgress = rowChips(projects, toggle(EMPTY, "status", "in-progress"), PROJECT_STATUSES);
     expect(inProgress.filter((c) => c.group === "stack").every((c) => c.count === 0)).toBe(true);
