@@ -53,12 +53,12 @@ export interface PortraitOptions extends ToneOptions {
 /**
  * Another way to draw a portrait dot (a test, 2026-10-01: letters instead of dots). `setup` runs once per
  * paint, after which the fill style is set per group of dots; `dot` draws one, given its centre, the radius a
- * dot would have and its poster cell; `reach` is how far from its centre, in px, a drawing may paint.
+ * dot would have, its poster cell and the levels on show (one per poster cell); `reach` is how far from its centre, in px, a drawing may paint.
  */
 export interface Painter {
   reach: number;
   setup(c: CanvasRenderingContext2D): void;
-  dot(c: CanvasRenderingContext2D, x: number, y: number, r: number, cell: number): void;
+  dot(c: CanvasRenderingContext2D, x: number, y: number, r: number, cell: number, levels: Uint8Array): void;
 }
 
 export interface PortraitController {

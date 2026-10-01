@@ -218,7 +218,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
         c.fillStyle = FILLS[j]!;
         for (let k = a; k < z; k++) {
           const d = ORD[k]!;
-          if (P && DC[d]! >= 0) { P.dot(c, DX[d]!, DY[d]!, DR[d]!, DC[d]!); continue; }
+          if (P && DC[d]! >= 0) { P.dot(c, DX[d]!, DY[d]!, DR[d]!, DC[d]!, shown); continue; }
           c.beginPath();
           c.arc(DX[d]!, DY[d]!, DR[d]!, 0, TAU);
           c.fill();
