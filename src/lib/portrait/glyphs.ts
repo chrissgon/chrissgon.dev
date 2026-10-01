@@ -43,18 +43,19 @@ export function glyphPainter(cols: number, cellPx: number, family: string, mode:
     c.textBaseline = "middle";
   };
   if (mode === "blocks") {
-    const alpha = (level: number) => Math.min(1, 0.06 + 0.94 * (level / 15) ** 1.6);
+    const alpha = (level: number) => Math.min(1, 0.04 + 0.96 * (level / 15) ** 1.3);
     return {
       reach: size + cellPx,
       setup,
       // Each cell paints its own block and its own half of the line's letter (clipped to the cell), so the
-      // order the cells are painted in does not matter. For the letter to read, both halves use one ink,
-      // chosen from the line's two blocks together (dark on a bright pair, light on a dim one), and a cell
-      // whose neighbour in the line is dark draws the whole letter, since no other cell will.
+      // order the cells are painted in does not matter. The blocks carry the face, so the letters stay
+      // quieter than them: a see-through dark letter on a bright pair of blocks, and on a dim pair a light
+      // letter only a little brighter than its blocks, which keeps the dark around the face clean. Both
+      // halves of a letter use one ink, and a cell whose neighbour in the line is dark draws the whole letter.
       dot(c, x, y, _r, cell, levels) {
         const lower = Math.floor(cell / cols) % 2 === 1, fill = c.fillStyle;
         const other = levels[lower ? cell - cols : cell + cols] ?? 0, a = alpha(levels[cell] ?? 0);
-        const mean = other ? (a + alpha(other)) / 2 : a, dark = mean > 0.5;
+        const mean = other ? (a + alpha(other)) / 2 : a, dark = mean > 0.35;
         c.save();
         c.fillStyle = ink;
         c.globalAlpha = a;
@@ -63,7 +64,7 @@ export function glyphPainter(cols: number, cellPx: number, family: string, mode:
         if (other) c.rect(x - half, y - half, cellPx, cellPx);
         else c.rect(x - half, lower ? y - half - cellPx : y - half, cellPx, 2 * cellPx);
         c.clip();
-        c.globalAlpha = dark ? 1 : Math.min(1, 0.32 + 1.6 * mean);
+        c.globalAlpha = dark ? 0.6 : Math.min(1, 0.1 + 1.2 * mean);
         c.fillStyle = dark ? paper : ink;
         c.fillText(letterAt(cell, cols), x, lower ? y - half : y + half);
         c.restore();
