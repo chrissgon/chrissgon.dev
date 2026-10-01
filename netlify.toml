@@ -1,10 +1,20 @@
-# Netlify build settings (ADR-0005). Deploys are configured on Netlify, not by this repository's CI.
+# Netlify build settings (ADR-0005). The Netlify project is linked to this repository: it builds and
+# publishes main on every merge (production) and builds a deploy preview for every pull request. This
+# repository's CI never deploys, and nobody deploys by hand.
 [build]
   command = "npm run build"
   publish = "dist"
+  # Skip the build when the change touches nothing the site is built from (documents, tests, CI, hooks,
+  # the changelog). Exit 0 stops the build and exit 1 lets it run; anything unexpected (no previous
+  # build to compare with, a git error) builds. "An exit code of 1 indicates the contents have changed
+  # and the build process continues as usual. An exit code of 0 indicates that there are no changes and
+  # the build should stop." https://docs.netlify.com/build/configure-builds/ignore-builds/ (accessed 2026-10-01).
+  ignore = "[ -n \"$CACHED_COMMIT_REF\" ] && git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- src public netlify scripts astro.config.mjs tsconfig.json package.json package-lock.json netlify.toml .nvmrc && exit 0 || exit 1"
 
 [build.environment]
   NODE_VERSION = "22"
+  # No git hooks on the build machine (husky's documented switch).
+  HUSKY = "0"
 
 # The read-only MCP server (ADR-0004, ADR-0005): netlify/functions/mcp.mts at /api/mcp, bundled with
 # esbuild together with the data module. Its route and its rate limit (30 requests per 60 s per IP) are in

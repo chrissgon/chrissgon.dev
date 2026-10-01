@@ -1,5 +1,5 @@
 # The project's checks and a secret scan, on every push to main and every pull request (ADR-0009).
-# The same checks run in the pre-commit hook (.githooks/pre-commit), except `lighthouse`, which needs Chrome
+# The same checks run in the pre-commit hook (.husky/pre-commit), except `lighthouse`, which needs Chrome
 # and about a minute (run it locally with `npm run lighthouse` after a build), and the layout sweep
 # (`npm run check:layout`, a browser and about 30 s) and the playground check (`npm run check:playground`). Actions are pinned to a commit
 # (a tag can be moved); Dependabot proposes updates. Read-only permissions.
