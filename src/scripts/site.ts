@@ -3,6 +3,7 @@
 // script; the text stays selectable), sections entering on scroll and the numbers counting up. With reduced
 // motion, every final frame shows at once.
 import { frame, parseFigure, progressAt } from "../lib/countup.ts";
+import type { GridDotOwner } from "../lib/portrait/types.ts";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const lang = document.documentElement.lang.startsWith("pt") ? "pt" : "en";
@@ -155,6 +156,15 @@ document.addEventListener("playground", (e) => {
   const root = e.target;
   if (root instanceof HTMLElement) void import("./playground.ts").then((m) => m.mountPlayground(root));
 });
+
+// The portrait is drawn in blocks with letters of Perfect UI class names over them (src/lib/portrait/glyphs.ts),
+// loaded here as a lazy chunk, outside the first render: the canvas draws no portrait dot until it arrives
+// (Portrait.astro), and draws the dots when it does not.
+if (document.querySelector("[data-portrait]")) {
+  void import("../lib/portrait/glyphs.ts").then((m) => m.useGlyphs()).catch(() => {
+    for (const c of document.querySelectorAll<GridDotOwner>("[data-portrait] canvas")) c.setPainter?.();
+  });
+}
 
 // The background dots step aside from the pointer, like the portrait's (src/lib/griddots/). Only with a mouse or
 // pen, without reduced motion or Save-Data, and loaded once the page is idle after load: a separate chunk, so it

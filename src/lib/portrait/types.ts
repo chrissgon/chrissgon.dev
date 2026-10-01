@@ -50,6 +50,21 @@ export interface PortraitOptions extends ToneOptions {
   saveData?: boolean;
 }
 
+/**
+ * Another way to draw a portrait dot (src/lib/portrait/glyphs.ts: blocks with letters over them). `setup` runs once per
+ * paint, after which the fill style is set per group of dots; `dot` draws one, given its centre, the radius a
+ * dot would have, its poster cell and the levels on show (one per poster cell); `reach` is how far from its centre, in px, a drawing may paint.
+ */
+export interface Painter {
+  reach: number;
+  setup(c: CanvasRenderingContext2D): void;
+  dot(c: CanvasRenderingContext2D, x: number, y: number, r: number, cell: number, levels: Uint8Array): void;
+  /** Runs once after a paint's last dot, for a painter that gathers its dots and draws them together. */
+  done?(c: CanvasRenderingContext2D): void;
+  /** Dot places the banded repaint may paint per animation frame; absent, the dots' own (bands.ts). */
+  budget?: number;
+}
+
 export interface PortraitController {
   /** true sends every dot back to its grid position ("view as agent"); false brings the portrait back. */
   setGrid(on: boolean, instant?: boolean): void;
@@ -66,6 +81,11 @@ export interface PortraitController {
  */
 export interface GridDotOwner extends Element {
   ownsGridDot?: (pageX: number, pageY: number) => boolean;
+  /**
+   * Draws the portrait's dots (not the halo's) some other way, from the poster's columns and cell size.
+   * Without `make`, the dots are drawn again.
+   */
+  setPainter?: (make?: (cols: number, cellPx: number) => Painter) => void;
 }
 
 /** Axis-aligned box in px. */

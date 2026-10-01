@@ -20,7 +20,8 @@
 //   - the pointer over the portrait's face (home, EN and PT): the canvas draws nothing inside the portrait,
 //     whose own dots react instead
 //   - a hidden tab: the canvas empties and no frame is requested
-//   - reduced motion, and a touch phone (375 px): no layer, and no script requested after load
+//   - reduced motion, and a touch phone (375 px): no layer, and no script requested after load (the
+//     portrait's painter chunk aside, which every visit of the home page asks for as it starts)
 // Scenarios are independent and run in parallel (--jobs); each uses its own browser context.
 
 import { existsSync, mkdirSync } from "node:fs";
@@ -110,6 +111,9 @@ async function open(browser: Browser, url: string, o: BrowserContextOptions = {}
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("request", async (r) => {
     if (r.resourceType() !== "script") return;
+    // The portrait's painter (src/lib/portrait/glyphs.ts) is asked for as the page starts, on every visit of
+    // a page with the portrait; its request can still be on its way when the load event fires.
+    if (/\/glyphs\.[^/]*\.js$/.test(r.url())) return;
     const loaded = await page.evaluate(() => (window as unknown as { __loaded?: boolean }).__loaded === true).catch(() => false);
     if (loaded) lateScripts.push(r.url());
   });

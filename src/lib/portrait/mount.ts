@@ -25,7 +25,7 @@ import {
 } from "./grid.ts";
 import { PUSH_PX, PUSH_R, SETTLE_PX, springStep } from "./push.ts";
 import { band, decodePoster, dotRadius, levelTable, lumaHistogram, luma, MAX_LEVEL } from "./levels.ts";
-import type { Clip, GridDotOwner, PortraitController, PortraitOptions } from "./types.ts";
+import type { Clip, GridDotOwner, Painter, PortraitController, PortraitOptions } from "./types.ts";
 
 const INTRO = 1200, EACH = 620, BACK = 600, FADE = 300, NP = 4 * (STEPS + 1), TAU = 2 * Math.PI;
 const TOKENS = ["--pui-bg-emphasis", "--pui-border", "--pui-muted", "--pui-text"] as const;
@@ -67,7 +67,14 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   let cvLeft = 0, cvTop = 0, dpr = 1;
   // Dots of the frame being painted (x, y, radius, fill index), and their order by fill.
   let DX = new Float32Array(0), DY = new Float32Array(0), DR = new Float32Array(0), DJ = new Uint8Array(0), ORD = new Int32Array(0);
+  // The poster cell of each dot of the frame (-1 for a halo dot), for a painter.
+  let DC = new Int32Array(0);
   const CNT = new Int32Array(NP + 1);
+  // A painter that draws nothing holds the portrait's cells back until the real one arrives (setPainter,
+  // from the lazy chunk glyphs.ts), so the picture does not show as dots first; after 4 s without it, or when
+  // it is taken away, the round dots are drawn.
+  const HOLD: Painter = { reach: 0, setup() {}, dot() {} };
+  let P: Painter | undefined = HOLD;
   // Banded painting while nothing moves: the bands, each cell's band range, the dirty flags, the levels on
   // the canvas, and where the next sweep starts. `still` is true when the canvas shows the picture at rest.
   let bands: Bands = planBands([], 0, 0), bandLo = new Int16Array(NC).fill(-1), bandHi = new Int16Array(NC).fill(-1);
@@ -165,8 +172,9 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       if (cs.overflowY !== "visible") { shownBox[1] = Math.max(shownBox[1]!, r.top - cr.top); shownBox[3] = Math.min(shownBox[3]!, r.bottom - cr.top); }
     }
     DX = new Float32Array(n); DY = new Float32Array(n); DR = new Float32Array(n); DJ = new Uint8Array(n); ORD = new Int32Array(n);
+    DC = new Int32Array(n);
     // A dot paints up to its radius plus the anti-aliased edge (and the band's rounding to device pixels).
-    let maxR = RAD[MAX_LEVEL]!;
+    let maxR = Math.max(RAD[MAX_LEVEL]!, P ? P.reach : 0);
     for (let h = 0; h < n - np; h++) maxR = Math.max(maxR, rf[h]!);
     const margin = maxR + 2 / dpr;
     bands = planBands(fy, H, margin);
@@ -206,6 +214,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     for (let k = 0; k < m; k++) CNT[DJ[k]! + 1]!++;
     for (let j = 0; j < NP; j++) CNT[j + 1]! += CNT[j]!;
     for (let k = 0; k < m; k++) ORD[CNT[DJ[k]!]!++] = k;
+    if (P) P.setup(c);
     // CNT[j] is now the end of fill j's run; its start is the end of the run before it.
     for (let j = 0, a = 0; j < NP; j++) {
       const z = CNT[j]!;
@@ -213,6 +222,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
         c.fillStyle = FILLS[j]!;
         for (let k = a; k < z; k++) {
           const d = ORD[k]!;
+          if (P && DC[d]! >= 0) { P.dot(c, DX[d]!, DY[d]!, DR[d]!, DC[d]!, shown); continue; }
           c.beginPath();
           c.arc(DX[d]!, DY[d]!, DR[d]!, 0, TAU);
           c.fill();
@@ -220,6 +230,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       }
       a = z;
     }
+    if (P?.done) P.done(c);
   }
 
   /** Repaints band b at rest (every dot in place, full size): its device-pixel rows, through the strip. */
@@ -242,6 +253,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
         DJ[m] = hb[h] ? STEPS + 1 + STEPS : 0;
       }
       DX[m] = fx[i]!;
+      DC[m] = i < np ? cell[i]! : -1;
       DY[m] = fy[i]!;
       m++;
     }
@@ -293,7 +305,8 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       if (!still) bdirty.fill(1);
       still = true;
       markChanged(drawnLv, shown, bandLo, bandHi, bdirty);
-      const pick = takeBands(bdirty, bands, cursor);
+      // A painter sets its own budget of dots per frame, from the time its frames took (glyphs.ts).
+      const pick = takeBands(bdirty, bands, cursor, P?.budget);
       cursor = pick.cursor;
       for (const b of pick.take) paintBand(b);
       return busy || anyDirty(bdirty);
@@ -357,6 +370,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       }
       DJ[m] = b ? b * (STEPS + 1) + ((e * STEPS + 0.5) | 0) : 0;
       DX[m] = bx + dx0;
+      DC[m] = port ? cell[i]! : -1;
       DY[m] = by + dy0;
       DR[m++] = rad;
     }
@@ -471,6 +485,8 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   }
   const owner: GridDotOwner = canvas;
   owner.ownsGridDot = ownsGridDot;
+  owner.setPainter = (make) => { P = make?.(COLS, S); refresh(); };
+  setTimeout(() => { if (P === HOLD) owner.setPainter!(); }, 4000);
   canvas.setAttribute("data-grid-owner", "");
 
   const io = new IntersectionObserver((es) => {
