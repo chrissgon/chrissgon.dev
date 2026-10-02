@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CLASSES, letterAt, restRadius, TEXT } from "../src/lib/portrait/glyphs.ts";
+import { CLASSES, drawingOf, letterAt, restRadius, TEXT } from "../src/lib/portrait/glyphs.ts";
 import { dotRadius } from "../src/lib/portrait/levels.ts";
 
 // The letters of the portrait's blocks painter.
@@ -21,5 +21,12 @@ describe("portrait glyphs", () => {
 
   it("uses the dots' own radius to tell a cell in place from one on its way", () => {
     for (let level = 0; level <= 15; level++) expect(restRadius(level, 5.6)).toBe(dotRadius(level, 5.6));
+  });
+
+  it("draws a portrait in blocks unless it asks for dots", () => {
+    expect(drawingOf("dots")).toBe("dots");
+    expect(drawingOf("blocks")).toBe("blocks");
+    expect(drawingOf(undefined)).toBe("blocks");
+    expect(drawingOf("anything")).toBe("blocks");
   });
 });

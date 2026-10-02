@@ -86,6 +86,11 @@ export const provisional = {
   evalWithout: { en: "Without", pt: "Sem" },
   // site-home.md, content assumptions: "43 skills in 9 prefixes" (PT from site-content.md 3.4).
   cardPrefixes: { en: "in {n} prefixes", pt: "em {n} prefixos" },
+  // The lab's dot-portrait experiment: the choice between the two drawings of the portrait (owner's request
+  // of 2026-10-01; the wording is not approved yet).
+  portraitDrawing: { en: "Drawing", pt: "Desenho" },
+  drawingDots: { en: "Dots", pt: "Pontos" },
+  drawingBlocks: { en: "Blocks", pt: "Blocos" },
   // The close button of an opened lab experiment ("Esc or × closes it", site-lab.md); its accessible name.
   close: { en: "Close", pt: "Fechar" },
   // The Claude Design home (personal-brand docs/design/results/site-home/claude-design/home-full.webp): the EN

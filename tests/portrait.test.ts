@@ -8,7 +8,7 @@ import { findClips } from "../src/lib/portrait/clips.ts";
 import { fills, parseColor, STEPS, type RGB } from "../src/lib/portrait/colors.ts";
 import { clipType, plan, readEnvironment } from "../src/lib/portrait/gating.ts";
 import {
-  BACK_FROM, BACK_TO, blur, cellX, gridCell, haloRadius, haloStrength, homeX, introDelays, layout, pointerPush, scrollBack,
+  BACK_FROM, BACK_TO, blur, cellX, gridCell, haloRadius, haloStrength, homeX, layout, pointerPush, scrollBack,
 } from "../src/lib/portrait/grid.ts";
 import {
   autoContrastBounds, band, decodePoster, dotRadius, equalizeTable, levelTable, luma, lumaHistogram, toneToLevel,
@@ -129,13 +129,6 @@ describe("portrait grid and halo maths", () => {
     expect(haloStrength(1)).toBe(1);
     expect(haloRadius(0)).toBe(0.7);
     expect(haloRadius(1)).toBe(2);
-  });
-
-  it("assembles the intro outward from the face within the span", () => {
-    const d = introDelays([0, 10, 100], [0, 0, 0], 0, 0, 520, 60);
-    expect(d[0]).toBeLessThan(d[1]!);
-    expect(d[1]).toBeLessThan(d[2]!);
-    for (const v of d) expect(v).toBeGreaterThanOrEqual(0), expect(v).toBeLessThanOrEqual(580);
   });
 
   it("returns to the grid only once most of the slot has scrolled away", () => {

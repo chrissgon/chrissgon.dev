@@ -15,6 +15,9 @@
 //     checks as the synthetic clips); the pointer check then runs with Save-Data, the poster-only path
 //   - no console error and no page error
 //   - without JavaScript the fallback image loads and the canvas takes no room
+//   - the lab's dot-portrait experiment (/lab/ and /pt/lab/): the portrait starts in dots, its drawing control
+//     is shown with dots pressed, the blocks choice (by keyboard) redraws it in blocks, and the dots choice
+//     gives the dot picture again, pixel for pixel (Save-Data)
 //   - the pointer pushes dots away, and once it leaves the canvas shows the poster again, pixel for pixel
 //   - scrolled 40 px and a third of the portrait's box, the bright pixels stay within 3% of the unscrolled
 //     frame; scrolled past the box, the dots are back on the grid (Save-Data, no clip)
@@ -123,7 +126,7 @@ const drawn = (page: Page) =>
 
 async function poster(browser: Browser, base: string, path: string, label: string, o: Parameters<typeof open>[2], name: string) {
   const s = await open(browser, base + path, o);
-  // Long enough for the idle callback after load (<= 2 s) and the intro (1.2 s): a clip would be requested by now.
+  // Long enough for the idle callback after load (<= 2 s): a clip would be requested by now.
   await sleep(4500);
   const box = await s.page.locator("[data-portrait] canvas").boundingBox();
   const d = await drawn(s.page);
@@ -283,6 +286,34 @@ async function withClips(browser: Browser, base: string, path: string, label: st
   await s.close();
 }
 
+/**
+ * The lab's dot-portrait experiment (/lab/#dot-portrait): the portrait starts in dots, and the control above it
+ * redraws it in blocks and back. Save-Data, so the picture is the poster and can be compared pixel for pixel.
+ */
+async function drawings(browser: Browser, base: string, path: string, label: string) {
+  const s = await open(browser, base + path + "#dot-portrait", { saveData: true });
+  await sleep(2500);
+  const group = s.page.locator("[data-portrait-drawing]");
+  const pressed = () => group.locator("[data-drawing]").evaluateAll((bs) => bs.map((b) => `${(b as HTMLElement).dataset.drawing}:${b.getAttribute("aria-pressed")}`).join(" "));
+  const dots = await drawn(s.page);
+  const enabled = await group.locator("button:not([disabled])").count();
+  check(`${label} lab: the drawing control is shown, named and enabled, with dots pressed`, (await group.isVisible()) && !!(await group.getAttribute("aria-label")) && enabled === 2 && (await pressed()) === "dots:true blocks:false", `${await pressed()}, ${enabled} enabled`);
+  check(`${label} lab: the portrait starts drawn in dots`, dots.n > 1000 && (await s.page.locator("[data-portrait]").getAttribute("data-drawing")) === "dots", `drawn px ${dots.n}`);
+  // With the keyboard: a pointer resting on the control would push the dots under it and change the picture.
+  await group.locator('[data-drawing="blocks"]').focus();
+  await s.page.keyboard.press("Enter");
+  await sleep(1500);
+  const blocks = await drawn(s.page);
+  check(`${label} lab: the blocks choice redraws the portrait in blocks`, (await pressed()) === "dots:false blocks:true" && blocks.sig !== dots.sig && blocks.n > dots.n, `${dots.n}/${dots.sig} -> ${blocks.n}/${blocks.sig}`);
+  await group.locator('[data-drawing="dots"]').focus();
+  await s.page.keyboard.press("Enter");
+  await sleep(1500);
+  const back = await drawn(s.page);
+  check(`${label} lab: the dots choice gives the dot picture again, pixel for pixel`, (await pressed()) === "dots:true blocks:false" && back.sig === dots.sig && back.n === dots.n, `${dots.n}/${dots.sig} -> ${back.n}/${back.sig}`);
+  check(`${label} lab: no console errors`, s.errors.length === 0, s.errors.join(" | "));
+  await s.close();
+}
+
 async function pool(tasks: Array<() => Promise<void>>) {
   let next = 0;
   await Promise.all(Array.from({ length: Math.min(JOBS, tasks.length) }, async () => {
@@ -310,6 +341,7 @@ try {
     // With the real clips the default visit plays the loop, so the poster-exact check runs where no clip
     // plays and the pointer still moves dots: Save-Data (gating.ts).
     tasks.push(() => (REAL_CLIPS ? pointer(browser, base, path, `${label} Save-Data`, { saveData: true }) : pointer(browser, base, path, label)));
+    tasks.push(() => drawings(browser, base, `${path}lab/`, label));
   }
   if (WITH_CLIPS) {
     // Sequential by need: the clips must exist before the build that finds them, and the build before the checks.

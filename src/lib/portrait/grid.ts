@@ -111,21 +111,6 @@ export function haloStrength(blurred: number): number {
 /** Radius of a halo dot at full strength h, growing from the grid dot's 0.7 px. */
 export const haloRadius = (h: number): number => 0.7 + 1.3 * h;
 
-/**
- * Intro delay of each dot in ms: the portrait assembles outward from the face, with a little seeded jitter,
- * so every dot starts moving within `span` ms and the last finishes by `span + each`.
- */
-export function introDelays(xs: ArrayLike<number>, ys: ArrayLike<number>, fx: number, fy: number, span: number, jitter = 60): Float32Array {
-  const n = xs.length, out = new Float32Array(n);
-  let maxD = 1, seed = 7;
-  for (let i = 0; i < n; i++) maxD = Math.max(maxD, (out[i] = Math.hypot(xs[i]! - fx, ys[i]! - fy)));
-  for (let i = 0; i < n; i++) {
-    seed = (seed * 16807) % 2147483647;
-    out[i] = (out[i]! / maxD) * span + (seed / 2147483647) * jitter;
-  }
-  return out;
-}
-
 /** Share of the slot above the viewport's top where the return to the grid starts, and where it ends. */
 export const BACK_FROM = 0.55, BACK_TO = 0.95;
 
