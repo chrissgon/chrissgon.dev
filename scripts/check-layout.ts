@@ -22,9 +22,10 @@
 // round closed with a winner and its post; "pick new": a new round with three topics), each as loaded and with the
 // header's switch on: the section is redrawn, each topic shows its count of picks in the page's language, its
 // links open the pre-filled issues in a new tab and the reading follows. / and /writing/ and their /pt/ pages also
-// with the pointer on, and keyboard focus on, each post card in turn ("posts", with motion allowed): that card is
-// whole and not scaled, the others are at opacity 0.3, and the page does not scroll sideways; with the pointer away
-// every card is whole again; with reduced motion the cards dim without a transition. Every state answers the section's request to GitHub itself (scripts/pick-fixture.ts), with the build's
+// with the pointer on, and keyboard focus on, each post card in turn ("posts", with motion allowed): that card
+// shows its corner marks, closed out to its corners, once its scan line has passed, no card is dimmed or
+// scaled, and the page does not scroll sideways; with the pointer away no card shows a mark; with reduced motion
+// the marks appear with no transition and no scan line runs. Every state answers the section's request to GitHub itself (scripts/pick-fixture.ts), with the build's
 // round unless it is a pick state, so the check needs no network.
 // Widths: 320 360 375 390 414 600 768 820 1024 1100 1186 1280 1366 1440 1920.
 // The switches are turned on the way a user does (Playwright's check(), which fails when the switch is covered
@@ -411,9 +412,19 @@ const POSTS = `((ACTIVE, WANT, HOW) => {
   const scale = (el) => { const t = getComputedStyle(el).transform; return t === "none" ? 1 : new DOMMatrix(t).a; };
   cards.forEach((c, i) => {
     const op = Number(getComputedStyle(c).opacity), sc = scale(c);
-    const wantOp = ACTIVE < 0 || i === ACTIVE ? 1 : 0.3, wantSc = i === ACTIVE ? WANT : 1;
+    const wantOp = 1, wantSc = i === ACTIVE ? WANT : 1;
     if (Math.abs(op - wantOp) > 0.01) out.push(HOW + ": card " + (i + 1) + " opacity " + op + ", expected " + wantOp);
     if (Math.abs(sc - wantSc) > 0.001) out.push(HOW + ": card " + (i + 1) + " scale " + sc + ", expected " + wantSc);
+    // The corner marks: shown and closed out to the card's corners on the active card, hidden on the others.
+    const mark = c.querySelector(".hud i");
+    if (!mark) out.push(HOW + ": card " + (i + 1) + " has no corner marks");
+    else {
+      const cs = getComputedStyle(mark), on = Number(cs.opacity), want = i === ACTIVE ? 1 : 0;
+      if (Math.abs(on - want) > 0.01) out.push(HOW + ": card " + (i + 1) + " marks opacity " + on + ", expected " + want);
+      if (want && cs.top !== "8px") out.push(HOW + ": card " + (i + 1) + " marks are " + cs.top + " from the corners, expected 8px");
+    }
+    const scan = c.querySelector(".hud b");
+    if (!scan || Number(getComputedStyle(scan).opacity) > 0.01) out.push(HOW + ": card " + (i + 1) + " scan line still shows");
   });
   const de = document.documentElement;
   if (de.scrollWidth > de.clientWidth) out.push(HOW + ": the page scrolls sideways by " + (de.scrollWidth - de.clientWidth) + " px");
@@ -501,7 +512,7 @@ async function postsFlow(page: Page): Promise<string[]> {
     await cards.nth(i).hover();
     await settle();
     await probe(i, 1, "reduced motion");
-    if ((await cards.nth(i).evaluate((el) => getComputedStyle(el).transitionDuration)).split(",").some((d) => parseFloat(d) > 0)) out.push("reduced motion: the card still has a transition");
+    if (await cards.nth(i).evaluate((el) => getComputedStyle(el.querySelector(".hud i")!).transitionDuration.split(",").some((d) => parseFloat(d) > 0) || getComputedStyle(el.querySelector(".hud b")!).animationName !== "none")) out.push("reduced motion: the corner marks still move or the scan line still runs");
   }
   await away();
   await page.evaluate(() => window.scrollTo(0, 0));

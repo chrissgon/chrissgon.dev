@@ -55,6 +55,8 @@ const size = coverSize(widths[0]!);
     </span>
     <strong class="title" lang={titleLang}>{postTitle(p, lang)}</strong>
   </span>
+  {/* The hover effect's corner marks and its scan line (styles below); nothing to read. */}
+  <span class="hud" aria-hidden="true"><i></i><b></b></span>
 </a>
 
 <style>
@@ -66,10 +68,6 @@ const size = coverSize(widths[0]!);
     object-fit: cover;
     border-bottom: 1px solid var(--pui-border);
     background: var(--pui-bg-emphasis);
-    transition: opacity 0.15s;
-  }
-  .post-card:hover .cover {
-    opacity: 0.85;
   }
   .post-card .pui-card-content {
     gap: 10px;
@@ -100,36 +98,74 @@ const size = coverSize(widths[0]!);
     margin-inline-start: 4px;
     font-size: 11px;
   }
-  @media (prefers-reduced-motion: reduce) {
-    .post-card .cover {
-      transition: none;
-    }
-  }
 </style>
 
 <style is:global>
-  /* The posts' focus effect (owner, 2026-10-01), CSS only: with the pointer on a card, or keyboard focus on one,
-     the other cards of its list go to opacity 0.3 and that card stays whole; with the pointer off the cards
-     (outside the list or between two cards) every card is whole. No card grows or moves, and its border does not change. The lists are the home
-     page's row (.posts) and the writing page's sheet (.sheet); global, because the list belongs to the page, not
-     to this component. A browser without :has() dims nothing. scripts/check-layout.ts hovers and focuses every
-     card at every width. */
+  /* The posts' hover effect (owner, 2026-10-02), CSS only: the card under the pointer, or with keyboard focus,
+     is framed the way a vision model marks what it has found. Four corner marks close in on the card and stay
+     while it is hovered, and one line scans it once from top to bottom. No card dims, grows or moves, and the
+     card's border does not change. Global, because the cards of the home page's row (.posts) and of the writing
+     page's sheet (.sheet) are redrawn by neither; the marks sit inside the card, so the row that scrolls
+     sideways below 1024 px cuts nothing. Colours are the text token only (one blue element per viewport).
+     scripts/check-layout.ts hovers and focuses every card at every width. */
   .post-card {
-    transition: opacity 0.2s var(--ease);
+    position: relative;
   }
-  :is(.posts, .sheet):has(.post-card:focus-visible) .post-card:not(:focus-visible) {
-    opacity: 0.3;
+  .post-card .hud {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  /* The four marks are one bordered box of which only the 12 px corners are kept (the polygon walks the four
+     corner squares, joined along the box's edges). It waits 8 px further in and closes out to the corners. */
+  .post-card .hud i {
+    position: absolute;
+    inset: 16px;
+    border: 1px solid var(--pui-text);
+    opacity: 0;
+    clip-path: polygon(0 0, 12px 0, 12px 12px, 0 12px, 0 calc(100% - 12px), 12px calc(100% - 12px), 12px 100%, calc(100% - 12px) 100%, calc(100% - 12px) calc(100% - 12px), 100% calc(100% - 12px), 100% 12px, calc(100% - 12px) 12px, calc(100% - 12px) 0);
+    transition:
+      opacity 0.15s,
+      inset 0.25s var(--ease);
+  }
+  .post-card .hud b {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--pui-text);
+    opacity: 0;
+  }
+  .post-card:focus-visible .hud i {
+    inset: 8px;
+    opacity: 1;
+  }
+  .post-card:focus-visible .hud b {
+    animation: post-scan 0.7s linear;
   }
   /* A mouse or a pen only: a touch screen has no hover to leave. */
   @media (hover: hover) and (pointer: fine) {
-    :is(.posts, .sheet):has(.post-card:hover) .post-card:not(:hover, :focus-visible) {
-      opacity: 0.3;
+    .post-card:hover .hud i {
+      inset: 8px;
+      opacity: 1;
+    }
+    .post-card:hover .hud b {
+      animation: post-scan 0.7s linear;
     }
   }
-  /* Reduced motion keeps the dimming and drops the transition. */
+  @keyframes post-scan {
+    from { top: 0; opacity: 0.6; }
+    90% { opacity: 0.6; }
+    to { top: 100%; opacity: 0; }
+  }
+  /* Reduced motion keeps the corner marks, in place at once, and drops the scan. */
   @media (prefers-reduced-motion: reduce) {
-    .post-card {
+    .post-card .hud i {
       transition: none;
+    }
+    .post-card .hud b {
+      animation: none !important;
     }
   }
 </style>
