@@ -21,13 +21,13 @@ import { fills, parseColor, DEFAULT_RGB, STEPS, type RGB } from "./colors.ts";
 import { clipType, plan, readEnvironment } from "./gating.ts";
 import {
   blur, cellX, cellY, clamp01, easeInOut, gridCell, haloRadius, haloStrength, homeX, homeY,
-  introDelays, layout, scrollBack, type Layout,
+  layout, scrollBack, type Layout,
 } from "./grid.ts";
 import { PUSH_PX, PUSH_R, SETTLE_PX, springStep } from "./push.ts";
 import { band, decodePoster, dotRadius, levelTable, lumaHistogram, luma, MAX_LEVEL } from "./levels.ts";
 import type { Clip, GridDotOwner, Painter, PortraitController, PortraitOptions } from "./types.ts";
 
-const INTRO = 1200, EACH = 620, BACK = 600, FADE = 300, NP = 4 * (STEPS + 1), TAU = 2 * Math.PI;
+const BACK = 600, FADE = 300, NP = 4 * (STEPS + 1), TAU = 2 * Math.PI;
 const TOKENS = ["--pui-bg-emphasis", "--pui-border", "--pui-muted", "--pui-text"] as const;
 const KEY = "portrait-greeted";
 
@@ -61,7 +61,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   // Layout and particles (rebuilt on resize). Portrait particles first (np of them), then halo particles.
   let Lay: Layout | null = null, W = 0, H = 0, slotTop = 0, slotH = 0, n = 0, np = 0;
   let cell = new Int32Array(0), hx = new Float32Array(0), hy = new Float32Array(0), fx = new Float32Array(0), fy = new Float32Array(0);
-  let rf = new Float32Array(0), hb = new Uint8Array(0), mid = new Int32Array(0), delay: Float32Array = new Float32Array(0);
+  let rf = new Float32Array(0), hb = new Uint8Array(0), mid = new Int32Array(0);
   let ox = new Float32Array(0), oy = new Float32Array(0), box = [0, 0, 0, 0], FILLS: string[] = [];
   // Canvas position in the page (read in build, so the frame loop reads no layout) and backing-store scale.
   let cvLeft = 0, cvTop = 0, dpr = 1;
@@ -72,9 +72,9 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   const CNT = new Int32Array(NP + 1);
   // A painter that draws nothing holds the portrait's cells back until the real one arrives (setPainter,
   // from the lazy chunk glyphs.ts), so the picture does not show as dots first; after 4 s without it, or when
-  // it is taken away, the round dots are drawn.
+  // it is taken away, the round dots are drawn. A portrait that asks for dots draws them from the start.
   const HOLD: Painter = { reach: 0, setup() {}, dot() {} };
-  let P: Painter | undefined = HOLD;
+  let P: Painter | undefined = o.dots ? undefined : HOLD;
   // Banded painting while nothing moves: the bands, each cell's band range, the dirty flags, the levels on
   // the canvas, and where the next sweep starts. `still` is true when the canvas shows the picture at rest.
   let bands: Bands = planBands([], 0, 0), bandLo = new Int16Array(NC).fill(-1), bandHi = new Int16Array(NC).fill(-1);
@@ -88,7 +88,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   // State.
   let shown: Uint8Array = poster, prev: Uint8Array = poster, lut: Uint8Array | null = null;
   let raf = 0, last = 0, dirty = true, dead = false, vis = true, rt = 0, dwell = 0;
-  let introStart = -1, introDone = RM || o.intro === false, ptr: { x: number; y: number } | null = null;
+  let ptr: { x: number; y: number } | null = null;
   let ready = false, started = false, active: HTMLVideoElement | null = null, sampledAt = 0, lastT = -1;
   let fadeT = -1, fadeMs = 0, fadeArm = 0, greetAt = -1e9, gridFrom = 0, gridTo = 0, gridT = 0;
 
@@ -161,7 +161,6 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     hx = A.hx.slice(0, n); hy = A.hy.slice(0, n); fx = A.fx.slice(0, n); fy = A.fy.slice(0, n);
     rf = A.rf.slice(0, n - np); hb = A.hb.slice(0, n - np); mid = A.mid.slice(0, n - np);
     ox = new Float32Array(n); oy = new Float32Array(n);
-    if (!introDone) delay = introDelays(fx, fy, L.X + FACE.x * COLS * S, L.Y + FACE.y * ROWS * S, INTRO - EACH - 60);
     box = [Math.max(L.X, s.x0), Math.max(L.Y, s.y0), Math.min(L.X + COLS * S, s.x1), Math.min(L.Y + ROWS * S, s.y1)];
     // An ancestor that clips (the band clips the halo sideways) hides the halo dots outside it: the page's own
     // grid dots show there, and the background dots move them.
@@ -276,21 +275,19 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   }
 
   /**
-   * One animation frame. At rest (intro over, portrait in place, no pointer near, no dot displaced) it paints
+   * One animation frame. At rest (portrait in place, no pointer near, no dot displaced) it paints
    * the dirty bands within the budget; otherwise, or with `full`, the whole canvas. Returns true while more
    * frames are needed.
    */
   function draw(now: number, dt: number, full = false): boolean {
     const top = cvTop - scrollY, left = cvLeft - scrollX;
     if (!Lay || top + H < 0 || top > innerHeight) return false;
-    const t = introStart < 0 ? 0 : now - introStart;
-    if (!introDone && introStart >= 0 && t > INTRO) { introDone = true; start(); }
     const back = RM ? 0 : scrollBack(scrollY, slotTop, slotH), g = gridAmount(now), away = Math.max(back, g);
     let p = RM || !ptr ? null : { x: ptr.x - left, y: ptr.y - top };
     // A pointer farther than the push radius from the canvas moves no dot.
     if (p && (p.x < -PUSH_R || p.y < -PUSH_R || p.x > W + PUSH_R || p.y > H + PUSH_R)) p = null;
     const k = springStep(dt);
-    let busy = !introDone || g !== gridTo || (back > 0 && back < 1);
+    let busy = g !== gridTo || (back > 0 && back < 1);
     if (fadeT >= 0) {
       const f = clamp01((now - fadeT) / fadeMs);
       for (let i = 0; i < NC; i++) blended[i] = prev[i]! + (cur[i]! - prev[i]!) * f + 0.5;
@@ -298,7 +295,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
       busy = true;
       if (f >= 1) { fadeT = -1; shown = cur; }
     }
-    const rest = introDone && away === 0 && !p && !moving;
+    const rest = away === 0 && !p && !moving;
     // Bands paint over the picture at rest, or over a canvas the last build cleared. After motion, one whole
     // paint puts every dot back in place first.
     if (rest && !full && (still || blank)) {
@@ -319,7 +316,7 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     // The hot loop: about 10k particles per frame, so no allocation and no calls it can avoid. A dark
     // portrait cell at rest is skipped before any maths; easing and the pointer push are inlined
     // (grid.ts has the same maths as pure, tested functions: easeOut, pointerPush).
-    const intro = !introDone && introStart >= 0, before = !introDone && introStart < 0, cap = 1 - away;
+    const e = 1 - away;
     const px = p ? p.x : 0, py = p ? p.y : 0, R2 = PUSH_R * PUSH_R;
     for (let i = 0; i < n; i++) {
       const port = i < np, v = port ? shown[cell[i]!]! : 0;
@@ -330,14 +327,6 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
         const m = mid[i - np]!;
         if (m >= 0 && shown[m]) continue; // the portrait already has a dot here
       }
-      let e = 1;
-      if (intro) {
-        let q = (t - delay[i]!) / EACH;
-        q = q < 0 ? 0 : q > 1 ? 1 : q;
-        const u = 1 - q;
-        e = 1 - u * u * u;
-      } else if (before) e = 0;
-      if (e > cap) e = cap;
       const bx = hx[i]! + (fx[i]! - hx[i]!) * e, by = hy[i]! + (fy[i]! - hy[i]!) * e;
       if (p || dx0 || dy0) {
         let tx = 0, ty = 0;
@@ -458,8 +447,8 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
     sync();
   }
 
-  function start() { // after the intro and once the clips may load: greet once per session, then loop
-    if (!ready || !introDone || started) return;
+  function start() { // once the clips may load: greet once per session, then loop
+    if (!ready || started) return;
     started = true;
     let first = false;
     try { first = !sessionStorage.getItem(KEY); sessionStorage.setItem(KEY, "1"); } catch { /* storage blocked */ }
@@ -486,14 +475,13 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   const owner: GridDotOwner = canvas;
   owner.ownsGridDot = ownsGridDot;
   owner.setPainter = (make) => { P = make?.(COLS, S); refresh(); };
-  setTimeout(() => { if (P === HOLD) owner.setPainter!(); }, 4000);
+  if (P) setTimeout(() => { if (P === HOLD) owner.setPainter!(); }, 4000);
   canvas.setAttribute("data-grid-owner", "");
 
   const io = new IntersectionObserver((es) => {
     const e = es[es.length - 1];
     if (!e) return;
     vis = e.isIntersecting;
-    if (e.intersectionRatio >= 0.2 && introStart < 0 && !introDone) { introStart = performance.now(); kick(); }
     sync();
   }, { threshold: [0, 0.2] });
 
@@ -559,6 +547,9 @@ export function mountPortrait(canvas: HTMLCanvasElement, o: PortraitOptions): Po
   const ro = new ResizeObserver(later);
   ro.observe(slot);
   on(window, "resize", later);
+  // An animation that moves the portrait without resizing it (the lab's experiment opening) ends with the
+  // portrait somewhere the last build did not measure.
+  on(document, "animationend", later);
   document.fonts?.ready.then(later, () => {});
 
   refresh();

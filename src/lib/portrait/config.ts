@@ -9,14 +9,6 @@ import type { ToneOptions } from "./types.ts";
 export const tone: ToneOptions = { equalize: false, gamma: 1.4, floor: 3 };
 
 /**
- * The intro (dots flying from the grid into the portrait) is off: in the hero it would run during page load,
- * and in Lighthouse's software-rasterised canvas each of its frames is a long task (PR #7 on main: total
- * blocking time 550-640 ms, performance 84, under the gate of 90). The poster is drawn at once instead.
- * The renderer keeps the option (`intro: true`) for a placement below the fold or a cheaper intro.
- */
-export const intro = false;
-
-/**
  * Poster cells per page grid cell (28 px): 5 gives 5.6 px dots. Must be a whole number, since halo cells group
  * SUB x SUB poster cells, so 5.6 and 7 are the only sizes near 6 px. Set back to 5 on 2026-09-30, when the owner
  * found the 7 px portrait too large beside the hero's text and the columns went back to 50/50. The portrait's

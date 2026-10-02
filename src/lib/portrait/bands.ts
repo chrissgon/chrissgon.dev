@@ -1,7 +1,7 @@
 // Banded redraw of the portrait: pure functions, no DOM.
 // In Lighthouse's software-rendered canvas the cost of a frame is the rasterisation of its dots, so a video
 // frame that repaints every dot at once is one long task (30 ms at 4x CPU slowdown on a laptop, 10 ms without).
-// When nothing moves (no pointer, no intro, no scroll-back), the canvas is instead cut into horizontal bands:
+// When nothing moves (no pointer, no scroll-back), the canvas is instead cut into horizontal bands:
 // only bands whose levels changed are repainted, at most a budget of dots per animation frame. A whole picture
 // then takes a few frames (about 80 ms), every task stays short, and a slow device lowers the frame rate
 // instead of blocking the page.

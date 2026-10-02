@@ -82,7 +82,7 @@ export function glyphPainter(cols: number, cellPx: number, family: string, ink =
     // The blocks carry the face, so the letters stay quieter than them: every letter is dark (the page's
     // background colour) and see-through, fainter on a dim pair of blocks, which keeps the dark around the
     // face clean. A line's letter is drawn once, by its upper cell, or by the lower one when the upper is dark.
-    // A cell on its way to or from the page's grid (the intro, the scroll-back) is the round dot it would
+    // A cell on its way to or from the page's grid (the scroll-back) is the round dot it would
     // be without this painter, in the colour the frame has set: only a cell in place is a block.
     dot(c, x, y, r, cell, levels) {
       const level = levels[cell] ?? 0, row = Math.floor(cell / cols), lower = row % 2;
@@ -131,17 +131,27 @@ export function glyphPainter(cols: number, cellPx: number, family: string, ink =
   return painter;
 }
 
+type Canvas = HTMLCanvasElement & GridDotOwner;
+type Drawing = "blocks" | "dots";
+
+/** The drawing a portrait asks for (data-drawing on its slot, Portrait.astro); blocks unless it says dots. */
+export const drawingOf = (value: string | null | undefined): Drawing => (value === "dots" ? "dots" : "blocks");
+
 /**
- * Hands the painter to every portrait of the page, once the monospace font is there and the portrait is
- * mounted (this chunk may arrive first).
+ * Hands the blocks painter to every portrait of the page that asks for blocks, once the monospace font is
+ * there and the portrait is mounted (this chunk may arrive first), and wires the page's drawing controls
+ * (`[data-portrait-drawing]`, the lab's dot-portrait experiment): a group of buttons, each with the drawing it
+ * shows in data-drawing, that redraws the portrait which follows the group. The buttons are disabled in the
+ * page and enabled here, once they work.
  */
 export async function useGlyphs(): Promise<void> {
   const family = getComputedStyle(document.documentElement).getPropertyValue("--font-mono").trim() || "monospace";
   await document.fonts.load(`600 9px ${family}`).catch(() => {});
   const paper = getComputedStyle(document.body).backgroundColor;
-  const canvases = [...document.querySelectorAll<HTMLCanvasElement & GridDotOwner>("[data-portrait] canvas")];
+  const canvases = [...document.querySelectorAll<Canvas>("[data-portrait] canvas")];
   for (let frame = 0; frame < 300 && canvases.some((c) => !c.setPainter); frame++) await new Promise(requestAnimationFrame);
-  for (const canvas of canvases) {
+  const draw = (canvas: Canvas, drawing: Drawing) => {
+    if (drawing === "dots") return canvas.setPainter?.();
     // The token as a colour the canvas takes: a custom property's own text may be light-dark(...), which a
     // canvas fill style ignores (the blocks were then filled with whatever colour was set last).
     const before = canvas.style.color;
@@ -149,5 +159,29 @@ export async function useGlyphs(): Promise<void> {
     const ink = getComputedStyle(canvas).color || "#fff";
     canvas.style.color = before;
     canvas.setPainter?.((cols, cellPx) => glyphPainter(cols, cellPx, family, ink, paper));
+  };
+  for (const canvas of canvases) {
+    // A portrait that asks for dots is already drawn in them.
+    if (drawingOf(canvas.closest<HTMLElement>("[data-portrait]")?.dataset.drawing) === "blocks") draw(canvas, "blocks");
+  }
+  for (const group of document.querySelectorAll<HTMLElement>("[data-portrait-drawing]")) {
+    const canvas = group.parentElement?.querySelector<Canvas>("[data-portrait] canvas");
+    if (!canvas?.setPainter) continue;
+    const buttons = [...group.querySelectorAll<HTMLButtonElement>("button[data-drawing]")];
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        if (button.getAttribute("aria-pressed") === "true") return;
+        for (const b of buttons) {
+          const on = b === button;
+          b.setAttribute("aria-pressed", String(on));
+          b.classList.toggle("pui-solid", on);
+          b.classList.toggle("pui-inverse", on);
+          b.classList.toggle("pui-outline", !on);
+          b.classList.toggle("pui-surface", !on);
+        }
+        draw(canvas, drawingOf(button.dataset.drawing));
+      });
+      button.disabled = false;
+    }
   }
 }

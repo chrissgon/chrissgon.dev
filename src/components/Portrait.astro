@@ -1,6 +1,7 @@
 ---
 // The portrait island (ADR-0008, design "Retrato"): a <canvas> that draws the poster, in blocks with letters
-// over them once their painter arrives (src/lib/portrait/glyphs.ts, asked for by src/scripts/site.ts), and
+// over them once their painter arrives (src/lib/portrait/glyphs.ts, asked for by src/scripts/site.ts) or in
+// round dots (`drawing="dots"`), and
 // plays the clips after the page's load event, and a <noscript> WebP of the picture in dots for no JavaScript.
 // The poster is inlined, so the first render needs no second request. Clips are offered only when their
 // files exist in public/portrait/ at build time (scripts/encode-portrait.sh writes them); without them the
@@ -8,16 +9,19 @@
 // around it and the fallback image. The visual design comes later.
 import poster from "../assets/portrait/portrait.json";
 import { findClips } from "../lib/portrait/clips.ts";
-import { face, fallbackName, intro, publicDir, subdiv, tone } from "../lib/portrait/config.ts";
+import { face, fallbackName, publicDir, subdiv, tone } from "../lib/portrait/config.ts";
 import type { PortraitOptions } from "../lib/portrait/types.ts";
 
 interface Props {
   alt: string;
+  /** How the picture is drawn: in blocks with letters over them (the default, the hero's) or in round dots. */
+  drawing?: "blocks" | "dots";
 }
 
-const { alt } = Astro.props;
+const { alt, drawing = "blocks" } = Astro.props;
 const clips = findClips();
-const options: PortraitOptions = { poster, ...tone, face, subdiv, intro, loop: clips.loop, greet: clips.greet };
+const options: PortraitOptions = { poster, ...tone, face, subdiv, loop: clips.loop, greet: clips.greet };
+if (drawing === "dots") options.dots = true;
 // JSON inside <script>: "<" is escaped so no text can close the element.
 const json = JSON.stringify(options).replace(/</g, "\\u003c");
 const cell = 28 / subdiv;
@@ -25,7 +29,7 @@ const width = Math.round(poster.cols * cell), height = Math.round(poster.rows * 
 ---
 
 <div class="portrait-band">
-  <div class="portrait" data-portrait style={`--portrait-w: ${width}px; --portrait-h: ${height}px; --face-x: ${Math.round(face.x * 100)}%`}>
+  <div class="portrait" data-portrait data-drawing={drawing} style={`--portrait-w: ${width}px; --portrait-h: ${height}px; --face-x: ${Math.round(face.x * 100)}%`}>
     <canvas data-alt={alt} width="0" height="0"></canvas>
     <noscript><img src={`/${publicDir}/${fallbackName}`} width={width} height={height} alt={alt} /></noscript>
     <script type="application/json" data-portrait-options set:html={json} />
@@ -42,7 +46,7 @@ const width = Math.round(poster.cols * cell), height = Math.round(poster.rows * 
     canvas.setAttribute("role", "img");
     canvas.setAttribute("aria-label", canvas.dataset.alt ?? "");
     // The picture is drawn by the blocks painter, which src/scripts/site.ts loads as a lazy chunk: the mounted
-    // canvas waits for it instead of showing dots first.
+    // canvas waits for it instead of showing dots first, unless the portrait asks for dots (options.dots).
     mountPortrait(canvas, JSON.parse(data.textContent) as PortraitOptions);
   }
 </script>

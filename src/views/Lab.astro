@@ -109,9 +109,15 @@ const CODE: Record<string, string> = {
         </div>
         <p class="xp-lead human">{x.description[lang]}</p>
         <AgentText text={labLine(x.id)} />
+        {/* The drawing buttons take their room from the start and are disabled until src/lib/portrait/glyphs.ts
+            wires them: a control that appeared later would push the portrait down after it was laid out. */}
         {x.id === "dot-portrait" && (
+          <div class="chip-row js-only human" role="group" aria-label={t(lang, "portraitDrawing")} data-portrait-drawing>
+            <button type="button" class="pui-chip pui-solid pui-inverse" aria-pressed="true" data-drawing="dots" disabled>{t(lang, "drawingDots")}</button>
+            <button type="button" class="pui-chip pui-outline pui-surface" aria-pressed="false" data-drawing="blocks" disabled>{t(lang, "drawingBlocks")}</button>
+          </div>
           <div class="xp-portrait human">
-            <Portrait alt={t(lang, "portraitAlt")} />
+            <Portrait alt={t(lang, "portraitAlt")} drawing="dots" />
           </div>
         )}
         {x.id === "view-as-agent" && (

@@ -32,7 +32,7 @@ export interface PortraitOptions extends ToneOptions {
   /** Page grid pitch in px and poster cells per grid cell: 28 / 5 = 5.6 px per cell. */
   gridPx?: number;
   subdiv?: number;
-  /** Face centre as 0..1 of the poster; the intro grows out from it and narrow slots keep it in view. */
+  /** Face centre as 0..1 of the poster; narrow slots keep it in view. */
   face?: { x: number; y: number };
   /**
    * Colour tokens read from the canvas (custom property names): the grid dot, then the dim, mid and bright
@@ -43,8 +43,8 @@ export interface PortraitOptions extends ToneOptions {
   fps?: number;
   /** Minimum time between two greetings from the pointer, in ms. */
   greetEvery?: number;
-  /** Assemble the portrait from the grid when it first comes into view. */
-  intro?: boolean;
+  /** Draw the portrait in round dots from the start, without waiting for the blocks painter. */
+  dots?: boolean;
   /** Overrides of the environment, for tests. */
   reducedMotion?: boolean;
   saveData?: boolean;
