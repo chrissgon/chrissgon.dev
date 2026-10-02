@@ -116,14 +116,15 @@ const size = coverSize(widths[0]!);
     inset: 0;
     pointer-events: none;
   }
-  /* The four marks are one bordered box of which only the 12 px corners are kept (the polygon walks the four
-     corner squares, joined along the box's edges). It waits 8 px further in and closes out to the corners. */
+  /* The four marks are one bordered box of which only the 12 px corners are kept: the polygon is the whole box,
+     then the box without its corner squares, and evenodd leaves what only the first covers. It waits 8 px
+     further in and closes out to the corners. */
   .post-card .hud i {
     position: absolute;
     inset: 16px;
     border: 1px solid var(--pui-text);
     opacity: 0;
-    clip-path: polygon(0 0, 12px 0, 12px 12px, 0 12px, 0 calc(100% - 12px), 12px calc(100% - 12px), 12px 100%, calc(100% - 12px) 100%, calc(100% - 12px) calc(100% - 12px), 100% calc(100% - 12px), 100% 12px, calc(100% - 12px) 12px, calc(100% - 12px) 0);
+    clip-path: polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, 12px 0, 12px 12px, 0 12px, 0 calc(100% - 12px), 12px calc(100% - 12px), 12px 100%, calc(100% - 12px) 100%, calc(100% - 12px) calc(100% - 12px), 100% calc(100% - 12px), 100% 12px, calc(100% - 12px) 12px, calc(100% - 12px) 0);
     transition:
       opacity 0.15s,
       inset 0.25s var(--ease);
