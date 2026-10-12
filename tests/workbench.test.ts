@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -80,6 +80,22 @@ describe("numbers strip", () => {
   it("leaves out a figure that is unavailable", () => {
     const shown = resolveStats("en", { npm: null, workbench: null });
     expect(shown.map((s) => s.id)).toEqual(["perfectui-size", "live-coding"]);
+  });
+});
+
+describe("the home page's skill figure", () => {
+  it("is one figure: the strip, the product card and llms.txt all read the same count, in EN and PT", () => {
+    const home = readFileSync(new URL("../src/views/Home.astro", import.meta.url), "utf8");
+    // The card takes its number from the strip's own entry; no second formatting of the count in the view.
+    expect(home).toContain("<span class=\"num\">{skillsStat.value}</span>");
+    expect(home).not.toMatch(/workbench\.skills/);
+    for (const lang of ["en", "pt"] as const) {
+      for (const read of [count, workbenchSnapshot]) {
+        const strip = resolveStats(lang, { npm, workbench: read }).find((s) => s.id === "workbench-skills");
+        expect(strip?.value).toBe(String(read.skills));
+        expect(llmsText(lang, { site: "https://chrissgon.dev", npm, workbench: read })).toContain(`${strip?.value} skills`);
+      }
+    }
   });
 });
 

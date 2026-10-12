@@ -18,7 +18,7 @@ import { readPickView } from "../data/pick.ts";
 import { lab, posts, products, profile, projects, readNpmCount, readWorkbenchCount, t, trajectory, type Lang } from "../data/index.ts";
 import { PROJECT_STATUSES, PROJECT_TYPES } from "../data/schema.ts";
 import { EMPTY, rowChips, stackValues } from "../lib/filters.ts";
-import { formatNumber, formatPeriod, splitFigure, splitProducts, statusLabel } from "../lib/format.ts";
+import { formatPeriod, splitFigure, splitProducts, statusLabel } from "../lib/format.ts";
 import { jsonLd } from "../lib/jsonld.ts";
 import { llmsParts } from "../lib/llms.ts";
 import { findClips } from "../lib/portrait/clips.ts";
@@ -35,7 +35,8 @@ const workbench = readWorkbenchCount();
 // The numbers strip in the design's order: size, downloads, hours, skills.
 const ORDER = ["perfectui-size", "npm-downloads", "live-coding", "workbench-skills"];
 const shownStats = resolveStats(lang, { npm, workbench }).sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
-const skillsLabel = shownStats.find((s) => s.id === "workbench-skills")?.label;
+// The numbers strip and the product card show this one figure: the card reads it from the strip's own entry.
+const skillsStat = shownStats.find((s) => s.id === "workbench-skills");
 // The "Pick the next post" round as the build reads it; the page refreshes it on its own (PickNext.astro).
 const pick = readPickView();
 const agent = llmsParts(lang, { site, npm, workbench, pick });
@@ -148,10 +149,10 @@ const TAB_OFF = "pui-outline pui-surface";
           <div class="product side">
             <h2 id="openhora" class="h2 with-mark"><img src="/brand/openhora-mark.svg" alt="" loading="lazy" />{openhoraProduct.name}</h2>
             <p class="sec-lead human">{openhoraProduct.summary[lang]}</p>
-            {workbench && skillsLabel && (
+            {skillsStat && (
               <div class="wb-stat human">
-                <span class="num">{formatNumber(workbench.skills, lang)}</span>
-                <span class="stat-label">{skillsLabel}</span>
+                <span class="num">{skillsStat.value}</span>
+                <span class="stat-label">{skillsStat.label}</span>
               </div>
             )}
             <div class="human"><a class="pui-btn pui-outline pui-surface" href={openhoraProduct.url}>{openhoraProduct.name}</a></div>
