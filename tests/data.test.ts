@@ -110,7 +110,7 @@ describe("data module", () => {
     expect(byId["doc-git-patterns"]).toEqual({ kind: "file", src: "projects/doc-git-patterns.png" });
     expect(byId["meuespresso"]).toEqual({ kind: "file", src: "projects/meuespresso.png" });
     expect(byId["rickandmorty"]).toEqual({ kind: "file", src: "projects/rickandmorty.png" });
-    expect(byId["openhora"]).toEqual({ kind: "generated" });
+    expect(byId["openhora"]).toEqual({ kind: "file", src: "projects/openhora.webp", alt: "openhora.dev, the website of openhora" });
     expect(byId["doc-github-workflow"]).toEqual({ kind: "generated" });
   });
 
@@ -119,12 +119,20 @@ describe("data module", () => {
     expect([...DRAWN_PROJECTS].sort()).toEqual([...generated].sort());
     const visual = readFileSync(new URL("../src/components/ProjectVisual.astro", import.meta.url), "utf8");
     // Each drawing but the fallback pipeline (doc-github-workflow) has its own branch.
-    for (const id of DRAWN_PROJECTS.filter((x) => x !== "doc-github-workflow" && x !== "openhora")) {
+    for (const id of DRAWN_PROJECTS.filter((x) => x !== "doc-github-workflow")) {
       expect(visual).toContain(`id === "${id}"`);
     }
     expect(visual).toContain('aria-hidden="true"');
     for (const [c] of visual.matchAll(/#[0-9A-Fa-f]{6}\b/g)) expect(["#FFFFFF", "#374151"]).toContain(c.toUpperCase());
     expect(visual).not.toMatch(/07B6F0|pui-theme|gradient|shadow|<image|<img|cover ·/i);
+  });
+
+  it("lets a file cover carry alt text, declared in the data, only where it shows something", () => {
+    const withAlt = projects.filter((p) => p.image.kind === "file" && p.image.alt).map((p) => p.id);
+    expect(withAlt).toEqual(["openhora"]);
+    const card = readFileSync(new URL("../src/components/ProjectCard.astro", import.meta.url), "utf8");
+    expect(card).toContain('alt={p.image.alt ?? ""}');
+    expect(card).toContain('loading="lazy"');
   });
 
   it("points every cover and project image at a file in src/assets (EDGE-5)", () => {

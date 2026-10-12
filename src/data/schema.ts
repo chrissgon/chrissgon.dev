@@ -62,7 +62,12 @@ export const PROJECT_STATUSES = ["ready", "in-progress"] as const;
  * "pending" image: a missing file fails the build (EDGE-5).
  */
 export const ProjectImage = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("file"), src: z.string().regex(/^projects\/[a-z0-9-]+\.(png|jpg|webp)$/) }),
+  z.strictObject({
+    kind: z.literal("file"),
+    src: z.string().regex(/^projects\/[a-z0-9-]+\.(png|jpg|webp)$/),
+    /** The alt text of an image that shows something (a screenshot of the project's own site); without it the image is decorative. */
+    alt: text.optional(),
+  }),
   z.strictObject({ kind: z.literal("generated") }),
 ]);
 

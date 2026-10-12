@@ -42,7 +42,8 @@ export default [
     status: "ready",
     stack: ["Python", "Shell"],
     summary: workbench!.summary,
-    image: { kind: "generated" },
+    // A screenshot of the project's own website (its home's first view, 1280 px wide, 2026-10-12).
+    image: { kind: "file", src: "projects/openhora.webp", alt: "openhora.dev, the website of openhora" },
     links: [
       { label: "openhora.dev", url: "https://openhora.dev" },
       { label: "GitHub", url: "https://github.com/chrissgon/openhora" },
