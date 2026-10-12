@@ -26,7 +26,7 @@ const today = new Date("2026-09-30T12:00:00Z");
 const count = { skills: 43, agents: 3, adapters: 2, tree: sha, date: "2026-09-30" };
 const npm = { downloads: 1014, start: "2026-08-30", end: "2026-09-28", package: "@chrissgon/perfectui" as const };
 
-describe("ai-workbench counts from the GitHub tree", () => {
+describe("openhora counts from the GitHub tree", () => {
   it("counts SKILL.md files one level under skills/, agent files and adapter folders", () => {
     expect(countTree(tree)).toEqual({ skills: 2, agents: 1, adapters: 2, prefixes: { biz: 1, eng: 1 }, agentNames: ["reviewer"] });
   });
@@ -74,7 +74,7 @@ describe("numbers strip", () => {
       label: "downloads no npm no último mês",
       period: { start: "2026-08-30", end: "2026-09-28" },
     });
-    expect(shown.find((s) => s.id === "workbench-skills")).toEqual({ id: "workbench-skills", value: "43", label: "skills no ai-workbench" });
+    expect(shown.find((s) => s.id === "workbench-skills")).toEqual({ id: "workbench-skills", value: "43", label: "skills no openhora" });
   });
 
   it("leaves out a figure that is unavailable", () => {
@@ -86,8 +86,8 @@ describe("numbers strip", () => {
 describe("llms.txt skill count", () => {
   it("states the count with the approved label when it is known", () => {
     const site = "https://chrissgon.dev";
-    expect(llmsText("en", { site, npm, workbench: count })).toContain("43 skills in ai-workbench.");
-    expect(llmsText("pt", { site, npm, workbench: count })).toContain("43 skills no ai-workbench.");
-    expect(llmsText("en", { site, npm, workbench: null })).not.toContain("skills in ai-workbench");
+    expect(llmsText("en", { site, npm, workbench: count })).toContain("43 skills in openhora.");
+    expect(llmsText("pt", { site, npm, workbench: count })).toContain("43 skills no openhora.");
+    expect(llmsText("en", { site, npm, workbench: null })).not.toContain("skills in openhora");
   });
 });

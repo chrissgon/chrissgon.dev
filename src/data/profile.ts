@@ -8,12 +8,12 @@ export default {
     en: [
       "Tech enthusiast & Senior Software Engineer",
       "Building tech that serves people",
-      "Creator of Perfect UI & ai-workbench",
+      "Creator of Perfect UI & openhora",
     ],
     pt: [
       "Entusiasta de tecnologia e Engenheiro de Software Sênior",
       "Construindo tecnologia que serve as pessoas",
-      "Criador da Perfect UI e do ai-workbench",
+      "Criador da Perfect UI e do openhora",
     ],
   },
   // Paragraphs 1 and 2: the approved "About", verbatim from site-content.md 3.3. Paragraph 3: the approved

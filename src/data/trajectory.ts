@@ -50,8 +50,8 @@ export default {
       to: null,
       role: null,
       focus: {
-        en: "Perfect UI 1.0 and ai-workbench.",
-        pt: "Perfect UI 1.0 e ai-workbench.",
+        en: "Perfect UI 1.0 and openhora.",
+        pt: "Perfect UI 1.0 e openhora.",
       },
     },
   ],

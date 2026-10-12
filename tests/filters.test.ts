@@ -22,10 +22,10 @@ describe("project filters", () => {
 
   it("combines groups and updates the other groups' counts", () => {
     const ai = toggle(EMPTY, "type", "ai-agents");
-    expect(shown(ai)).toEqual(["ai-workbench", "perfectui-for-agents", "agent-ready-kit", "social-agent", "light-site-auditor"]);
+    expect(shown(ai)).toEqual(["openhora", "perfectui-for-agents", "agent-ready-kit", "social-agent", "light-site-auditor"]);
     expect(chipCount(projects, ai, "stack", "Python")).toBe(1);
     expect(chipCount(projects, ai, "status", "in-progress")).toBe(1);
-    expect(shown(toggle(ai, "stack", "Python"))).toEqual(["ai-workbench"]);
+    expect(shown(toggle(ai, "stack", "Python"))).toEqual(["openhora"]);
   });
 
   it("reaches the empty state and clears with All", () => {

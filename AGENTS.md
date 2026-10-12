@@ -29,7 +29,7 @@ The design and its decision records are kept locally by the owner, outside this 
 | Develop | `npm run dev` | |
 | Type-check | `npm run typecheck` | `astro check` and `tsc --noEmit` |
 | Test | `npm test` | vitest, `tests/*.test.ts` |
-| Build | `npm run build` | npm and ai-workbench counts, sensitive check of `src/data/`, image check, `astro build`, sensitive check and `check-dist` of `dist/` |
+| Build | `npm run build` | npm and openhora counts, sensitive check of `src/data/`, image check, `astro build`, sensitive check and `check-dist` of `dist/` |
 | Lighthouse | `npm run lighthouse` | after a build; Lighthouse 13.5.0 mobile, 1 discarded warm-up then the median of 5 runs per page, performance >= 90, agentic browsing = 100 |
 | Secret scan | `npm run secrets` | add `-- --history` for every commit |
 | Portrait check | `npm run check:portrait` | after a build; Playwright Chromium; `-- --with-synthetic-clips` needs ffmpeg |
@@ -39,7 +39,7 @@ The design and its decision records are kept locally by the owner, outside this 
 | Share images | `npm run og:image` | after a build; redraws `public/og/og-en.png` and `og-pt.png` (1200 x 630) from `scripts/og-image/lockup.svg` and `profile.label`; commit them |
 | Portrait clips | `scripts/encode-portrait.sh --help` | ffmpeg; `--self-test` on synthetic clips |
 | npm snapshot | `npm run data:npm -- --update-snapshot` | refreshes `src/data/npm-snapshot.json` |
-| ai-workbench snapshot | `npm run data:workbench -- --update-snapshot` | refreshes `src/data/workbench-snapshot.json` |
+| openhora snapshot | `npm run data:workbench -- --update-snapshot` | refreshes `src/data/workbench-snapshot.json` |
 | Live site check | `npm run check:live` | `-- --url <origin>` for another address; GET `/`, `/pt/`, `/llms.txt` and the MCP `tools/list` |
 | Changelog preview | `npm run changelog` | the changes since the last tag, printed, nothing written |
 | Prepare a release | `npm run release:prepare` | bumps `package.json` from the commits since the last tag and writes the new section of `CHANGELOG.md`; no commit, no tag (`-- -r <version>` for a chosen version) |

@@ -40,7 +40,7 @@ export const Profile = z.strictObject({
 export type Profile = z.infer<typeof Profile>;
 
 export const Product = z.strictObject({
-  id: z.enum(["perfectui", "ai-workbench"]),
+  id: z.enum(["perfectui", "openhora"]),
   name: text,
   url: https,
   codeRepository: https.refine((u) => u.startsWith("https://github.com/chrissgon/"), {
@@ -140,7 +140,7 @@ export const Trajectory = z.strictObject({
 });
 export type Trajectory = z.infer<typeof Trajectory>;
 
-/** One checked eval result of an ai-workbench skill: the score of a model with and without the skill. */
+/** One checked eval result of an openhora skill: the score of a model with and without the skill. */
 export const EvalRun = z.strictObject({
   skill: z.string().regex(/^[a-z0-9-]+$/),
   iteration: z.int().positive(),
@@ -159,7 +159,7 @@ export const LabItem = z.strictObject({
   description: Localized,
   /** Link to the code in this repository; absent until the experiment is built here. */
   source: https.optional(),
-  /** workbench-evals only: the checked runs it shows. */
+  /** openhora-evals only: the checked runs it shows. */
   runs: z.array(EvalRun).optional(),
 });
 export type LabItem = z.infer<typeof LabItem>;
@@ -172,7 +172,7 @@ export const NpmCount = z.strictObject({
 });
 export type NpmCount = z.infer<typeof NpmCount>;
 
-/** Counts read from the chrissgon/ai-workbench tree on GitHub at build (scripts/fetch-workbench.ts). */
+/** Counts read from the chrissgon/openhora tree on GitHub at build (scripts/fetch-workbench.ts). */
 export const WorkbenchCount = z.strictObject({
   skills: z.int().positive(),
   agents: z.int().nonnegative(),
@@ -190,7 +190,7 @@ export type WorkbenchCount = z.infer<typeof WorkbenchCount>;
 
 export const Stat = z.strictObject({
   id: z.enum(["npm-downloads", "perfectui-size", "live-coding", "workbench-skills"]),
-  /** The figure as shown, per language when it differs; null means "read at build" (the npm count, the ai-workbench skill count). */
+  /** The figure as shown, per language when it differs; null means "read at build" (the npm count, the openhora skill count). */
   value: z.union([text, Localized]).nullable(),
   label: Localized,
   source: text,

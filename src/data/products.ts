@@ -14,10 +14,10 @@ export default [
     },
   },
   {
-    id: "ai-workbench",
-    name: "ai-workbench",
-    url: "https://github.com/chrissgon/ai-workbench",
-    codeRepository: "https://github.com/chrissgon/ai-workbench",
+    id: "openhora",
+    name: "openhora",
+    url: "https://openhora.dev",
+    codeRepository: "https://github.com/chrissgon/openhora",
     license: "MIT",
     programmingLanguage: ["Python", "Shell"],
     summary: {

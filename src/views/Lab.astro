@@ -41,7 +41,7 @@ const TAGS: Record<string, string> = {
   "view-as-agent": ".pui-switch",
   "mcp-live": "pre[role=status]",
   "perfectui-live": ".pui-group-row",
-  "workbench-evals": ".pui-table",
+  "openhora-evals": ".pui-table",
 };
 // The code beside each opened experiment: the markup or call that makes it, as this site ships it.
 const CODE: Record<string, string> = {
@@ -54,7 +54,7 @@ const CODE: Record<string, string> = {
   ].join("\n"),
   "mcp-live": `POST ${site}${MCP_PATH}\n${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" })}`,
   "perfectui-live": `npm i ${npmPackage}\n\nimport "${npmPackage}/perfectui.css";`,
-  "workbench-evals": [
+  "openhora-evals": [
     `<table class="pui-table">`,
     `  <thead>`,
     `    <tr><th>${t(lang, "evalSkill")}</th><th>${t(lang, "evalModel")}</th><th>${t(lang, "evalRun")}</th>`,
@@ -134,7 +134,7 @@ const CODE: Record<string, string> = {
         )}
         {x.id === "mcp-live" && <div class="human"><McpDemo lang={lang} variant="lab" /></div>}
         {x.id === "perfectui-live" && <div class="human"><Showcase lang={lang} labelledby={`${x.id}-title`} prefix="lab" stacked playground /></div>}
-        {x.id === "workbench-evals" && <div class="human"><EvalRuns lang={lang} /></div>}
+        {x.id === "openhora-evals" && <div class="human"><EvalRuns lang={lang} /></div>}
       </div>
       <div class="xp-code human">
         <span class="tag" aria-hidden="true">code</span>

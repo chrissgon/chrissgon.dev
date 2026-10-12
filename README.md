@@ -22,7 +22,7 @@ Node 22.12 or newer (`.nvmrc`), npm.
 | Layout check (after a build) | `npm run check:layout`: no horizontal scroll on any page at 15 widths from 320 to 1920 px, and every grid of bordered cells closed |
 | Share images (after a build) | `npm run og:image`: redraws `public/og/og-en.png` and `og-pt.png`; commit them |
 
-`npm run build` runs, in order: `scripts/fetch-npm.ts` (npm downloads) and `scripts/fetch-workbench.ts` (the ai-workbench skill, agent and adapter counts, from one unauthenticated GET of its git tree on the GitHub API), each with a committed snapshot as fallback and a warning when the API is unreachable; the sensitive-topics check of `src/data/`; `scripts/check-images.ts`; `astro build`; then the sensitive-topics check and `scripts/check-dist.ts` over `dist/`.
+`npm run build` runs, in order: `scripts/fetch-npm.ts` (npm downloads) and `scripts/fetch-workbench.ts` (the openhora skill, agent and adapter counts, from one unauthenticated GET of its git tree on the GitHub API), each with a committed snapshot as fallback and a warning when the API is unreachable; the sensitive-topics check of `src/data/`; `scripts/check-images.ts`; `astro build`; then the sensitive-topics check and `scripts/check-dist.ts` over `dist/`.
 
 ## Checks of the build
 
@@ -45,7 +45,7 @@ Everything the site says lives in `src/data/` and is validated with zod on impor
 | File | Holds |
 |------|-------|
 | `profile.ts` | name, label, about, profiles |
-| `products.ts` | Perfect UI and ai-workbench |
+| `products.ts` | Perfect UI and openhora |
 | `projects.ts` | projects with type, status and stack |
 | `posts.json` | posts, newest first, with a cover in `src/assets/posts/` |
 | `trajectory.ts` | timeline by years and roles, proofs |
@@ -56,7 +56,7 @@ Everything the site says lives in `src/data/` and is validated with zod on impor
 
 To add a post: add its cover to `src/assets/posts/` (without EXIF, GPS or other metadata; a test checks), add an entry at the top of `src/data/posts.json` with its LinkedIn `url`, open a pull request.
 
-The npm count and the ai-workbench counts are read at build; their fallbacks are `src/data/npm-snapshot.json` and `src/data/workbench-snapshot.json` (`npm run data:npm -- --update-snapshot`, `npm run data:workbench -- --update-snapshot`). A snapshot older than 35 days is not shown. The "Pick the next post" round is read at build from the owner's GitHub profile, with `src/data/pick-snapshot.json` as its fallback (`npm run data:pick -- --update-snapshot`), and refreshed in the page once the section comes near.
+The npm count and the openhora counts are read at build; their fallbacks are `src/data/npm-snapshot.json` and `src/data/workbench-snapshot.json` (`npm run data:npm -- --update-snapshot`, `npm run data:workbench -- --update-snapshot`). A snapshot older than 35 days is not shown. The "Pick the next post" round is read at build from the owner's GitHub profile, with `src/data/pick-snapshot.json` as its fallback (`npm run data:pick -- --update-snapshot`), and refreshed in the page once the section comes near.
 
 ## MCP server
 

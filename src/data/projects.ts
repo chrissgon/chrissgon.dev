@@ -36,14 +36,17 @@ export default [
     links: [{ label: "perfectui.dev", url: "https://perfectui.dev" }],
   },
   {
-    id: "ai-workbench",
-    name: "ai-workbench",
+    id: "openhora",
+    name: "openhora",
     types: ["ai-agents"],
     status: "ready",
     stack: ["Python", "Shell"],
     summary: workbench!.summary,
     image: { kind: "generated" },
-    links: [{ label: "GitHub", url: "https://github.com/chrissgon/ai-workbench" }],
+    links: [
+      { label: "openhora.dev", url: "https://openhora.dev" },
+      { label: "GitHub", url: "https://github.com/chrissgon/openhora" },
+    ],
   },
   {
     id: "goddd",

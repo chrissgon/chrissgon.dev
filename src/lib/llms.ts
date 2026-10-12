@@ -11,7 +11,7 @@ export interface LlmsOptions {
   /** Absolute site URL without a trailing slash, e.g. https://chrissgon.dev */
   site: string;
   npm: NpmCount | null;
-  /** The ai-workbench counts read at build; absent or null leaves the skill count out. */
+  /** The openhora counts read at build; absent or null leaves the skill count out. */
   workbench?: WorkbenchCount | null;
   /** The "Pick the next post" round; absent reads the build's (src/data/pick.ts), null leaves the part empty. */
   pick?: PickView | null;
@@ -59,7 +59,7 @@ export function llmsParts(lang: Lang, { site, npm, workbench, pick }: LlmsOption
       bits.push(`npm: ${p.npm}${count}.`);
     }
     const skills = stats.find((s) => s.id === "workbench-skills");
-    if (p.id === "ai-workbench" && workbench && skills) {
+    if (p.id === "openhora" && workbench && skills) {
       bits.push(`${formatNumber(workbench.skills, lang)} ${skills.label[lang]}.`);
     }
     bits.push(`${w.license}: ${p.license}.`);

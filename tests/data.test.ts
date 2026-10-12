@@ -15,7 +15,7 @@ const post = rawPosts[0]!;
 describe("data module", () => {
   it("validates every entity on import", () => {
     expect(profile.name).toBe("Christopher Gonçalves");
-    expect(products.map((p) => p.id)).toEqual(["perfectui", "ai-workbench"]);
+    expect(products.map((p) => p.id)).toEqual(["perfectui", "openhora"]);
     expect(projects.filter((p) => p.status === "ready")).toHaveLength(11);
     expect(projects.filter((p) => p.status === "in-progress")).toHaveLength(1);
     expect(posts).toHaveLength(8);
@@ -26,10 +26,10 @@ describe("data module", () => {
 
   it("keeps the approved label verbatim when its parts are joined", () => {
     expect(profile.label.en.join(" · ")).toBe(
-      "Tech enthusiast & Senior Software Engineer · Building tech that serves people · Creator of Perfect UI & ai-workbench",
+      "Tech enthusiast & Senior Software Engineer · Building tech that serves people · Creator of Perfect UI & openhora",
     );
     expect(profile.label.pt.join(" · ")).toBe(
-      "Entusiasta de tecnologia e Engenheiro de Software Sênior · Construindo tecnologia que serve as pessoas · Criador da Perfect UI e do ai-workbench",
+      "Entusiasta de tecnologia e Engenheiro de Software Sênior · Construindo tecnologia que serve as pessoas · Criador da Perfect UI e do openhora",
     );
   });
 
@@ -110,7 +110,7 @@ describe("data module", () => {
     expect(byId["doc-git-patterns"]).toEqual({ kind: "file", src: "projects/doc-git-patterns.png" });
     expect(byId["meuespresso"]).toEqual({ kind: "file", src: "projects/meuespresso.png" });
     expect(byId["rickandmorty"]).toEqual({ kind: "file", src: "projects/rickandmorty.png" });
-    expect(byId["ai-workbench"]).toEqual({ kind: "generated" });
+    expect(byId["openhora"]).toEqual({ kind: "generated" });
     expect(byId["doc-github-workflow"]).toEqual({ kind: "generated" });
   });
 
@@ -119,7 +119,7 @@ describe("data module", () => {
     expect([...DRAWN_PROJECTS].sort()).toEqual([...generated].sort());
     const visual = readFileSync(new URL("../src/components/ProjectVisual.astro", import.meta.url), "utf8");
     // Each drawing but the fallback pipeline (doc-github-workflow) has its own branch.
-    for (const id of DRAWN_PROJECTS.filter((x) => x !== "doc-github-workflow" && x !== "ai-workbench")) {
+    for (const id of DRAWN_PROJECTS.filter((x) => x !== "doc-github-workflow" && x !== "openhora")) {
       expect(visual).toContain(`id === "${id}"`);
     }
     expect(visual).toContain('aria-hidden="true"');

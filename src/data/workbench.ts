@@ -1,4 +1,4 @@
-// The ai-workbench counts (skills, agents, adapters), read from GitHub at build like the npm count
+// The openhora counts (skills, agents, adapters), read from GitHub at build like the npm count
 // (ADR-0003): the file written by scripts/fetch-workbench.ts, else the committed snapshot; null when the
 // value is older than MAX_AGE_DAYS, so no surface shows a stale count.
 import { existsSync, readFileSync } from "node:fs";
@@ -22,7 +22,7 @@ export interface TreeEntry {
 }
 
 /**
- * Counts of a recursive tree of chrissgon/ai-workbench: a skill is a `skills/<name>/SKILL.md` file, an
+ * Counts of a recursive tree of chrissgon/openhora: a skill is a `skills/<name>/SKILL.md` file, an
  * agent an `agents/<name>.md` file other than a README, an adapter a folder directly under `adapters/`.
  */
 export function countTree(entries: TreeEntry[]): {
