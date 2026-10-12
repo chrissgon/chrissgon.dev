@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -26,7 +26,7 @@ const today = new Date("2026-09-30T12:00:00Z");
 const count = { skills: 43, agents: 3, adapters: 2, tree: sha, date: "2026-09-30" };
 const npm = { downloads: 1014, start: "2026-08-30", end: "2026-09-28", package: "@chrissgon/perfectui" as const };
 
-describe("ai-workbench counts from the GitHub tree", () => {
+describe("openhora counts from the GitHub tree", () => {
   it("counts SKILL.md files one level under skills/, agent files and adapter folders", () => {
     expect(countTree(tree)).toEqual({ skills: 2, agents: 1, adapters: 2, prefixes: { biz: 1, eng: 1 }, agentNames: ["reviewer"] });
   });
@@ -74,7 +74,7 @@ describe("numbers strip", () => {
       label: "downloads no npm no último mês",
       period: { start: "2026-08-30", end: "2026-09-28" },
     });
-    expect(shown.find((s) => s.id === "workbench-skills")).toEqual({ id: "workbench-skills", value: "43", label: "skills no ai-workbench" });
+    expect(shown.find((s) => s.id === "workbench-skills")).toEqual({ id: "workbench-skills", value: "43", label: "skills no openhora" });
   });
 
   it("leaves out a figure that is unavailable", () => {
@@ -83,11 +83,27 @@ describe("numbers strip", () => {
   });
 });
 
+describe("the home page's skill figure", () => {
+  it("is one figure: the strip, the product card and llms.txt all read the same count, in EN and PT", () => {
+    const home = readFileSync(new URL("../src/views/Home.astro", import.meta.url), "utf8");
+    // The card takes its number from the strip's own entry; no second formatting of the count in the view.
+    expect(home).toContain("<span class=\"num\">{skillsStat.value}</span>");
+    expect(home).not.toMatch(/workbench\.skills/);
+    for (const lang of ["en", "pt"] as const) {
+      for (const read of [count, workbenchSnapshot]) {
+        const strip = resolveStats(lang, { npm, workbench: read }).find((s) => s.id === "workbench-skills");
+        expect(strip?.value).toBe(String(read.skills));
+        expect(llmsText(lang, { site: "https://chrissgon.dev", npm, workbench: read })).toContain(`${strip?.value} skills`);
+      }
+    }
+  });
+});
+
 describe("llms.txt skill count", () => {
   it("states the count with the approved label when it is known", () => {
     const site = "https://chrissgon.dev";
-    expect(llmsText("en", { site, npm, workbench: count })).toContain("43 skills in ai-workbench.");
-    expect(llmsText("pt", { site, npm, workbench: count })).toContain("43 skills no ai-workbench.");
-    expect(llmsText("en", { site, npm, workbench: null })).not.toContain("skills in ai-workbench");
+    expect(llmsText("en", { site, npm, workbench: count })).toContain("43 skills in openhora.");
+    expect(llmsText("pt", { site, npm, workbench: count })).toContain("43 skills no openhora.");
+    expect(llmsText("en", { site, npm, workbench: null })).not.toContain("skills in openhora");
   });
 });

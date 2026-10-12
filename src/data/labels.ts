@@ -44,7 +44,7 @@ export const approved = {
   now: { en: "now", pt: "hoje" },
   noPosts: { en: "No posts yet.", pt: "Nenhum post ainda." },
   sourcePending: { en: "source coming soon", pt: "código em breve" },
-  // Words of the ai-workbench generated card: PT from site-content.md 3.4 ("43 skills ..., 3 agentes, 2
+  // Words of the openhora generated card: PT from site-content.md 3.4 ("43 skills ..., 3 agentes, 2
   // adaptadores").
   cardSkills: { en: "skills", pt: "skills" },
   cardAgents: { en: "agents", pt: "agentes" },

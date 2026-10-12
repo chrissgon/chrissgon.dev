@@ -1,5 +1,5 @@
 ---
-// workbench-evals: ai-workbench skills scored with and without the skill, on a floor and a strong model, in a
+// openhora-evals: openhora skills scored with and without the skill, on a floor and a strong model, in a
 // Perfect UI table. Only runs checked in site-content.md are shown (src/data/lab.ts); a skill without a
 // published run is not listed.
 import { lab, t, type Lang } from "../data/index.ts";
@@ -9,7 +9,7 @@ interface Props {
   lang: Lang;
 }
 const { lang } = Astro.props;
-const runs = lab.find((x) => x.id === "workbench-evals")?.runs ?? [];
+const runs = lab.find((x) => x.id === "openhora-evals")?.runs ?? [];
 // Scores as the source writes them: 1.0, 0.75, 0.812 (one to three decimals).
 const score = (v: number) => v.toLocaleString(LOCALE[lang], { minimumFractionDigits: 1, maximumFractionDigits: 3 });
 const cols = [t(lang, "evalSkill"), t(lang, "evalModel"), t(lang, "evalRun"), t(lang, "evalWith"), t(lang, "evalWithout")];

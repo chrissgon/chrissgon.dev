@@ -42,11 +42,11 @@ export default [
     source: code("src/components/Showcase.astro"),
   },
   {
-    id: "workbench-evals",
+    id: "openhora-evals",
     date: "2026-09-30",
     description: {
-      en: "ai-workbench skills scored with and without the skill, on a strong and a cheap model.",
-      pt: "Skills do ai-workbench avaliadas com e sem a skill, num modelo forte e num barato.",
+      en: "openhora skills scored with and without the skill, on a strong and a cheap model.",
+      pt: "Skills do openhora avaliadas com e sem a skill, num modelo forte e num barato.",
     },
     source: code("src/components/EvalRuns.astro"),
     runs: [

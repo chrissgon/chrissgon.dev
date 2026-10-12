@@ -1,4 +1,4 @@
-// Count the skills, agents and adapters of chrissgon/ai-workbench from its git tree on GitHub and write
+// Count the skills, agents and adapters of chrissgon/openhora from its git tree on GitHub and write
 // src/data/generated/workbench.json (the same approach as the npm count, ADR-0003).
 //
 // Usage: tsx scripts/fetch-workbench.ts [--offline] [--update-snapshot]
@@ -19,7 +19,7 @@ import {
   type TreeEntry,
 } from "../src/data/workbench.ts";
 
-export const API = "https://api.github.com/repos/chrissgon/ai-workbench/git/trees/main?recursive=1";
+export const API = "https://api.github.com/repos/chrissgon/openhora/git/trees/main?recursive=1";
 const TIMEOUT_MS = 5000;
 
 /** The counts from an API answer, or the reason it cannot be used. */

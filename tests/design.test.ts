@@ -186,13 +186,13 @@ describe("Claude Design home", () => {
       { text: "Creator of " },
       { product: "Perfect UI" },
       { text: " & " },
-      { product: "ai-workbench" },
+      { product: "openhora" },
     ]);
     expect(splitProducts(profile.label.pt[2], names)).toEqual([
       { text: "Criador da " },
       { product: "Perfect UI" },
       { text: " e do " },
-      { product: "ai-workbench" },
+      { product: "openhora" },
     ]);
   });
 

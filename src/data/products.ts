@@ -1,4 +1,5 @@
-// Source: site-content.md 3.1 and 3.4 (summaries verbatim); licenses read from the GitHub API on 2026-09-30.
+// Source: site-content.md 3.1 and 3.4 (summaries verbatim; the openhora summary is the owner's copy approved on 2026-10-12);
+// licenses read from the GitHub API on 2026-09-30.
 export default [
   {
     id: "perfectui",
@@ -14,15 +15,15 @@ export default [
     },
   },
   {
-    id: "ai-workbench",
-    name: "ai-workbench",
-    url: "https://github.com/chrissgon/ai-workbench",
-    codeRepository: "https://github.com/chrissgon/ai-workbench",
+    id: "openhora",
+    name: "openhora",
+    url: "https://openhora.dev",
+    codeRepository: "https://github.com/chrissgon/openhora",
     license: "MIT",
     programmingLanguage: ["Python", "Shell"],
     summary: {
-      en: "skills, agents and workflows that let an AI build software end to end, tested on strong and cheap models.",
-      pt: "skills, agentes e workflows para uma IA construir software de ponta a ponta, testados em modelos fortes e baratos.",
+      en: "the end-to-end, security-focused AI workbench you can leave working unattended, because proof decides what runs.",
+      pt: "a plataforma de IA de ponta a ponta, com foco em segurança, que você pode deixar trabalhando sozinha, porque a prova decide o que roda.",
     },
   },
 ];

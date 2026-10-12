@@ -23,7 +23,7 @@ export default [
   {
     id: "workbench-skills",
     value: null,
-    label: { en: "skills in ai-workbench", pt: "skills no ai-workbench" },
-    source: "api.github.com, tree of chrissgon/ai-workbench, read at build (scripts/fetch-workbench.ts)",
+    label: { en: "skills in openhora", pt: "skills no openhora" },
+    source: "api.github.com, tree of chrissgon/openhora, read at build (scripts/fetch-workbench.ts)",
   },
 ];

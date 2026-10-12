@@ -1,7 +1,7 @@
 ---
 // The generated visual of a lab card, made of the brand's dots (site-lab.md): dot-portrait, the portrait's
 // still dot frame; view-as-agent, half dots and half text lines; mcp-live, rows of dots like a response arriving;
-// perfectui-live, a button and a switch outlined in dots; workbench-evals, dot bars of the checked scores with and
+// perfectui-live, a button and a switch outlined in dots; openhora-evals, dot bars of the checked scores with and
 // without the skill. Decorative (hidden from assistive technology).
 import { lab } from "../data/index.ts";
 import { fallbackName, publicDir } from "../lib/portrait/config.ts";
@@ -11,7 +11,7 @@ interface Props {
   height?: number;
 }
 const { id, height = 140 } = Astro.props;
-const runs = lab.find((x) => x.id === "workbench-evals")?.runs ?? [];
+const runs = lab.find((x) => x.id === "openhora-evals")?.runs ?? [];
 const bar = (score: number) => `${Math.max(7, Math.round((score * (height - 36)) / 7) * 7)}px`;
 ---
 
@@ -37,7 +37,7 @@ const bar = (score: number) => `${Math.max(7, Math.round((score * (height - 36))
       <div class="lv-switch"><div class="dw"></div></div>
     </div>
   )}
-  {id === "workbench-evals" && (
+  {id === "openhora-evals" && (
     <div class="lv-bars">
       {runs.map((r, i) => (
         <>

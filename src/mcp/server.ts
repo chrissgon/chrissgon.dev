@@ -137,7 +137,7 @@ export function buildServer(): McpServer {
     {
       title: "List products",
       description:
-        "Christopher Gonçalves's products (Perfect UI, ai-workbench): URL, repository, npm package, license, languages, summary and last month's npm downloads with their period. Read-only.",
+        "Christopher Gonçalves's products (Perfect UI, openhora): URL, repository, npm package, license, languages, summary and last month's npm downloads with their period. Read-only.",
       inputSchema: z.strictObject({ lang }),
       outputSchema: ProductsOut,
       annotations: READ_ONLY,

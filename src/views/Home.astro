@@ -18,7 +18,7 @@ import { readPickView } from "../data/pick.ts";
 import { lab, posts, products, profile, projects, readNpmCount, readWorkbenchCount, t, trajectory, type Lang } from "../data/index.ts";
 import { PROJECT_STATUSES, PROJECT_TYPES } from "../data/schema.ts";
 import { EMPTY, rowChips, stackValues } from "../lib/filters.ts";
-import { formatNumber, formatPeriod, splitFigure, splitProducts, statusLabel } from "../lib/format.ts";
+import { formatPeriod, splitFigure, splitProducts, statusLabel } from "../lib/format.ts";
 import { jsonLd } from "../lib/jsonld.ts";
 import { llmsParts } from "../lib/llms.ts";
 import { findClips } from "../lib/portrait/clips.ts";
@@ -35,12 +35,13 @@ const workbench = readWorkbenchCount();
 // The numbers strip in the design's order: size, downloads, hours, skills.
 const ORDER = ["perfectui-size", "npm-downloads", "live-coding", "workbench-skills"];
 const shownStats = resolveStats(lang, { npm, workbench }).sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
-const skillsLabel = shownStats.find((s) => s.id === "workbench-skills")?.label;
+// The numbers strip and the product card show this one figure: the card reads it from the strip's own entry.
+const skillsStat = shownStats.find((s) => s.id === "workbench-skills");
 // The "Pick the next post" round as the build reads it; the page refreshes it on its own (PickNext.astro).
 const pick = readPickView();
 const agent = llmsParts(lang, { site, npm, workbench, pick });
 const productLine = (name: string) => agent.products.split("\n").find((l) => l.startsWith(`- [${name}]`)) ?? "";
-const [perfectui, aiWorkbench] = products;
+const [perfectui, openhoraProduct] = products;
 const latest = posts.slice(0, 4);
 // The posts row: four columns from 1024 px, else a row that scrolls sideways with cards min(260px, 68vw) wide.
 const POST_SIZES = "(min-width: 1024px) 288px, (min-width: 383px) 260px, 68vw";
@@ -132,7 +133,7 @@ const TAB_OFF = "pui-outline pui-surface";
     <AgentText text={agent.numbers} />
   </Cell>
 
-  {perfectui && aiWorkbench && (
+  {perfectui && openhoraProduct && (
     <Cell class="products" tag=".pui-card · .pui-card-header · .pui-chip" aria-label={t(lang, "products")} reveal>
       <div class="cells products-grid">
         <div class="product-col">
@@ -146,16 +147,16 @@ const TAB_OFF = "pui-outline pui-surface";
         </div>
         <div class="product-col">
           <div class="product side">
-            <h2 id="ai-workbench" class="h2">{aiWorkbench.name}</h2>
-            <p class="sec-lead human">{aiWorkbench.summary[lang]}</p>
-            {workbench && skillsLabel && (
+            <h2 id="openhora" class="h2 with-mark"><img src="/brand/openhora-mark.svg" alt="" loading="lazy" />{openhoraProduct.name}</h2>
+            <p class="sec-lead human">{openhoraProduct.summary[lang]}</p>
+            {skillsStat && (
               <div class="wb-stat human">
-                <span class="num">{formatNumber(workbench.skills, lang)}</span>
-                <span class="stat-label">{skillsLabel}</span>
+                <span class="num">{skillsStat.value}</span>
+                <span class="stat-label">{skillsStat.label}</span>
               </div>
             )}
-            <div class="human"><a class="pui-btn pui-outline pui-surface" href={aiWorkbench.url}>{aiWorkbench.name}</a></div>
-            <AgentText text={productLine(aiWorkbench.name)} />
+            <div class="human"><a class="pui-btn pui-outline pui-surface" href={openhoraProduct.url}>{openhoraProduct.name}</a></div>
+            <AgentText text={productLine(openhoraProduct.name)} />
           </div>
         </div>
       </div>
@@ -290,7 +291,7 @@ const TAB_OFF = "pui-outline pui-surface";
     line-height: 1.75;
     color: var(--pui-text-muted);
   }
-  /* "Creator of Perfect UI & ai-workbench" moves to the next line as one piece rather than leaving its buttons
+  /* "Creator of Perfect UI & openhora" moves to the next line as one piece rather than leaving its buttons
      behind; narrower than the piece, it still wraps inside. */
   .hero-products {
     display: inline-block;
@@ -449,6 +450,16 @@ const TAB_OFF = "pui-outline pui-surface";
     gap: 20px;
     min-width: 0;
     padding: 4px var(--gutter) 56px;
+  }
+  /* The product's owl mark, a file from the product's brand used as it is, beside its name. */
+  .with-mark {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .with-mark img {
+    width: 44px;
+    height: 44px;
   }
   .product.side {
     position: relative;

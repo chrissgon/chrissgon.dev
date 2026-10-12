@@ -25,6 +25,8 @@ const fit: Record<string, string> = {
   // The two app screenshots keep their header and title in view.
   meuespresso: "object-position: top",
   rickandmorty: "object-position: top",
+  // The screenshot of openhora.dev is cut to the cover's own ratio: it shows whole.
+  openhora: "object-position: center",
 };
 const meta = p.types.map((x) => typeLabel(x, lang)).join(" · ") + (p.stack.length ? ` · ${p.stack.join(", ")}` : "");
 ---
@@ -33,7 +35,7 @@ const meta = p.types.map((x) => typeLabel(x, lang)).join(" · ") + (p.stack.leng
   {p.image.kind === "file" ? (
     <Image
       src={image(p.image.src)}
-      alt=""
+      alt={p.image.alt ?? ""}
       widths={[400, 800]}
       sizes="(max-width: 767px) 100vw, 380px"
       class="card-media"

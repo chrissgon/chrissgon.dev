@@ -22,11 +22,11 @@ Node 22.12 or newer (`.nvmrc`), npm.
 | Layout check (after a build) | `npm run check:layout`: no horizontal scroll on any page at 15 widths from 320 to 1920 px, and every grid of bordered cells closed |
 | Share images (after a build) | `npm run og:image`: redraws `public/og/og-en.png` and `og-pt.png`; commit them |
 
-`npm run build` runs, in order: `scripts/fetch-npm.ts` (npm downloads) and `scripts/fetch-workbench.ts` (the ai-workbench skill, agent and adapter counts, from one unauthenticated GET of its git tree on the GitHub API), each with a committed snapshot as fallback and a warning when the API is unreachable; the sensitive-topics check of `src/data/`; `scripts/check-images.ts`; `astro build`; then the sensitive-topics check and `scripts/check-dist.ts` over `dist/`.
+`npm run build` runs, in order: `scripts/fetch-npm.ts` (npm downloads) and `scripts/fetch-workbench.ts` (the openhora skill, agent and adapter counts, from one unauthenticated GET of its git tree on the GitHub API), each with a committed snapshot as fallback and a warning when the API is unreachable; the sensitive-topics check of `src/data/`; `scripts/check-images.ts`; `astro build`; then the sensitive-topics check and `scripts/check-dist.ts` over `dist/`.
 
 ## Checks of the build
 
-- **Images** (`scripts/check-images.ts`): every post cover and project image file exists and is not empty; a missing one fails the build naming the post or project. A project without its own image uses a cover drawn at build from its data in the brand's dots (`src/components/ProjectVisual.astro`, one drawing per project listed in `src/lib/project-visuals.ts`; a test fails when a generated project has none).
+- **Images** (`scripts/check-images.ts`): every post cover and project image file exists and is not empty; a missing one fails the build naming the post or project. A project without its own image uses a cover drawn at build from its data in the brand's dots (`src/components/ProjectVisual.astro`, one drawing per project listed in `src/lib/project-visuals.ts`; a test fails when a generated project has none). A file image may carry an `alt` in the project's data when it shows something, such as the screenshot of the project's own site (`projects/openhora.webp`); without `alt` it is decorative.
 - **dist** (`scripts/check-dist.ts`): every page loads the Perfect UI stylesheet and the home page uses `pui-btn`; no Tailwind file, word in code (stylesheets, scripts, a page's `<style>` and `<script>`; a project's text may name Tailwind as its stack), `--tw-` variable or utility class; at most one `<canvas>` per page; the first render of `/` and `/pt/` weighs at most 150 KB (HTML, stylesheets, scripts and their imports, preloads, eager images and every font the CSS declares; gzip for text; the lazy portrait video excluded); both `llms.txt` have an H1, a link and 50 characters; the home pages carry the JSON-LD Person; every page links `favicon.ico`, `favicon.svg`, `apple-touch-icon.png` and `site.webmanifest`, and carries `og:image` and `twitter:image`, each pointing to a file in `dist/` (the share image an absolute URL on the site's origin, a PNG of the declared `og:image:width` and `og:image:height`, with an alt); the manifest has a name, a short name, a start URL and icons that exist; no SVG file or inline SVG carries a `<metadata>` element; `netlify.toml` serves `/site.webmanifest` as `application/manifest+json` (Netlify's default for it is `application/octet-stream`). Icons and share images are not first-render bytes; the header's inline symbol is. The weight report goes to stderr.
 - **Lighthouse** (`scripts/lighthouse.ts`, CI job `lighthouse`): Lighthouse 13.5.0 on `dist/` served locally, mobile profile, one discarded warm-up run per page then the median of 5 runs: performance at least 90 and agentic browsing 100 on `/` and `/pt/`. Reports land in `lighthouse-report/` (git-ignored) and in the job summary.
 
@@ -45,7 +45,7 @@ Everything the site says lives in `src/data/` and is validated with zod on impor
 | File | Holds |
 |------|-------|
 | `profile.ts` | name, label, about, profiles |
-| `products.ts` | Perfect UI and ai-workbench |
+| `products.ts` | Perfect UI and openhora |
 | `projects.ts` | projects with type, status and stack |
 | `posts.json` | posts, newest first, with a cover in `src/assets/posts/` |
 | `trajectory.ts` | timeline by years and roles, proofs |
@@ -56,7 +56,7 @@ Everything the site says lives in `src/data/` and is validated with zod on impor
 
 To add a post: add its cover to `src/assets/posts/` (without EXIF, GPS or other metadata; a test checks), add an entry at the top of `src/data/posts.json` with its LinkedIn `url`, open a pull request.
 
-The npm count and the ai-workbench counts are read at build; their fallbacks are `src/data/npm-snapshot.json` and `src/data/workbench-snapshot.json` (`npm run data:npm -- --update-snapshot`, `npm run data:workbench -- --update-snapshot`). A snapshot older than 35 days is not shown. The "Pick the next post" round is read at build from the owner's GitHub profile, with `src/data/pick-snapshot.json` as its fallback (`npm run data:pick -- --update-snapshot`), and refreshed in the page once the section comes near.
+The npm count and the openhora counts are read at build; their fallbacks are `src/data/npm-snapshot.json` and `src/data/workbench-snapshot.json` (`npm run data:npm -- --update-snapshot`, `npm run data:workbench -- --update-snapshot`). A snapshot older than 35 days is not shown. The "Pick the next post" round is read at build from the owner's GitHub profile, with `src/data/pick-snapshot.json` as its fallback (`npm run data:pick -- --update-snapshot`), and refreshed in the page once the section comes near.
 
 ## MCP server
 

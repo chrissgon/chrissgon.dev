@@ -58,7 +58,7 @@ export type LabelPiece = { text: string } | { product: string };
 
 /**
  * Split a label around the product names it contains, in order of appearance ("Creator of Perfect UI &
- * ai-workbench" -> text, Perfect UI, text, ai-workbench), so the hero can show each name as its button inline.
+ * openhora" -> text, Perfect UI, text, openhora), so the hero can show each name as its button inline.
  */
 export function splitProducts(label: string, names: readonly string[]): LabelPiece[] {
   const pieces: LabelPiece[] = [];
