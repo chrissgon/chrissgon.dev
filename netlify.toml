@@ -6,10 +6,14 @@
   publish = "dist"
   # Skip the build when the change touches nothing the site is built from (documents, tests, CI, hooks,
   # the changelog). Exit 0 stops the build and exit 1 lets it run; anything unexpected (no previous
-  # build to compare with, a git error) builds. "An exit code of 1 indicates the contents have changed
+  # build to compare with, a git error) builds. A build started by a build hook always builds: the
+  # profile repository calls one when its "Pick the next post" round or its posts change, on the same
+  # commit of this repository, and Netlify sets INCOMING_HOOK_TITLE only for such a build
+  # (https://docs.netlify.com/build/configure-builds/environment-variables/, accessed 2026-10-13).
+  # "An exit code of 1 indicates the contents have changed
   # and the build process continues as usual. An exit code of 0 indicates that there are no changes and
   # the build should stop." https://docs.netlify.com/build/configure-builds/ignore-builds/ (accessed 2026-10-01).
-  ignore = "[ -n \"$CACHED_COMMIT_REF\" ] && git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- src public netlify scripts astro.config.mjs tsconfig.json package.json package-lock.json netlify.toml .nvmrc && exit 0 || exit 1"
+  ignore = "[ -z \"$INCOMING_HOOK_TITLE\" ] && [ -n \"$CACHED_COMMIT_REF\" ] && git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- src public netlify scripts astro.config.mjs tsconfig.json package.json package-lock.json netlify.toml .nvmrc && exit 0 || exit 1"
 
 [build.environment]
   NODE_VERSION = "22"
